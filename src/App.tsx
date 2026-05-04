@@ -1,26 +1,64 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import NotFound from "./pages/NotFound.tsx";
+
+import PublicLayout from "./components/site/PublicLayout";
+import Home from "./pages/site/Home";
+import About from "./pages/site/About";
+import Services from "./pages/site/Services";
+import Projects from "./pages/site/Projects";
+import ProjectDetail from "./pages/site/ProjectDetail";
+import UrbanTransformation from "./pages/site/UrbanTransformation";
+import Contact from "./pages/site/Contact";
+import NotFound from "./pages/NotFound";
+
+import AdminAuth from "./pages/admin/AdminAuth";
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminProjects from "./pages/admin/AdminProjects";
+import AdminProjectEdit from "./pages/admin/AdminProjectEdit";
+import AdminMedia from "./pages/admin/AdminMedia";
+import AdminContacts from "./pages/admin/AdminContacts";
+import AdminSettings from "./pages/admin/AdminSettings";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <HelmetProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/admin/giris" element={<AdminAuth />} />
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="projeler" element={<AdminProjects />} />
+              <Route path="projeler/yeni" element={<AdminProjectEdit />} />
+              <Route path="projeler/:id" element={<AdminProjectEdit />} />
+              <Route path="medya" element={<AdminMedia />} />
+              <Route path="talepler" element={<AdminContacts />} />
+              <Route path="ayarlar" element={<AdminSettings />} />
+            </Route>
+
+            <Route element={<PublicLayout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/hakkimizda" element={<About />} />
+              <Route path="/hizmetlerimiz" element={<Services />} />
+              <Route path="/projelerimiz" element={<Projects />} />
+              <Route path="/projelerimiz/:slug" element={<ProjectDetail />} />
+              <Route path="/kentsel-donusum" element={<UrbanTransformation />} />
+              <Route path="/iletisim" element={<Contact />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </HelmetProvider>
   </QueryClientProvider>
 );
 
