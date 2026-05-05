@@ -38,16 +38,14 @@ export default function SiteHeader() {
       )}
     >
       <div className="container-narrow flex h-16 md:h-20 items-center justify-between gap-4">
-        <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
-          <div className="h-10 w-10 rounded-md bg-primary text-primary-foreground flex items-center justify-center shadow-card-soft group-hover:bg-accent transition-colors">
-            <Building2 className="h-5 w-5" strokeWidth={2.2} />
-          </div>
-          <div className="leading-tight">
-            <div className="font-display text-lg md:text-xl font-bold tracking-tight">Akınal İnşaat</div>
-            <div className="text-[10px] md:text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Kentsel Dönüşüm · İnşaat
-            </div>
-          </div>
+        <Link to="/" className="flex items-center shrink-0 group" aria-label="Akınal İnşaat - Ana Sayfa">
+          <img
+            src={logoImg}
+            alt="Akınal İnşaat"
+            className="h-12 md:h-16 w-auto object-contain"
+            loading="eager"
+            decoding="async"
+          />
         </Link>
 
         <nav className="hidden lg:flex items-center gap-1">
