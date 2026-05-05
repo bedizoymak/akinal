@@ -26,7 +26,7 @@ export default function AdminAuth() {
       <div className="min-h-screen flex items-center justify-center bg-surface-light p-6">
         <div className="max-w-md text-center bg-card border border-border rounded-lg p-8">
           <h1 className="font-display text-2xl font-bold mb-3">Yetkisiz Erişim</h1>
-          <p className="text-muted-foreground mb-5">Bu hesabın admin paneline erişim yetkisi yok.</p>
+          <p className="text-muted-foreground mb-5">Bu hesabın admin paneline erişim yetkisi bulunmuyor.</p>
           <Button onClick={async () => { await supabase.auth.signOut(); nav(0); }}>Çıkış Yap</Button>
         </div>
       </div>
