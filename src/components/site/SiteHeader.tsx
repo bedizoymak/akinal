@@ -37,7 +37,7 @@ export default function SiteHeader() {
           : "bg-background/80 backdrop-blur-sm"
       )}
     >
-      <div className="container-narrow flex h-16 md:h-20 items-center justify-between gap-4">
+      <div className="container-narrow flex h-20 md:h-24 items-center justify-between gap-4">
         <Link to="/" className="flex items-center shrink-0 group" aria-label="Akınal İnşaat - Ana Sayfa">
           <img
             src={logoImg}
