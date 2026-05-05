@@ -37,9 +37,9 @@ export default function AdminLayout() {
         "fixed lg:static inset-y-0 left-0 z-40 w-64 bg-sidebar text-sidebar-foreground flex flex-col transition-transform",
         open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
-        <div className="p-5 border-b border-sidebar-border flex items-center gap-2.5">
-          <div className="h-9 w-9 rounded-md bg-accent text-accent-foreground flex items-center justify-center">
-            <Building2 className="h-5 w-5" />
+        <div className="p-5 border-b border-sidebar-border flex items-center gap-3">
+          <div className="bg-white rounded-md p-1.5 shadow-card-soft">
+            <img src={logoImg} alt="Akınal İnşaat" className="h-9 w-auto object-contain" />
           </div>
           <div className="leading-tight">
             <div className="font-display font-bold">Akınal İnşaat</div>
