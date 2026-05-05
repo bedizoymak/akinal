@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { Building2, Phone, Mail, MapPin, Instagram, Facebook, Linkedin } from "lucide-react";
+import { Phone, Mail, MapPin, Instagram, Facebook, Linkedin } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import logoImg from "@/assets/logo.png";
 
 export default function SiteFooter() {
   const { settings } = useSiteSettings();
