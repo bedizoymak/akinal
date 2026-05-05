@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Building2 } from "lucide-react";
+import logoImg from "@/assets/logo.png";
 
 export default function AdminAuth() {
   const { session, isAdmin, loading } = useAuth();
@@ -26,7 +26,7 @@ export default function AdminAuth() {
       <div className="min-h-screen flex items-center justify-center bg-surface-light p-6">
         <div className="max-w-md text-center bg-card border border-border rounded-lg p-8">
           <h1 className="font-display text-2xl font-bold mb-3">Yetkisiz Erişim</h1>
-          <p className="text-muted-foreground mb-5">Bu hesabın admin paneline erişim yetkisi yok.</p>
+          <p className="text-muted-foreground mb-5">Bu hesabın admin paneline erişim yetkisi bulunmuyor.</p>
           <Button onClick={async () => { await supabase.auth.signOut(); nav(0); }}>Çıkış Yap</Button>
         </div>
       </div>
@@ -64,14 +64,11 @@ export default function AdminAuth() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-dark p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-8 text-white">
-          <div className="inline-flex items-center gap-2.5 mb-4">
-            <div className="h-12 w-12 rounded-md bg-accent text-accent-foreground flex items-center justify-center">
-              <Building2 className="h-6 w-6" />
+          <div className="inline-flex flex-col items-center gap-3 mb-4">
+            <div className="bg-white rounded-md p-3 shadow-card-soft">
+              <img src={logoImg} alt="Akınal İnşaat" className="h-14 w-auto object-contain" />
             </div>
-            <div className="text-left">
-              <div className="font-display text-xl font-bold">Akınal İnşaat</div>
-              <div className="text-[11px] uppercase tracking-[0.18em] text-white/60">Yönetim Paneli</div>
-            </div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-white/70">Yönetim Paneli</div>
           </div>
           <h1 className="font-display text-2xl font-bold">{mode === "login" ? "Yönetici Girişi" : "Yeni Hesap"}</h1>
           <p className="text-sm text-white/65 mt-1">{mode === "login" ? "Devam etmek için giriş yapın." : "İlk kayıt olan kullanıcı otomatik admin olur."}</p>

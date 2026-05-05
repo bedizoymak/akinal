@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { Building2, Phone, Mail, MapPin, Instagram, Facebook, Linkedin } from "lucide-react";
+import { Phone, Mail, MapPin, Instagram, Facebook, Linkedin } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import logoImg from "@/assets/logo.png";
 
 export default function SiteFooter() {
   const { settings } = useSiteSettings();
@@ -8,13 +9,9 @@ export default function SiteFooter() {
     <footer className="bg-gradient-dark text-white mt-24">
       <div className="container-narrow py-16 grid gap-12 md:grid-cols-2 lg:grid-cols-4">
         <div>
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="h-10 w-10 rounded-md bg-accent text-accent-foreground flex items-center justify-center">
-              <Building2 className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="font-display text-lg font-bold">{settings.company_name}</div>
-              <div className="text-[10px] uppercase tracking-[0.18em] text-white/60">Kentsel Dönüşüm · İnşaat</div>
+          <Link to="/" className="inline-flex items-center" aria-label="Akınal İnşaat">
+            <div className="bg-white rounded-md p-3 shadow-card-soft inline-flex">
+              <img src={logoImg} alt="Akınal İnşaat" className="h-12 w-auto object-contain" />
             </div>
           </Link>
           <p className="mt-5 text-sm text-white/70 leading-relaxed">{settings.footer_description}</p>
