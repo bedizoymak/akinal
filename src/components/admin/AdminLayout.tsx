@@ -1,5 +1,6 @@
 import { NavLink, Outlet, Navigate, useNavigate } from "react-router-dom";
-import { LayoutDashboard, FolderKanban, PlusSquare, Image as ImageIcon, Inbox, Settings, LogOut, Building2, Menu, X } from "lucide-react";
+import { LayoutDashboard, FolderKanban, PlusSquare, Image as ImageIcon, Inbox, Settings, LogOut, Menu } from "lucide-react";
+import logoImg from "@/assets/logo.png";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
