@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Building2 } from "lucide-react";
+import logoImg from "@/assets/logo.png";
 
 export default function AdminAuth() {
   const { session, isAdmin, loading } = useAuth();
