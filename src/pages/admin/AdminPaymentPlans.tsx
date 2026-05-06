@@ -1,0 +1,190 @@
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { PAYMENT_PLAN_STATUSES, formatTRY, formatDate, statusBadgeClass, customerDisplayName, daysUntil, exportCSV, whatsappLink, derivePlanStatus } from "@/lib/finance";
+import { cn } from "@/lib/utils";
+import { Plus, Edit, Trash2, Download, MessageCircle } from "lucide-react";
+
+const empty = { customer_id: "", project_id: "", title: "", description: "", amount: "", due_date: "", status: "Bekliyor", notes: "" };
+
+export default function AdminPaymentPlans() {
+  const [params] = useSearchParams();
+  const preCustomer = params.get("musteri") || "";
+  const [plans, setPlans] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [pays, setPays] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<any>({ ...empty, customer_id: preCustomer });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [filterCustomer, setFilterCustomer] = useState(preCustomer || "all");
+  const [filterProject, setFilterProject] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterPeriod, setFilterPeriod] = useState("all");
+  const { toast } = useToast();
+
+  async function load() {
+    setLoading(true);
+    const [pl, c, pr, py] = await Promise.all([
+      (supabase.from("payment_plans" as any).select("*").order("due_date")) as any,
+      (supabase.from("customers" as any).select("*").order("created_at", { ascending: false })) as any,
+      supabase.from("projects").select("id,title").order("sort_order"),
+      (supabase.from("payments" as any).select("payment_plan_id,amount")) as any,
+    ]);
+    setPlans((pl.data as any[]) || []);
+    setCustomers((c.data as any[]) || []);
+    setProjects((pr.data as any[]) || []);
+    setPays((py.data as any[]) || []);
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+  useEffect(() => { if (preCustomer) { setForm((f: any) => ({ ...f, customer_id: preCustomer })); setOpen(true); } }, [preCustomer]);
+
+  function openNew() { setForm({ ...empty, customer_id: filterCustomer !== "all" ? filterCustomer : "" }); setEditId(null); setOpen(true); }
+  function openEdit(p: any) { setForm({ ...p, project_id: p.project_id || "", amount: String(p.amount), notes: p.notes || "", description: p.description || "" }); setEditId(p.id); setOpen(true); }
+
+  async function save() {
+    if (!form.customer_id || !form.title || !form.amount || !form.due_date) {
+      toast({ title: "Müşteri, başlık, tutar ve vade tarihi zorunludur", variant: "destructive" }); return;
+    }
+    const payload: any = { ...form, amount: Number(form.amount), project_id: form.project_id || null };
+    if (editId) {
+      await (supabase.from("payment_plans" as any).update(payload).eq("id", editId)) as any;
+      toast({ title: "Ödeme planı güncellendi" });
+    } else {
+      await (supabase.from("payment_plans" as any).insert(payload)) as any;
+      toast({ title: "Ödeme planı eklendi" });
+    }
+    setOpen(false); load();
+  }
+
+  async function remove(id: string) {
+    if (!confirm("Ödeme planı silinsin mi?")) return;
+    await (supabase.from("payment_plans" as any).delete().eq("id", id)) as any;
+    toast({ title: "Silindi" }); load();
+  }
+
+  const enriched = useMemo(() => plans.map((p) => {
+    const paid = pays.filter((x) => x.payment_plan_id === p.id).reduce((s, x) => s + Number(x.amount), 0);
+    const remain = Math.max(0, Number(p.amount) - paid);
+    const computed = derivePlanStatus(p, paid);
+    const customer = customers.find((c) => c.id === p.customer_id);
+    const project = projects.find((pr) => pr.id === p.project_id);
+    return { ...p, paid, remain, computed, customer, project };
+  }), [plans, pays, customers, projects]);
+
+  const filtered = enriched.filter((p) => {
+    if (filterCustomer !== "all" && p.customer_id !== filterCustomer) return false;
+    if (filterProject !== "all" && p.project_id !== filterProject) return false;
+    if (filterStatus !== "all" && p.computed !== filterStatus) return false;
+    const d = daysUntil(p.due_date);
+    if (filterPeriod === "overdue" && !(d < 0 && p.computed !== "Ödendi")) return false;
+    if (filterPeriod === "upcoming" && !(d >= 0 && d <= 30 && p.computed !== "Ödendi")) return false;
+    return true;
+  });
+
+  function downloadCSV() {
+    exportCSV("odeme-planlari.csv", filtered.map((p) => ({
+      "Müşteri": p.customer ? customerDisplayName(p.customer) : "-", "Proje": p.project?.title || "-",
+      "Başlık": p.title, "Vade": p.due_date, "Tutar": p.amount, "Ödenen": p.paid, "Kalan": p.remain, "Durum": p.computed,
+    })));
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div><h1 className="font-display text-3xl font-bold">Ödeme Planları</h1><p className="text-muted-foreground text-sm">Müşterilerin ödeme yükümlülükleri.</p></div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={downloadCSV}><Download className="h-4 w-4 mr-1" /> CSV Olarak İndir</Button>
+          <Button onClick={openNew} className="bg-accent hover:bg-accent-glow text-accent-foreground"><Plus className="h-4 w-4 mr-1" /> Ödeme Ekle</Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5 p-4 bg-card border border-border rounded-md">
+        <Select value={filterCustomer} onValueChange={setFilterCustomer}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tüm Müşteriler</SelectItem>{customers.map((c) => <SelectItem key={c.id} value={c.id}>{customerDisplayName(c)}</SelectItem>)}</SelectContent></Select>
+        <Select value={filterProject} onValueChange={setFilterProject}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tüm Projeler</SelectItem>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}</SelectContent></Select>
+        <Select value={filterStatus} onValueChange={setFilterStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tüm Durumlar</SelectItem>{PAYMENT_PLAN_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
+        <Select value={filterPeriod} onValueChange={setFilterPeriod}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tüm Vadeler</SelectItem><SelectItem value="overdue">Vadesi Geçenler</SelectItem><SelectItem value="upcoming">Yaklaşanlar (30 Gün)</SelectItem></SelectContent></Select>
+      </div>
+
+      {loading ? <div className="text-center text-muted-foreground py-12">Yükleniyor...</div> : (
+        <div className="bg-card border border-border rounded-md overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="p-3 text-left">Müşteri</th><th className="p-3 text-left">Proje</th><th className="p-3 text-left">Başlık</th>
+                <th className="p-3">Vade</th><th className="p-3 text-right">Tutar</th><th className="p-3 text-right">Ödenen</th>
+                <th className="p-3 text-right">Kalan</th><th className="p-3">Durum</th><th className="p-3 text-right">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((p) => (
+                <tr key={p.id} className="border-t border-border">
+                  <td className="p-3">{p.customer ? customerDisplayName(p.customer) : <span className="text-muted-foreground">-</span>}</td>
+                  <td className="p-3 text-xs">{p.project?.title || "-"}</td>
+                  <td className="p-3"><div className="font-medium">{p.title}</div>{p.description && <div className="text-xs text-muted-foreground">{p.description}</div>}</td>
+                  <td className="p-3"><div>{formatDate(p.due_date)}</div><div className="text-xs text-muted-foreground">{daysUntil(p.due_date) < 0 ? `${Math.abs(daysUntil(p.due_date))} gün geçti` : `${daysUntil(p.due_date)} gün kaldı`}</div></td>
+                  <td className="p-3 text-right">{formatTRY(p.amount)}</td>
+                  <td className="p-3 text-right text-emerald-700">{formatTRY(p.paid)}</td>
+                  <td className="p-3 text-right font-bold">{formatTRY(p.remain)}</td>
+                  <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(p.computed))}>{p.computed}</span></td>
+                  <td className="p-3 text-right">
+                    <div className="flex justify-end gap-1">
+                      {p.customer?.whatsapp && <Button asChild size="sm" variant="ghost" title="WhatsApp ile Hatırlat"><a href={whatsappLink(p.customer.whatsapp, `Merhaba, Akınal İnşaat ödeme planınıza göre ${formatDate(p.due_date)} tarihli ${formatTRY(p.remain)} ödemeniz bulunmaktadır. Bilginize sunarız.`)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 text-emerald-700" /></a></Button>}
+                      <Button size="sm" variant="ghost" onClick={() => openEdit(p)}><Edit className="h-4 w-4" /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => remove(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">Kayıt yok.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>{editId ? "Ödeme Planını Düzenle" : "Yeni Ödeme Planı"}</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="md:col-span-2"><Label>Müşteri *</Label>
+              <Select value={form.customer_id} onValueChange={(v) => setForm((f: any) => ({ ...f, customer_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Müşteri seçin" /></SelectTrigger>
+                <SelectContent>{customers.map((c) => <SelectItem key={c.id} value={c.id}>{customerDisplayName(c)}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2"><Label>Proje</Label>
+              <Select value={form.project_id || "none"} onValueChange={(v) => setForm((f: any) => ({ ...f, project_id: v === "none" ? "" : v }))}>
+                <SelectTrigger><SelectValue placeholder="Proje seçin" /></SelectTrigger>
+                <SelectContent><SelectItem value="none">— Seçilmedi —</SelectItem>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Ödeme Başlığı *</Label><Input value={form.title} onChange={(e) => setForm((f: any) => ({ ...f, title: e.target.value }))} placeholder="Örn: 1. Taksit, Peşinat" /></div>
+            <div><Label>Tutar *</Label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm((f: any) => ({ ...f, amount: e.target.value }))} /></div>
+            <div><Label>Vade Tarihi *</Label><Input type="date" value={form.due_date} onChange={(e) => setForm((f: any) => ({ ...f, due_date: e.target.value }))} /></div>
+            <div><Label>Durum</Label>
+              <Select value={form.status} onValueChange={(v) => setForm((f: any) => ({ ...f, status: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{PAYMENT_PLAN_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2"><Label>Açıklama</Label><Textarea value={form.description} onChange={(e) => setForm((f: any) => ({ ...f, description: e.target.value }))} rows={2} /></div>
+            <div className="md:col-span-2"><Label>Not</Label><Textarea value={form.notes} onChange={(e) => setForm((f: any) => ({ ...f, notes: e.target.value }))} rows={2} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>İptal</Button>
+            <Button onClick={save} className="bg-accent hover:bg-accent-glow text-accent-foreground">Kaydet</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
