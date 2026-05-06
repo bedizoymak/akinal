@@ -48,6 +48,15 @@ const App = () => (
               <Route path="projeler" element={<AdminProjects />} />
               <Route path="projeler/yeni" element={<AdminProjectEdit />} />
               <Route path="projeler/:id" element={<AdminProjectEdit />} />
+              <Route path="projeler/:id/finans" element={<AdminProjectFinance />} />
+              <Route path="musteriler" element={<AdminCustomers />} />
+              <Route path="musteriler/yeni" element={<AdminCustomerEdit />} />
+              <Route path="musteriler/:id" element={<AdminCustomerDetail />} />
+              <Route path="musteriler/:id/duzenle" element={<AdminCustomerEdit />} />
+              <Route path="odeme-planlari" element={<AdminPaymentPlans />} />
+              <Route path="tahsilatlar" element={<AdminCollections />} />
+              <Route path="giderler" element={<AdminExpenses />} />
+              <Route path="finans-dashboard" element={<AdminFinance />} />
               <Route path="medya" element={<AdminMedia />} />
               <Route path="talepler" element={<AdminContacts />} />
               <Route path="ayarlar" element={<AdminSettings />} />
