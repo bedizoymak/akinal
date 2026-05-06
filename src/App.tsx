@@ -23,6 +23,14 @@ import AdminProjectEdit from "./pages/admin/AdminProjectEdit";
 import AdminMedia from "./pages/admin/AdminMedia";
 import AdminContacts from "./pages/admin/AdminContacts";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminCustomers from "./pages/admin/AdminCustomers";
+import AdminCustomerEdit from "./pages/admin/AdminCustomerEdit";
+import AdminCustomerDetail from "./pages/admin/AdminCustomerDetail";
+import AdminPaymentPlans from "./pages/admin/AdminPaymentPlans";
+import AdminCollections from "./pages/admin/AdminCollections";
+import AdminExpenses from "./pages/admin/AdminExpenses";
+import AdminFinance from "./pages/admin/AdminFinance";
+import AdminProjectFinance from "./pages/admin/AdminProjectFinance";
 
 const queryClient = new QueryClient();
 
