@@ -47,6 +47,230 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_notes: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          note: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          note: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          note?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_notes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_projects: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_projects_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_projects_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          address: string | null
+          city: string | null
+          company_name: string | null
+          created_at: string
+          customer_type: string
+          district: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          notes: string | null
+          phone: string
+          status: string
+          tax_or_identity_number: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          company_name?: string | null
+          created_at?: string
+          customer_type?: string
+          district?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          notes?: string | null
+          phone?: string
+          status?: string
+          tax_or_identity_number?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          company_name?: string | null
+          created_at?: string
+          customer_type?: string
+          district?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          notes?: string | null
+          phone?: string
+          status?: string
+          tax_or_identity_number?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          document_type: string
+          file_url: string
+          id: string
+          notes: string | null
+          project_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          document_type?: string
+          file_url: string
+          id?: string
+          notes?: string | null
+          project_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          document_type?: string
+          file_url?: string
+          id?: string
+          notes?: string | null
+          project_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          customer_id: string | null
+          description: string | null
+          document_url: string | null
+          expense_date: string
+          id: string
+          project_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          category?: string
+          created_at?: string
+          customer_id?: string | null
+          description?: string | null
+          document_url?: string | null
+          expense_date?: string
+          id?: string
+          project_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          customer_id?: string | null
+          description?: string | null
+          document_url?: string | null
+          expense_date?: string
+          id?: string
+          project_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       media_library: {
         Row: {
           alt_text: string | null
@@ -82,6 +306,127 @@ export type Database = {
           {
             foreignKeyName: "media_library_related_project_id_fkey"
             columns: ["related_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_plans: {
+        Row: {
+          amount: number
+          created_at: string
+          customer_id: string
+          description: string | null
+          due_date: string
+          id: string
+          notes: string | null
+          project_id: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          customer_id: string
+          description?: string | null
+          due_date: string
+          id?: string
+          notes?: string | null
+          project_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          customer_id?: string
+          description?: string | null
+          due_date?: string
+          id?: string
+          notes?: string | null
+          project_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_plans_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_plans_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          customer_id: string
+          description: string | null
+          document_url: string | null
+          id: string
+          payment_date: string
+          payment_method: string
+          payment_plan_id: string | null
+          project_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          customer_id: string
+          description?: string | null
+          document_url?: string | null
+          id?: string
+          payment_date?: string
+          payment_method?: string
+          payment_plan_id?: string | null
+          project_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          customer_id?: string
+          description?: string | null
+          document_url?: string | null
+          id?: string
+          payment_date?: string
+          payment_method?: string
+          payment_plan_id?: string | null
+          project_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_payment_plan_id_fkey"
+            columns: ["payment_plan_id"]
+            isOneToOne: false
+            referencedRelation: "payment_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_project_id_fkey"
+            columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]

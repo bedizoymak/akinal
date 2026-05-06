@@ -1,0 +1,161 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Plus, Edit, Trash2, Eye, Download, Phone, MessageCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { CUSTOMER_TYPES, CUSTOMER_STATUSES, customerDisplayName, formatTRY, statusBadgeClass, exportCSV, whatsappLink } from "@/lib/finance";
+import { cn } from "@/lib/utils";
+
+export default function AdminCustomers() {
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [plans, setPlans] = useState<any[]>([]);
+  const [pays, setPays] = useState<any[]>([]);
+  const [links, setLinks] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState("");
+  const [type, setType] = useState("all");
+  const [status, setStatus] = useState("all");
+  const [projectFilter, setProjectFilter] = useState("all");
+  const [balanceFilter, setBalanceFilter] = useState("all");
+  const { toast } = useToast();
+
+  async function load() {
+    setLoading(true);
+    const [c, p, py, l, pr] = await Promise.all([
+      (supabase.from("customers" as any).select("*").order("created_at", { ascending: false })) as any,
+      (supabase.from("payment_plans" as any).select("customer_id,amount")) as any,
+      (supabase.from("payments" as any).select("customer_id,amount")) as any,
+      (supabase.from("customer_projects" as any).select("customer_id,project_id")) as any,
+      supabase.from("projects").select("id,title").order("sort_order"),
+    ]);
+    setCustomers((c.data as any[]) || []);
+    setPlans((p.data as any[]) || []);
+    setPays((py.data as any[]) || []);
+    setLinks((l.data as any[]) || []);
+    setProjects((pr.data as any[]) || []);
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  const enriched = useMemo(() => {
+    return customers.map((c) => {
+      const totalDue = plans.filter((x) => x.customer_id === c.id).reduce((s, x) => s + Number(x.amount), 0);
+      const totalPaid = pays.filter((x) => x.customer_id === c.id).reduce((s, x) => s + Number(x.amount), 0);
+      const projectIds = links.filter((x) => x.customer_id === c.id).map((x) => x.project_id);
+      const projectNames = projects.filter((p) => projectIds.includes(p.id)).map((p) => p.title);
+      return { ...c, totalDue, totalPaid, balance: totalDue - totalPaid, projectIds, projectNames };
+    });
+  }, [customers, plans, pays, links, projects]);
+
+  const filtered = enriched.filter((c) => {
+    const name = customerDisplayName(c).toLowerCase();
+    if (q && !`${name} ${c.phone || ""} ${c.email || ""}`.toLowerCase().includes(q.toLowerCase())) return false;
+    if (type !== "all" && c.customer_type !== type) return false;
+    if (status !== "all" && c.status !== status) return false;
+    if (projectFilter !== "all" && !c.projectIds.includes(projectFilter)) return false;
+    if (balanceFilter === "with" && c.balance <= 0) return false;
+    if (balanceFilter === "clear" && c.balance > 0) return false;
+    return true;
+  });
+
+  async function remove(id: string, name: string) {
+    if (!confirm(`"${name}" müşterisini silmek istediğinize emin misiniz? Bağlı ödeme planları ve tahsilatlar da silinecek.`)) return;
+    await (supabase.from("customers" as any).delete().eq("id", id) as any);
+    toast({ title: "Müşteri silindi" });
+    load();
+  }
+
+  function downloadCSV() {
+    exportCSV("musteriler.csv", filtered.map((c) => ({
+      "Müşteri": customerDisplayName(c),
+      "Tür": c.customer_type,
+      "Telefon": c.phone,
+      "E-posta": c.email || "",
+      "Şehir": c.city || "",
+      "Projeler": c.projectNames.join(", "),
+      "Toplam Borç": c.totalDue,
+      "Tahsil Edilen": c.totalPaid,
+      "Kalan Bakiye": c.balance,
+      "Durum": c.status,
+    })));
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-bold">Müşteriler</h1>
+          <p className="text-muted-foreground text-sm">Müşterileri yönetin, bakiye ve ödeme durumunu takip edin.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={downloadCSV}><Download className="h-4 w-4 mr-1" /> CSV Olarak İndir</Button>
+          <Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to="/admin/musteriler/yeni"><Plus className="h-4 w-4 mr-1" /> Yeni Müşteri Ekle</Link></Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-5 p-4 bg-card border border-border rounded-md">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Ara..." className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <Select value={type} onValueChange={setType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tüm Türler</SelectItem>{CUSTOMER_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select>
+        <Select value={status} onValueChange={setStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tüm Durumlar</SelectItem>{CUSTOMER_STATUSES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select>
+        <Select value={projectFilter} onValueChange={setProjectFilter}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tüm Projeler</SelectItem>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}</SelectContent></Select>
+        <Select value={balanceFilter} onValueChange={setBalanceFilter}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tüm Bakiyeler</SelectItem><SelectItem value="with">Bakiyesi Olan</SelectItem><SelectItem value="clear">Bakiyesi Sıfır</SelectItem></SelectContent></Select>
+      </div>
+
+      {loading ? (
+        <div className="text-center text-muted-foreground py-12">Yükleniyor...</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center text-muted-foreground py-12 border border-dashed border-border rounded-md">Müşteri bulunamadı.</div>
+      ) : (
+        <div className="overflow-x-auto bg-card border border-border rounded-md">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="p-3">Müşteri</th>
+                <th className="p-3">Telefon</th>
+                <th className="p-3">Projeler</th>
+                <th className="p-3 text-right">Toplam Borç</th>
+                <th className="p-3 text-right">Tahsil Edilen</th>
+                <th className="p-3 text-right">Kalan Bakiye</th>
+                <th className="p-3">Durum</th>
+                <th className="p-3 text-right">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((c) => (
+                <tr key={c.id} className="border-t border-border hover:bg-muted/30">
+                  <td className="p-3">
+                    <div className="font-semibold">{customerDisplayName(c)}</div>
+                    <div className="text-xs text-muted-foreground">{c.customer_type}</div>
+                  </td>
+                  <td className="p-3">
+                    <div className="flex items-center gap-1 text-xs"><Phone className="h-3 w-3" /> {c.phone || "-"}</div>
+                    {c.whatsapp && <a href={whatsappLink(c.whatsapp, "Merhaba, Akınal İnşaat")} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-emerald-700"><MessageCircle className="h-3 w-3" /> {c.whatsapp}</a>}
+                  </td>
+                  <td className="p-3 text-xs">{c.projectNames.join(", ") || <span className="text-muted-foreground">—</span>}</td>
+                  <td className="p-3 text-right font-medium">{formatTRY(c.totalDue)}</td>
+                  <td className="p-3 text-right text-emerald-700">{formatTRY(c.totalPaid)}</td>
+                  <td className={cn("p-3 text-right font-bold", c.balance > 0 ? "text-red-600" : "text-emerald-700")}>{formatTRY(c.balance)}</td>
+                  <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(c.status))}>{c.status}</span></td>
+                  <td className="p-3">
+                    <div className="flex justify-end gap-1">
+                      <Button asChild size="sm" variant="ghost"><Link to={`/admin/musteriler/${c.id}`}><Eye className="h-4 w-4" /></Link></Button>
+                      <Button asChild size="sm" variant="ghost"><Link to={`/admin/musteriler/${c.id}/duzenle`}><Edit className="h-4 w-4" /></Link></Button>
+                      <Button size="sm" variant="ghost" onClick={() => remove(c.id, customerDisplayName(c))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

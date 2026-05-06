@@ -1,5 +1,5 @@
 import { NavLink, Outlet, Navigate, useNavigate } from "react-router-dom";
-import { LayoutDashboard, FolderKanban, PlusSquare, Image as ImageIcon, Inbox, Settings, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, FolderKanban, PlusSquare, Image as ImageIcon, Inbox, Settings, LogOut, Menu, Users, UserPlus, CalendarClock, Wallet, Receipt, PieChart } from "lucide-react";
 import logoImg from "@/assets/logo.png";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,12 @@ const ITEMS = [
   { to: "/admin", label: "Panel Ana Sayfa", icon: LayoutDashboard, end: true },
   { to: "/admin/projeler", label: "Projeler", icon: FolderKanban },
   { to: "/admin/projeler/yeni", label: "Yeni Proje Ekle", icon: PlusSquare },
+  { to: "/admin/musteriler", label: "Müşteriler", icon: Users },
+  { to: "/admin/musteriler/yeni", label: "Yeni Müşteri Ekle", icon: UserPlus },
+  { to: "/admin/odeme-planlari", label: "Ödeme Planları", icon: CalendarClock },
+  { to: "/admin/tahsilatlar", label: "Tahsilatlar", icon: Wallet },
+  { to: "/admin/giderler", label: "Giderler", icon: Receipt },
+  { to: "/admin/finans-dashboard", label: "Finans Dashboard", icon: PieChart },
   { to: "/admin/medya", label: "Medya Galerisi", icon: ImageIcon },
   { to: "/admin/talepler", label: "İletişim Talepleri", icon: Inbox },
   { to: "/admin/ayarlar", label: "Site Ayarları", icon: Settings },
