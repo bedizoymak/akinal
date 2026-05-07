@@ -20,6 +20,8 @@ const ITEMS = [
   { to: "/admin/finans-dashboard", label: "Finans Dashboard", icon: PieChart },
   { to: "/admin/medya", label: "Medya Galerisi", icon: ImageIcon },
   { to: "/admin/talepler", label: "İletişim Talepleri", icon: Inbox },
+  { to: "/admin/bildirimler", label: "Bildirimler", icon: Bell },
+  { to: "/admin/raporlar", label: "Raporlar", icon: FileBarChart },
   { to: "/admin/ayarlar", label: "Site Ayarları", icon: Settings },
 ];
 
