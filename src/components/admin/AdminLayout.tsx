@@ -82,9 +82,12 @@ export default function AdminLayout() {
       {open && <button className="lg:hidden fixed inset-0 bg-black/50 z-30" onClick={() => setOpen(false)} aria-label="Kapat" />}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 bg-card border-b border-border flex items-center px-4 gap-3 lg:hidden">
-          <button onClick={() => setOpen(true)} aria-label="Menü"><Menu className="h-5 w-5" /></button>
-          <div className="font-display font-bold">Akınal İnşaat — Panel</div>
+        <header className="h-14 bg-card border-b border-border flex items-center px-4 gap-3 print:hidden">
+          <button onClick={() => setOpen(true)} aria-label="Menü" className="lg:hidden"><Menu className="h-5 w-5" /></button>
+          <div className="font-display font-bold lg:hidden">Akınal İnşaat — Panel</div>
+          <div className="ml-auto flex items-center gap-2">
+            <NotificationBell />
+          </div>
         </header>
         <div className="p-5 md:p-8 flex-1 min-w-0">
           <Outlet />
