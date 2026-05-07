@@ -312,6 +312,45 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          priority: string
+          related_customer_id: string | null
+          related_payment_plan_id: string | null
+          related_project_id: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          priority?: string
+          related_customer_id?: string | null
+          related_payment_plan_id?: string | null
+          related_project_id?: string | null
+          title: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          priority?: string
+          related_customer_id?: string | null
+          related_payment_plan_id?: string | null
+          related_project_id?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
       payment_plans: {
         Row: {
           amount: number
