@@ -31,6 +31,8 @@ import AdminCollections from "./pages/admin/AdminCollections";
 import AdminExpenses from "./pages/admin/AdminExpenses";
 import AdminFinance from "./pages/admin/AdminFinance";
 import AdminProjectFinance from "./pages/admin/AdminProjectFinance";
+import AdminNotifications from "./pages/admin/AdminNotifications";
+import AdminReports from "./pages/admin/AdminReports";
 
 const queryClient = new QueryClient();
 
