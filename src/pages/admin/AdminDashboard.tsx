@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { FolderKanban, FileEdit, Eye, Star, Inbox } from "lucide-react";
+import { FolderKanban, FileEdit, Eye, Star, Inbox, Bell } from "lucide-react";
+import { useNotifications, priorityClass } from "@/hooks/useNotifications";
+import { formatDate } from "@/lib/finance";
+import { Button } from "@/components/ui/button";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ total: 0, published: 0, draft: 0, featured: 0, newReq: 0 });
+  const { items } = useNotifications();
+  const recent = items.slice(0, 5);
 
   useEffect(() => {
     (async () => {
@@ -41,15 +46,45 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div className="mt-10 grid md:grid-cols-2 gap-4">
-        <Link to="/admin/projeler/yeni" className="p-6 rounded-lg bg-primary text-primary-foreground hover:bg-primary-glow transition-colors">
-          <div className="font-display text-xl font-bold mb-1">Yeni Proje Ekle</div>
-          <div className="text-sm opacity-80">Yeni proje, görsel yükleme ve yayınlama.</div>
-        </Link>
-        <Link to="/admin/ayarlar" className="p-6 rounded-lg bg-accent text-accent-foreground hover:bg-accent-glow transition-colors">
-          <div className="font-display text-xl font-bold mb-1">Site Ayarları</div>
-          <div className="text-sm opacity-90">Telefon, WhatsApp, e-posta ve hero metinlerini yönet.</div>
-        </Link>
+      <div className="mt-8 grid lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 p-5 rounded-lg bg-card border border-border">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-accent" />
+              <h2 className="font-display text-lg font-bold">Son Bildirimler</h2>
+            </div>
+            <Button asChild variant="ghost" size="sm"><Link to="/admin/bildirimler">Tüm Bildirimleri Gör</Link></Button>
+          </div>
+          {recent.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-6 text-center">Henüz bildirim bulunmuyor.</div>
+          ) : (
+            <div className="divide-y">
+              {recent.map((n) => (
+                <div key={n.id} className="py-3 flex items-start gap-3">
+                  <Bell className="h-4 w-4 text-accent mt-1 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <span className="font-semibold text-sm">{n.title}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded border ${priorityClass(n.priority)}`}>{n.priority}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{n.message}</p>
+                    <div className="text-[10px] text-muted-foreground mt-1">{formatDate(n.created_at)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="space-y-3">
+          <Link to="/admin/projeler/yeni" className="block p-5 rounded-lg bg-primary text-primary-foreground hover:bg-primary-glow transition-colors">
+            <div className="font-display text-lg font-bold mb-1">Yeni Proje Ekle</div>
+            <div className="text-sm opacity-80">Yeni proje, görsel yükleme ve yayınlama.</div>
+          </Link>
+          <Link to="/admin/raporlar" className="block p-5 rounded-lg bg-accent text-accent-foreground hover:bg-accent-glow transition-colors">
+            <div className="font-display text-lg font-bold mb-1">Raporlar</div>
+            <div className="text-sm opacity-90">Finans, müşteri, tahsilat ve gider raporlarını oluşturun.</div>
+          </Link>
+        </div>
       </div>
     </div>
   );
