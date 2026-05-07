@@ -61,6 +61,8 @@ const App = () => (
               <Route path="finans-dashboard" element={<AdminFinance />} />
               <Route path="medya" element={<AdminMedia />} />
               <Route path="talepler" element={<AdminContacts />} />
+              <Route path="bildirimler" element={<AdminNotifications />} />
+              <Route path="raporlar" element={<AdminReports />} />
               <Route path="ayarlar" element={<AdminSettings />} />
             </Route>
 
