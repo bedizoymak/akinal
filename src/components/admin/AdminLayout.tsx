@@ -1,5 +1,6 @@
 import { NavLink, Outlet, Navigate, useNavigate } from "react-router-dom";
-import { LayoutDashboard, FolderKanban, PlusSquare, Image as ImageIcon, Inbox, Settings, LogOut, Menu, Users, UserPlus, CalendarClock, Wallet, Receipt, PieChart } from "lucide-react";
+import { LayoutDashboard, FolderKanban, PlusSquare, Image as ImageIcon, Inbox, Settings, LogOut, Menu, Users, UserPlus, CalendarClock, Wallet, Receipt, PieChart, Bell, FileBarChart } from "lucide-react";
+import NotificationBell from "@/components/admin/NotificationBell";
 import logoImg from "@/assets/logo.png";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,8 @@ const ITEMS = [
   { to: "/admin/finans-dashboard", label: "Finans Dashboard", icon: PieChart },
   { to: "/admin/medya", label: "Medya Galerisi", icon: ImageIcon },
   { to: "/admin/talepler", label: "İletişim Talepleri", icon: Inbox },
+  { to: "/admin/bildirimler", label: "Bildirimler", icon: Bell },
+  { to: "/admin/raporlar", label: "Raporlar", icon: FileBarChart },
   { to: "/admin/ayarlar", label: "Site Ayarları", icon: Settings },
 ];
 
@@ -40,7 +43,7 @@ export default function AdminLayout() {
     <div className="min-h-screen bg-surface-light flex">
       {/* Sidebar */}
       <aside className={cn(
-        "fixed lg:static inset-y-0 left-0 z-40 w-64 bg-sidebar text-sidebar-foreground flex flex-col transition-transform",
+        "fixed lg:static inset-y-0 left-0 z-40 w-64 bg-sidebar text-sidebar-foreground flex flex-col transition-transform print:hidden",
         open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
         <div className="p-5 border-b border-sidebar-border flex items-center gap-3">
@@ -79,9 +82,12 @@ export default function AdminLayout() {
       {open && <button className="lg:hidden fixed inset-0 bg-black/50 z-30" onClick={() => setOpen(false)} aria-label="Kapat" />}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 bg-card border-b border-border flex items-center px-4 gap-3 lg:hidden">
-          <button onClick={() => setOpen(true)} aria-label="Menü"><Menu className="h-5 w-5" /></button>
-          <div className="font-display font-bold">Akınal İnşaat — Panel</div>
+        <header className="h-14 bg-card border-b border-border flex items-center px-4 gap-3 print:hidden">
+          <button onClick={() => setOpen(true)} aria-label="Menü" className="lg:hidden"><Menu className="h-5 w-5" /></button>
+          <div className="font-display font-bold lg:hidden">Akınal İnşaat — Panel</div>
+          <div className="ml-auto flex items-center gap-2">
+            <NotificationBell />
+          </div>
         </header>
         <div className="p-5 md:p-8 flex-1 min-w-0">
           <Outlet />
