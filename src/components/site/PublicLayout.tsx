@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
 import FloatingContact from "./FloatingContact";
+import SalesChatbot from "./SalesChatbot";
 
 export default function PublicLayout() {
   return (
@@ -12,6 +13,7 @@ export default function PublicLayout() {
       </main>
       <SiteFooter />
       <FloatingContact />
+      <SalesChatbot />
     </div>
   );
 }
