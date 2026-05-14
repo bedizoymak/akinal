@@ -1,8 +1,22 @@
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+const ALLOWED_ORIGINS = [
+  "http://localhost:8080",
+  "http://127.0.0.1:8080",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  // TODO: Confirm the final production domain before launch.
+  "https://akinalinsaat.com",
+  "https://www.akinalinsaat.com",
+];
+
+const baseCorsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Vary": "Origin",
 };
+
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 12;
 
 type ChatMessage = {
   role: "assistant" | "visitor";
@@ -42,7 +56,36 @@ Kesin kurallar:
 WhatsApp yönlendirmesi gerektiğinde şu numarayı kullan: ${WHATSAPP_NUMBER}
 `.trim();
 
-function jsonResponse(body: unknown, status = 200) {
+function getCorsHeaders(request: Request) {
+  const origin = request.headers.get("origin");
+
+  if (!origin) {
+    return baseCorsHeaders;
+  }
+
+  if (!ALLOWED_ORIGINS.includes(origin)) {
+    return null;
+  }
+
+  return {
+    ...baseCorsHeaders,
+    "Access-Control-Allow-Origin": origin,
+  };
+}
+
+function jsonResponse(request: Request, body: unknown, status = 200) {
+  const corsHeaders = getCorsHeaders(request);
+
+  if (!corsHeaders) {
+    return new Response(JSON.stringify({ error: "Bu origin için erişim izni yok." }), {
+      status: 403,
+      headers: {
+        ...baseCorsHeaders,
+        "Content-Type": "application/json; charset=utf-8",
+      },
+    });
+  }
+
   return new Response(JSON.stringify(body), {
     status,
     headers: {
@@ -50,6 +93,34 @@ function jsonResponse(body: unknown, status = 200) {
       "Content-Type": "application/json; charset=utf-8",
     },
   });
+}
+
+function getClientIp(request: Request) {
+  return (
+    request.headers.get("cf-connecting-ip") ??
+    request.headers.get("x-real-ip") ??
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "unknown"
+  );
+}
+
+function isRateLimited(request: Request) {
+  const now = Date.now();
+  const clientIp = getClientIp(request);
+  const current = rateLimitStore.get(clientIp);
+
+  if (!current || current.resetAt <= now) {
+    rateLimitStore.set(clientIp, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+
+  if (current.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return true;
+  }
+
+  current.count += 1;
+  rateLimitStore.set(clientIp, current);
+  return false;
 }
 
 function sanitizeHistory(history: unknown): ChatMessage[] {
@@ -77,17 +148,34 @@ function toGeminiRole(role: ChatMessage["role"]) {
 }
 
 Deno.serve(async (request) => {
+  const corsHeaders = getCorsHeaders(request);
+
   if (request.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, {
+      status: corsHeaders ? 204 : 403,
+      headers: corsHeaders ?? baseCorsHeaders,
+    });
+  }
+
+  if (!corsHeaders) {
+    return jsonResponse(request, { error: "Bu origin için erişim izni yok." }, 403);
   }
 
   if (request.method !== "POST") {
-    return jsonResponse({ error: "Bu uç nokta yalnızca POST isteği kabul eder." }, 405);
+    return jsonResponse(request, { error: "Bu uç nokta yalnızca POST isteği kabul eder." }, 405);
+  }
+
+  if (isRateLimited(request)) {
+    return jsonResponse(
+      request,
+      { reply: "Çok kısa sürede fazla mesaj gönderildi. Lütfen bir dakika sonra tekrar deneyin veya WhatsApp üzerinden bize ulaşın." },
+      429,
+    );
   }
 
   if (!GEMINI_API_KEY) {
     console.error("GEMINI_API_KEY Supabase secret olarak tanımlı değil.");
-    return jsonResponse({ reply: FALLBACK_REPLY }, 200);
+    return jsonResponse(request, { reply: FALLBACK_REPLY }, 200);
   }
 
   try {
@@ -96,11 +184,11 @@ Deno.serve(async (request) => {
     const history = sanitizeHistory(body?.history);
 
     if (!message) {
-      return jsonResponse({ error: "Mesaj alanı zorunludur." }, 400);
+      return jsonResponse(request, { error: "Mesaj alanı zorunludur." }, 400);
     }
 
     if (message.length > 1000) {
-      return jsonResponse({ error: "Mesaj çok uzun. Lütfen daha kısa bir soru yazın." }, 400);
+      return jsonResponse(request, { error: "Mesaj çok uzun. Lütfen daha kısa bir soru yazın." }, 400);
     }
 
     const contents = [
@@ -136,7 +224,7 @@ Deno.serve(async (request) => {
     if (!geminiResponse.ok) {
       const errorText = await geminiResponse.text();
       console.error("Gemini API hatası:", geminiResponse.status, errorText);
-      return jsonResponse({ reply: FALLBACK_REPLY }, 200);
+      return jsonResponse(request, { reply: FALLBACK_REPLY }, 200);
     }
 
     const data = await geminiResponse.json();
@@ -146,12 +234,12 @@ Deno.serve(async (request) => {
       .trim();
 
     if (!reply) {
-      return jsonResponse({ reply: FALLBACK_REPLY }, 200);
+      return jsonResponse(request, { reply: FALLBACK_REPLY }, 200);
     }
 
-    return jsonResponse({ reply });
+    return jsonResponse(request, { reply });
   } catch (error) {
     console.error("Satış chatbot fonksiyonu hatası:", error);
-    return jsonResponse({ reply: FALLBACK_REPLY }, 200);
+    return jsonResponse(request, { reply: FALLBACK_REPLY }, 200);
   }
 });

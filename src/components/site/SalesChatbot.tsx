@@ -6,10 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 const ASSISTANT_NAME = "Akınal İnşaat Dijital Danışmanı";
-const WHATSAPP_NUMBER = "+90 000 000 00 00";
-const WHATSAPP_MESSAGE = "Merhaba, Akınal İnşaat hakkında bilgi almak istiyorum.";
-const FALLBACK_REPLY =
-  "Şu anda dijital danışman yanıt veremiyor. Dilerseniz WhatsApp üzerinden satış ekibimize doğrudan ulaşabilirsiniz.";
+const CHATBOT_CONTACT = {
+  whatsappNumber: "+90 532 622 67 29",
+  whatsappMessage: "Merhaba, Akınal İnşaat hakkında bilgi almak istiyorum.",
+};
 
 const quickQuestions = [
   "Projeleriniz hakkında bilgi alabilir miyim?",
@@ -42,8 +42,8 @@ function createMessage(role: ChatMessage["role"], text: string): ChatMessage {
 }
 
 function getWhatsAppUrl() {
-  const digits = WHATSAPP_NUMBER.replace(/\D/g, "");
-  return `https://wa.me/${digits}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
+  const digits = CHATBOT_CONTACT.whatsappNumber.replace(/\D/g, "");
+  return `https://wa.me/${digits}?text=${encodeURIComponent(CHATBOT_CONTACT.whatsappMessage)}`;
 }
 
 function getHistoryForFunction(messages: ChatMessage[]) {
@@ -54,6 +54,47 @@ function getHistoryForFunction(messages: ChatMessage[]) {
       role: message.role,
       text: message.text,
     }));
+}
+
+function normalizeQuestion(question: string) {
+  return question
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ş/g, "s")
+    .replace(/ı/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c");
+}
+
+function includesAny(question: string, keywords: string[]) {
+  return keywords.some((keyword) => question.includes(keyword));
+}
+
+function getLocalFallbackResponse(question: string) {
+  const normalizedQuestion = normalizeQuestion(question);
+
+  if (includesAny(normalizedQuestion, ["proje", "projeler"])) {
+    return "Projelerimiz hakkında genel bilgi paylaşabiliriz. Güncel proje detayları, lokasyon ve uygun seçenekler için Projelerimiz sayfasını inceleyebilir veya WhatsApp üzerinden satış ekibimizle görüşebilirsiniz.";
+  }
+
+  if (includesAny(normalizedQuestion, ["kentsel", "donusum", "kat karsiligi", "bina yenileme"])) {
+    return "Evet, kentsel dönüşüm ve kat karşılığı inşaat süreçlerinde profesyonel destek sağlıyoruz. Binanız veya arsanız için ön görüşme yapmak isterseniz WhatsApp üzerinden bize ulaşabilirsiniz.";
+  }
+
+  if (includesAny(normalizedQuestion, ["satis", "fiyat", "daire", "konut", "metrekare", "m2"])) {
+    return "Satış, fiyat ve daire bilgileri projeye göre değişebilir. Kesin fiyat veya uygunluk taahhüdü vermeden, en güncel bilgi için sizi satış temsilcimizle WhatsApp üzerinden görüştürebiliriz.";
+  }
+
+  if (includesAny(normalizedQuestion, ["iletisim", "telefon", "whatsapp", "arama", "ulasim"])) {
+    return `Akınal İnşaat ile WhatsApp üzerinden iletişime geçebilirsiniz: ${CHATBOT_CONTACT.whatsappNumber}. Aşağıdaki WhatsApp butonu sizi doğrudan görüşmeye yönlendirir.`;
+  }
+
+  if (includesAny(normalizedQuestion, ["adres", "konum", "lokasyon", "harita", "nerede"])) {
+    return "Adres ve konum bilgileri için İletişim sayfasını inceleyebilirsiniz. Randevu veya yol tarifi desteği için WhatsApp üzerinden ekibimize yazabilirsiniz.";
+  }
+
+  return "Sorunuzu şu anda yapay zeka servisine iletemiyorum. Projeler, kentsel dönüşüm, satış ve iletişim konularında WhatsApp üzerinden satış ekibimiz size yardımcı olabilir.";
 }
 
 export default function SalesChatbot() {
@@ -95,7 +136,8 @@ export default function SalesChatbot() {
         },
       });
 
-      const reply = typeof data?.reply === "string" && data.reply.trim().length > 0 ? data.reply.trim() : FALLBACK_REPLY;
+      const fallbackReply = getLocalFallbackResponse(trimmedText);
+      const reply = typeof data?.reply === "string" && data.reply.trim().length > 0 ? data.reply.trim() : fallbackReply;
 
       if (error) {
         console.error("Satış chatbot fonksiyon hatası:", error);
@@ -106,7 +148,7 @@ export default function SalesChatbot() {
           message.id === loadingMessage.id
             ? {
                 ...message,
-                text: error ? FALLBACK_REPLY : reply,
+                text: error ? fallbackReply : reply,
                 isLoading: false,
               }
             : message,
@@ -114,12 +156,13 @@ export default function SalesChatbot() {
       );
     } catch (error) {
       console.error("Satış chatbot bağlantı hatası:", error);
+      const fallbackReply = getLocalFallbackResponse(trimmedText);
       setMessages((currentMessages) =>
         currentMessages.map((message) =>
           message.id === loadingMessage.id
             ? {
                 ...message,
-                text: FALLBACK_REPLY,
+                text: fallbackReply,
                 isLoading: false,
               }
             : message,
