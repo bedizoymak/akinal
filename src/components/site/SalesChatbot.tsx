@@ -2,11 +2,14 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Building2, MessageCircle, Send, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 const ASSISTANT_NAME = "Akınal İnşaat Dijital Danışmanı";
 const WHATSAPP_NUMBER = "+90 000 000 00 00";
 const WHATSAPP_MESSAGE = "Merhaba, Akınal İnşaat hakkında bilgi almak istiyorum.";
+const FALLBACK_REPLY =
+  "Şu anda dijital danışman yanıt veremiyor. Dilerseniz WhatsApp üzerinden satış ekibimize doğrudan ulaşabilirsiniz.";
 
 const quickQuestions = [
   "Projeleriniz hakkında bilgi alabilir miyim?",
@@ -19,6 +22,7 @@ type ChatMessage = {
   id: string;
   role: "assistant" | "visitor";
   text: string;
+  isLoading?: boolean;
 };
 
 const initialMessages: ChatMessage[] = [
@@ -37,56 +41,26 @@ function createMessage(role: ChatMessage["role"], text: string): ChatMessage {
   };
 }
 
-function normalizeQuestion(question: string) {
-  return question
-    .toLocaleLowerCase("tr-TR")
-    .replace(/ğ/g, "g")
-    .replace(/ü/g, "u")
-    .replace(/ş/g, "s")
-    .replace(/ı/g, "i")
-    .replace(/ö/g, "o")
-    .replace(/ç/g, "c");
-}
-
-function includesAny(question: string, keywords: string[]) {
-  return keywords.some((keyword) => question.includes(keyword));
-}
-
-function getRuleBasedResponse(question: string) {
-  const normalizedQuestion = normalizeQuestion(question);
-
-  if (includesAny(normalizedQuestion, ["proje", "projeler"])) {
-    return "Projelerimiz hakkında genel bilgi paylaşabiliriz. Devam eden ve tamamlanan projeler, lokasyonlar ve uygun seçenekler için Projelerimiz sayfasını inceleyebilir veya WhatsApp üzerinden satış ekibimizle görüşebilirsiniz.";
-  }
-
-  if (includesAny(normalizedQuestion, ["kentsel", "donusum", "kat karsiligi", "bina yenileme"])) {
-    return "Evet, kentsel dönüşüm süreçlerinde planlama, ruhsat, uygulama ve teslim aşamalarında profesyonel destek sağlıyoruz. Binanız veya arsanızla ilgili ön değerlendirme için WhatsApp üzerinden bize ulaşabilirsiniz.";
-  }
-
-  if (includesAny(normalizedQuestion, ["satis", "fiyat", "daire", "konut", "metrekare", "m2"])) {
-    return "Satış, fiyat ve daire bilgileri projenin lokasyonuna, daire tipine ve teslim durumuna göre değişebilir. En güncel ve net bilgi için satış temsilcimizle WhatsApp üzerinden görüşmenizi öneririz.";
-  }
-
-  if (includesAny(normalizedQuestion, ["iletisim", "telefon", "whatsapp", "arama", "ulasim"])) {
-    return "Bize telefon veya WhatsApp üzerinden ulaşabilirsiniz. Aşağıdaki WhatsApp butonu ile doğrudan satış ekibimize mesaj gönderebilirsiniz.";
-  }
-
-  if (includesAny(normalizedQuestion, ["adres", "konum", "lokasyon", "harita", "nerede"])) {
-    return "Adres ve konum bilgilerini İletişim sayfamızda görebilirsiniz. Randevu, yol tarifi veya proje görüşmesi için WhatsApp üzerinden bize yazabilirsiniz.";
-  }
-
-  return "Sorunuzu tam anlayamadım. Projeler, kentsel dönüşüm, satış ve iletişim konularında yardımcı olabilirim. Dilerseniz WhatsApp üzerinden satış ekibimize doğrudan yazabilirsiniz.";
-}
-
 function getWhatsAppUrl() {
   const digits = WHATSAPP_NUMBER.replace(/\D/g, "");
   return `https://wa.me/${digits}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
+}
+
+function getHistoryForFunction(messages: ChatMessage[]) {
+  return messages
+    .filter((message) => !message.isLoading)
+    .slice(-8)
+    .map((message) => ({
+      role: message.role,
+      text: message.text,
+    }));
 }
 
 export default function SalesChatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -94,16 +68,66 @@ export default function SalesChatbot() {
     messagesEndRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [isOpen, messages]);
 
-  function sendMessage(text: string) {
+  async function sendMessage(text: string) {
     const trimmedText = text.trim();
-    if (!trimmedText) return;
+    if (!trimmedText || isSending) return;
+
+    const visitorMessage = createMessage("visitor", trimmedText);
+    const loadingMessage = {
+      ...createMessage("assistant", "Yanıt hazırlanıyor..."),
+      isLoading: true,
+    };
+    const history = getHistoryForFunction(messages);
 
     setMessages((currentMessages) => [
       ...currentMessages,
-      createMessage("visitor", trimmedText),
-      createMessage("assistant", getRuleBasedResponse(trimmedText)),
+      visitorMessage,
+      loadingMessage,
     ]);
     setInput("");
+    setIsSending(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("sales-chatbot", {
+        body: {
+          message: trimmedText,
+          history,
+        },
+      });
+
+      const reply = typeof data?.reply === "string" && data.reply.trim().length > 0 ? data.reply.trim() : FALLBACK_REPLY;
+
+      if (error) {
+        console.error("Satış chatbot fonksiyon hatası:", error);
+      }
+
+      setMessages((currentMessages) =>
+        currentMessages.map((message) =>
+          message.id === loadingMessage.id
+            ? {
+                ...message,
+                text: error ? FALLBACK_REPLY : reply,
+                isLoading: false,
+              }
+            : message,
+        ),
+      );
+    } catch (error) {
+      console.error("Satış chatbot bağlantı hatası:", error);
+      setMessages((currentMessages) =>
+        currentMessages.map((message) =>
+          message.id === loadingMessage.id
+            ? {
+                ...message,
+                text: FALLBACK_REPLY,
+                isLoading: false,
+              }
+            : message,
+        ),
+      );
+    } finally {
+      setIsSending(false);
+    }
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -159,6 +183,7 @@ export default function SalesChatbot() {
                       message.role === "visitor"
                         ? "bg-primary text-primary-foreground"
                         : "border border-border bg-surface-light text-foreground",
+                      message.isLoading && "text-muted-foreground",
                     )}
                   >
                     {message.text}
@@ -180,6 +205,7 @@ export default function SalesChatbot() {
                     type="button"
                     variant="outline"
                     size="sm"
+                    disabled={isSending}
                     onClick={() => sendMessage(question)}
                     className="h-auto justify-start whitespace-normal rounded-md px-3 py-2 text-left text-xs leading-relaxed hover:border-accent hover:bg-accent/5"
                   >
@@ -202,9 +228,17 @@ export default function SalesChatbot() {
                 onChange={(event) => setInput(event.target.value)}
                 placeholder="Sorunuzu yazın..."
                 aria-label="Mesajınız"
+                disabled={isSending}
                 className="h-10 text-sm"
               />
-              <Button type="submit" size="icon" aria-label="Mesaj gönder" title="Mesaj gönder" className="h-10 w-10 shrink-0">
+              <Button
+                type="submit"
+                size="icon"
+                aria-label="Mesaj gönder"
+                title="Mesaj gönder"
+                disabled={isSending}
+                className="h-10 w-10 shrink-0"
+              >
                 <Send className="h-4 w-4" />
               </Button>
             </form>
