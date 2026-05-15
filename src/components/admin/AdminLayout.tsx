@@ -116,7 +116,7 @@ export default function AdminLayout() {
     <div className="flex min-h-screen bg-surface-light">
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-sidebar text-sidebar-foreground shadow-2xl transition-transform print:hidden lg:static lg:shadow-none",
+          "fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-sidebar text-sidebar-foreground shadow-2xl transition-transform duration-200 print:hidden lg:static lg:shadow-none",
           open ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
@@ -146,14 +146,14 @@ export default function AdminLayout() {
                       onClick={() => setOpen(false)}
                       className={({ isActive }) =>
                         cn(
-                          "group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors",
+                          "group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-all duration-200 hover:translate-x-0.5",
                           isActive
-                            ? "bg-accent text-accent-foreground shadow-accent-glow"
-                            : "text-sidebar-foreground/82 hover:bg-sidebar-accent hover:text-white",
+                            ? "bg-accent text-accent-foreground shadow-accent-glow ring-1 ring-white/10"
+                            : "text-sidebar-foreground/82 hover:bg-sidebar-accent hover:text-white hover:shadow-card-soft",
                         )
                       }
                     >
-                      <item.icon className="h-4 w-4 shrink-0" />
+                      <item.icon className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-medium">{item.label}</span>
                         <span className="block truncate text-[11px] opacity-65">{item.description}</span>

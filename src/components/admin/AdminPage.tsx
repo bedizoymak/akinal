@@ -40,14 +40,14 @@ const metricToneClass = {
 
 export function AdminMetricCard({ label, value, description, icon: Icon, tone = "default" }: AdminMetricCardProps) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 shadow-card-soft">
+    <div className="group rounded-lg border border-border bg-card p-4 shadow-card-soft transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/35 hover:shadow-elegant">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
           <div className="mt-2 text-2xl font-bold leading-none text-foreground">{value}</div>
         </div>
         {Icon && (
-          <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-md", metricToneClass[tone])}>
+          <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-md transition-transform duration-200 group-hover:scale-105", metricToneClass[tone])}>
             <Icon className="h-5 w-5" />
           </div>
         )}
@@ -68,7 +68,7 @@ type AdminSectionProps = {
 
 export function AdminSection({ title, description, actions, children, className, contentClassName }: AdminSectionProps) {
   return (
-    <section className={cn("rounded-lg border border-border bg-card shadow-card-soft", className)}>
+    <section className={cn("rounded-lg border border-border bg-card shadow-card-soft transition-all duration-200 hover:border-border/80 hover:shadow-elegant", className)}>
       <div className="flex flex-col gap-3 border-b border-border px-5 py-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="font-display text-xl font-bold tracking-normal">{title}</h2>
@@ -90,9 +90,9 @@ type AdminEmptyStateProps = {
 
 export function AdminEmptyState({ title, description, icon: Icon, action }: AdminEmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface-light px-6 py-12 text-center">
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface-light px-6 py-12 text-center">
       {Icon && (
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-card text-accent shadow-card-soft">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-card text-accent shadow-card-soft transition-transform duration-200 hover:scale-105">
           <Icon className="h-6 w-6" />
         </div>
       )}
