@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620" fill="none">
+  <rect width="900" height="620" fill="#0E2E1F"/>
+  <g opacity="0.22" stroke="#FFFFFF" stroke-width="1">
+    <path d="M0 40H900M0 80H900M0 120H900M0 160H900M0 200H900M0 240H900M0 280H900M0 320H900M0 360H900M0 400H900M0 440H900M0 480H900M0 520H900M0 560H900"/>
+    <path d="M40 0V620M80 0V620M120 0V620M160 0V620M200 0V620M240 0V620M280 0V620M320 0V620M360 0V620M400 0V620M440 0V620M480 0V620M520 0V620M560 0V620M600 0V620M640 0V620M680 0V620M720 0V620M760 0V620M800 0V620M840 0V620"/>
+  </g>
+  <g opacity="0.58" stroke="#8FD8A8" stroke-width="2">
+    <rect x="92" y="88" width="286" height="200"/>
+    <rect x="132" y="128" width="96" height="76"/>
+    <rect x="262" y="128" width="76" height="120"/>
+    <path d="M92 318H378M92 348H310M92 378H342"/>
+    <path d="M480 104H764V420H480V104Z"/>
+    <path d="M528 156H708M528 212H708M528 268H708M528 324H708"/>
+    <path d="M532 104V420M584 104V420M636 104V420M688 104V420"/>
+    <path d="M446 470H798M446 502H720M446 534H760"/>
+  </g>
+  <g opacity="0.42" stroke="#FFFFFF" stroke-width="1.5">
+    <path d="M78 480L210 408L342 480L210 552L78 480Z"/>
+    <path d="M210 408V552M78 480H342"/>
+    <circle cx="210" cy="480" r="36"/>
+  </g>
+</svg>

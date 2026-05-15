@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="640" viewBox="0 0 880 640" fill="none">
+  <rect width="880" height="640" fill="#101513"/>
+  <g opacity="0.3" stroke="#8FD8A8" stroke-width="1.4">
+    <path d="M92 82H788V570H92V82Z"/>
+    <path d="M164 82V570M236 82V570M308 82V570M380 82V570M452 82V570M524 82V570M596 82V570M668 82V570M740 82V570"/>
+    <path d="M92 150H788M92 218H788M92 286H788M92 354H788M92 422H788M92 490H788"/>
+  </g>
+  <g opacity="0.17" fill="#FFFFFF">
+    <rect x="118" y="114" width="28" height="22"/>
+    <rect x="190" y="182" width="28" height="22"/>
+    <rect x="262" y="250" width="28" height="22"/>
+    <rect x="334" y="318" width="28" height="22"/>
+    <rect x="406" y="386" width="28" height="22"/>
+    <rect x="478" y="454" width="28" height="22"/>
+    <rect x="550" y="114" width="28" height="22"/>
+    <rect x="622" y="182" width="28" height="22"/>
+    <rect x="694" y="250" width="28" height="22"/>
+  </g>
+  <g opacity="0.34" stroke="#2F7B48" stroke-width="3">
+    <path d="M92 570H788"/>
+    <path d="M92 82L788 570"/>
+    <path d="M788 82L92 570"/>
+  </g>
+</svg>
