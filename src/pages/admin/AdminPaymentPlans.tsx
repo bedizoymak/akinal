@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { PAYMENT_PLAN_STATUSES, formatTRY, formatDate, statusBadgeClass, customerDisplayName, daysUntil, exportCSV, whatsappLink, derivePlanStatus } from "@/lib/finance";
 import { cn } from "@/lib/utils";
-import { Plus, Edit, Trash2, Download, MessageCircle } from "lucide-react";
+import { Plus, Edit, Trash2, Download, MessageCircle, CalendarClock, AlertTriangle, Wallet, CheckCircle2 } from "lucide-react";
+import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 
 const empty = { customer_id: "", project_id: "", title: "", description: "", amount: "", due_date: "", status: "Bekliyor", notes: "" };
 
@@ -91,6 +92,14 @@ export default function AdminPaymentPlans() {
     return true;
   });
 
+  const summary = {
+    total: enriched.reduce((sum, plan) => sum + Number(plan.amount || 0), 0),
+    paid: enriched.reduce((sum, plan) => sum + plan.paid, 0),
+    remaining: enriched.reduce((sum, plan) => sum + plan.remain, 0),
+    overdue: enriched.filter((plan) => plan.computed === "Gecikti").reduce((sum, plan) => sum + plan.remain, 0),
+    completed: enriched.filter((plan) => plan.computed === "Ödendi").length,
+  };
+
   function downloadCSV() {
     exportCSV("odeme-planlari.csv", filtered.map((p) => ({
       "Müşteri": p.customer ? customerDisplayName(p.customer) : "-", "Proje": p.project?.title || "-",
@@ -100,12 +109,23 @@ export default function AdminPaymentPlans() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div><h1 className="font-display text-3xl font-bold">Ödeme Planları</h1><p className="text-muted-foreground text-sm">Müşterilerin ödeme yükümlülükleri.</p></div>
-        <div className="flex gap-2">
+      <AdminPageHeader
+        eyebrow="Finans"
+        title="Ödeme Planları"
+        description="Kimden, hangi tarihte, ne kadar tahsil edileceğini takip edin; gecikme ve kalan tutarları görün."
+        actions={
+          <>
           <Button variant="outline" onClick={downloadCSV}><Download className="h-4 w-4 mr-1" /> CSV Olarak İndir</Button>
-          <Button onClick={openNew} className="bg-accent hover:bg-accent-glow text-accent-foreground"><Plus className="h-4 w-4 mr-1" /> Ödeme Ekle</Button>
-        </div>
+          <Button onClick={openNew} className="bg-accent hover:bg-accent-glow text-accent-foreground"><Plus className="h-4 w-4" /> Ödeme Planı Ekle</Button>
+          </>
+        }
+      />
+
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminMetricCard label="Brüt Plan Tutarı" value={formatTRY(summary.total)} description="Planlanan toplam alacak" icon={CalendarClock} tone="accent" />
+        <AdminMetricCard label="Ödenen Tutar" value={formatTRY(summary.paid)} description="Planlara bağlı tahsilat" icon={CheckCircle2} tone="success" />
+        <AdminMetricCard label="Kalan Tutar" value={formatTRY(summary.remaining)} description="Henüz tahsil edilmemiş" icon={Wallet} tone="warning" />
+        <AdminMetricCard label="Geciken Tutar" value={formatTRY(summary.overdue)} description={`${summary.completed} plan tamamlandı`} icon={AlertTriangle} tone={summary.overdue > 0 ? "danger" : "success"} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5 p-4 bg-card border border-border rounded-md">
@@ -145,7 +165,7 @@ export default function AdminPaymentPlans() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">Kayıt yok.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={9} className="p-8"><AdminEmptyState title="Ödeme planı bulunamadı" description="Filtreleri temizleyebilir veya yeni ödeme planı oluşturabilirsiniz." icon={CalendarClock} /></td></tr>}
             </tbody>
           </table>
         </div>

@@ -10,6 +10,7 @@ import { Download, Printer, FileText } from "lucide-react";
 import { formatTRY, formatDate, customerDisplayName, exportCSV, statusBadgeClass, daysUntil, PAYMENT_PLAN_STATUSES, EXPENSE_CATEGORIES, PAYMENT_METHODS, FINANCE_COLORS } from "@/lib/finance";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
 import logoImg from "@/assets/logo.png";
+import { AdminPageHeader } from "@/components/admin/AdminPage";
 
 function inDateRange(d: string, from: string, to: string): boolean {
   if (from && d < from) return false;
@@ -613,8 +614,11 @@ export default function AdminReports() {
   return (
     <div>
       <div className="mb-6 print:hidden">
-        <h1 className="font-display text-3xl font-bold mb-1">Raporlar</h1>
-        <p className="text-muted-foreground">Finans, müşteri, tahsilat ve gider raporlarını oluşturun, dışa aktarın veya yazdırın.</p>
+        <AdminPageHeader
+          eyebrow="Yönetim Raporları"
+          title="Raporlar"
+          description="Şirket özeti, proje kârlılığı, tahsilat, gider ve gecikme raporlarını yönetici bakışıyla inceleyin; PDF veya CSV olarak dışa aktarın."
+        />
       </div>
 
       {data.loading ? (

@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Phone, Mail, Search } from "lucide-react";
+import { Trash2, Phone, Mail, Search, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AdminEmptyState, AdminPageHeader } from "@/components/admin/AdminPage";
 
 const STATUSES = ["Yeni", "Arandı", "Teklif Verildi", "Tamamlandı"];
 const COLORS: Record<string, string> = {
@@ -48,8 +49,11 @@ export default function AdminContacts() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold mb-1">İletişim Talepleri</h1>
-      <p className="text-muted-foreground text-sm mb-6">Web sitesinden gelen tüm formlar.</p>
+      <AdminPageHeader
+        eyebrow="Operasyon"
+        title="İletişim Talepleri"
+        description="Web sitesinden gelen talepleri takip edin, durumlandırın ve hızlıca geri dönüş yapın."
+      />
       <div className="grid md:grid-cols-2 gap-3 mb-5 max-w-2xl">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -62,7 +66,7 @@ export default function AdminContacts() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center text-muted-foreground py-12 border border-dashed border-border rounded-md">Talep yok.</div>
+        <AdminEmptyState title="Talep bulunamadı" description="Filtreye uygun iletişim talebi yok. Yeni talepler web sitesi formundan geldiğinde burada görünür." icon={Inbox} />
       ) : (
         <div className="space-y-2">
           {filtered.map((r) => (

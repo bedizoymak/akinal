@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Edit, Eye, EyeOff, Copy, Trash2, ExternalLink, GripVertical, Star, Search, Plus } from "lucide-react";
+import { BarChart3, Edit, Eye, EyeOff, Copy, Trash2, ExternalLink, GripVertical, Star, Search, Plus, FolderKanban } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { resolveImageUrl, statusBadgeVariant, PROJECT_STATUSES, PROJECT_TYPES, turkishSlugify } from "@/lib/projects";
 import { cn } from "@/lib/utils";
+import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -36,6 +37,7 @@ function Row({ p, onChange }: any) {
       </div>
       <div className="flex items-center gap-1">
         <Button asChild size="sm" variant="ghost" title="Önizle"><Link to={`/projelerimiz/${p.slug}`} target="_blank"><ExternalLink className="h-4 w-4" /></Link></Button>
+        <Button asChild size="sm" variant="ghost" title="Finans"><Link to={`/admin/projeler/${p.id}/finans`}><BarChart3 className="h-4 w-4" /></Link></Button>
         <Button asChild size="sm" variant="ghost" title="Düzenle"><Link to={`/admin/projeler/${p.id}`}><Edit className="h-4 w-4" /></Link></Button>
         <Button size="sm" variant="ghost" title={p.is_published ? "Yayından Kaldır" : "Yayınla"} onClick={() => onChange("toggle", p)}>{p.is_published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
         <Button size="sm" variant="ghost" title="Çoğalt" onClick={() => onChange("duplicate", p)}><Copy className="h-4 w-4" /></Button>
@@ -99,14 +101,27 @@ export default function AdminProjects() {
     return true;
   });
 
+  const projectStats = {
+    total: items.length,
+    active: items.filter((p) => p.project_status !== "Tamamlandı").length,
+    published: items.filter((p) => p.is_published).length,
+    draft: items.filter((p) => !p.is_published).length,
+  };
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-bold">Projeler</h1>
-          <p className="text-muted-foreground text-sm">Sürükle-bırak ile sıralayın.</p>
-        </div>
-        <Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to="/admin/projeler/yeni"><Plus className="h-4 w-4 mr-1" /> Yeni Proje Ekle</Link></Button>
+      <AdminPageHeader
+        eyebrow="Proje Yönetimi"
+        title="Projeler"
+        description="Proje portföyünü yönetin, yayın durumlarını takip edin ve her proje için finans kontrol merkezine ulaşın."
+        actions={<Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to="/admin/projeler/yeni"><Plus className="h-4 w-4" /> Yeni Proje</Link></Button>}
+      />
+
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminMetricCard label="Toplam Proje" value={projectStats.total} description="Sistemdeki tüm projeler" icon={FolderKanban} tone="accent" />
+        <AdminMetricCard label="Aktif Projeler" value={projectStats.active} description="Tamamlanmamış proje sayısı" icon={BarChart3} tone="success" />
+        <AdminMetricCard label="Yayındaki Projeler" value={projectStats.published} description="Public sitede görünür" icon={Eye} tone="success" />
+        <AdminMetricCard label="Taslak Projeler" value={projectStats.draft} description="Yayına hazır olmayanlar" icon={EyeOff} tone="warning" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5 p-4 bg-card border border-border rounded-md">
@@ -122,7 +137,12 @@ export default function AdminProjects() {
       {loading ? (
         <div className="text-center text-muted-foreground py-12">Yükleniyor...</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center text-muted-foreground py-12 border border-dashed border-border rounded-md">Proje bulunamadı.</div>
+        <AdminEmptyState
+          title="Proje bulunamadı"
+          description="Filtreleri temizleyerek tekrar deneyebilir veya yeni proje kaydı oluşturabilirsiniz."
+          icon={FolderKanban}
+          action={<Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to="/admin/projeler/yeni">Yeni Proje Ekle</Link></Button>}
+        />
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={filtered.map((p) => p.id)} strategy={verticalListSortingStrategy}>

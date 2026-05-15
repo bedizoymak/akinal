@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bell, Check, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/finance";
+import { AdminPageHeader } from "@/components/admin/AdminPage";
 
 export default function AdminNotifications() {
   const { items, loading, markRead, markAllRead, remove } = useNotifications();
@@ -24,13 +25,12 @@ export default function AdminNotifications() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-display text-3xl font-bold mb-1 flex items-center gap-2"><Bell className="h-6 w-6" /> Bildirim Merkezi</h1>
-          <p className="text-muted-foreground">Sistem bildirimlerini görüntüleyin, filtreleyin ve yönetin.</p>
-        </div>
-        <Button onClick={markAllRead} variant="outline">Tümünü Okundu Yap</Button>
-      </div>
+      <AdminPageHeader
+        eyebrow="Operasyon"
+        title="Bildirimler"
+        description="Sistem bildirimlerini, tahsilat hatırlatmalarını ve operasyon sinyallerini filtreleyin."
+        actions={<Button onClick={markAllRead} variant="outline"><Bell className="h-4 w-4" /> Tümünü Okundu Yap</Button>}
+      />
 
       <Card className="mb-4">
         <CardContent className="p-4 grid md:grid-cols-4 gap-3">

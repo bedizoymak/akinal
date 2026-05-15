@@ -6,6 +6,7 @@ import { Download, MessageCircle } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { FINANCE_COLORS, formatTRY, formatDate, customerDisplayName, daysUntil, exportCSV, whatsappLink, statusBadgeClass, derivePlanStatus } from "@/lib/finance";
 import { cn } from "@/lib/utils";
+import { AdminPageHeader } from "@/components/admin/AdminPage";
 
 function Stat({ label, value, color, sub }: any) {
   return (
@@ -149,10 +150,12 @@ export default function AdminFinance() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div><h1 className="font-display text-3xl font-bold">Finans Dashboard</h1><p className="text-muted-foreground text-sm">Genel finansal durum ve proje bazlı özet.</p></div>
-        <Button variant="outline" onClick={downloadSummary}><Download className="h-4 w-4 mr-1" /> Raporu İndir</Button>
-      </div>
+      <AdminPageHeader
+        eyebrow="Finans"
+        title="Finans Özeti"
+        description="Şirketin tahsilat, alacak, gider, net kâr ve proje bazlı finans durumunu yönetsel bakışla izleyin."
+        actions={<Button variant="outline" onClick={downloadSummary}><Download className="h-4 w-4 mr-1" /> Raporu İndir</Button>}
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat label="Toplam Alınan" value={formatTRY(stats.totalReceived)} color="text-emerald-700" />

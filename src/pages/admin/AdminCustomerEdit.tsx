@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { CUSTOMER_TYPES, CUSTOMER_STATUSES } from "@/lib/finance";
 import { ArrowLeft, Save } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin/AdminPage";
 
 const empty = {
   customer_type: "Bireysel", full_name: "", company_name: "",
@@ -72,13 +73,17 @@ export default function AdminCustomerEdit() {
 
   return (
     <div className="max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="icon"><Link to="/admin/musteriler"><ArrowLeft className="h-5 w-5" /></Link></Button>
-          <h1 className="font-display text-3xl font-bold">{isNew ? "Yeni Müşteri Ekle" : "Müşteriyi Düzenle"}</h1>
-        </div>
-        <Button onClick={save} disabled={loading} className="bg-accent hover:bg-accent-glow text-accent-foreground"><Save className="h-4 w-4 mr-1" /> Kaydet</Button>
-      </div>
+      <AdminPageHeader
+        eyebrow="Cari Yönetimi"
+        title={isNew ? "Yeni Müşteri" : "Müşteri Düzenle"}
+        description="Müşteri iletişim bilgilerini, cari durumunu ve ilgili proje bağlantılarını düzenleyin."
+        actions={
+          <>
+            <Button asChild variant="outline"><Link to="/admin/musteriler"><ArrowLeft className="h-4 w-4" /> Müşterilere Dön</Link></Button>
+            <Button onClick={save} disabled={loading} className="bg-accent hover:bg-accent-glow text-accent-foreground"><Save className="h-4 w-4" /> Kaydet</Button>
+          </>
+        }
+      />
 
       <div className="bg-card border border-border rounded-md p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>

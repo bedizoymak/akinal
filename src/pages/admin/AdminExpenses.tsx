@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { EXPENSE_CATEGORIES, formatTRY, formatDate, customerDisplayName, exportCSV } from "@/lib/finance";
-import { Plus, Edit, Trash2, Download } from "lucide-react";
+import { Plus, Edit, Trash2, Download, Receipt, FolderKanban, Tags, CalendarDays } from "lucide-react";
+import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 
 const empty = { project_id: "", customer_id: "", title: "", category: "Malzeme", amount: "", expense_date: new Date().toISOString().slice(0, 10), description: "", document_url: "" };
 
@@ -81,6 +82,10 @@ export default function AdminExpenses() {
   });
 
   const total = filtered.reduce((s, x) => s + Number(x.amount), 0);
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const monthTotal = filtered.filter((x) => String(x.expense_date || "").startsWith(thisMonth)).reduce((s, x) => s + Number(x.amount), 0);
+  const projectCount = new Set(filtered.map((x) => x.project_id).filter(Boolean)).size;
+  const categoryCount = new Set(filtered.map((x) => x.category).filter(Boolean)).size;
 
   function downloadCSV() {
     exportCSV("giderler.csv", filtered.map((it) => ({
@@ -91,12 +96,23 @@ export default function AdminExpenses() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div><h1 className="font-display text-3xl font-bold">Giderler</h1><p className="text-muted-foreground text-sm">Toplam: <span className="font-bold text-red-600">{formatTRY(total)}</span></p></div>
-        <div className="flex gap-2">
+      <AdminPageHeader
+        eyebrow="Finans"
+        title="Giderler"
+        description="Proje, kategori, müşteri ve belge bağlantılarıyla tüm masrafları kontrol altında tutun."
+        actions={
+          <>
           <Button variant="outline" onClick={downloadCSV}><Download className="h-4 w-4 mr-1" /> CSV Olarak İndir</Button>
-          <Button onClick={openNew} className="bg-accent hover:bg-accent-glow text-accent-foreground"><Plus className="h-4 w-4 mr-1" /> Yeni Gider Ekle</Button>
-        </div>
+          <Button onClick={openNew} className="bg-accent hover:bg-accent-glow text-accent-foreground"><Plus className="h-4 w-4" /> Yeni Gider</Button>
+          </>
+        }
+      />
+
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminMetricCard label="Toplam Gider" value={formatTRY(total)} description="Seçili filtrelere göre" icon={Receipt} tone="danger" />
+        <AdminMetricCard label="Bu Ay Gider" value={formatTRY(monthTotal)} description="Geçerli ay içindeki masraflar" icon={CalendarDays} tone="warning" />
+        <AdminMetricCard label="Proje Sayısı" value={projectCount} description="Gider yazılan projeler" icon={FolderKanban} tone="accent" />
+        <AdminMetricCard label="Kategori Sayısı" value={categoryCount} description="Kullanılan gider kategorileri" icon={Tags} tone="default" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5 p-4 bg-card border border-border rounded-md">
@@ -123,7 +139,7 @@ export default function AdminExpenses() {
                   <td className="p-3 text-right"><div className="flex justify-end gap-1"><Button size="sm" variant="ghost" onClick={() => openEdit(it)}><Edit className="h-4 w-4" /></Button><Button size="sm" variant="ghost" onClick={() => remove(it.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div></td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">Kayıt yok.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={8} className="p-8"><AdminEmptyState title="Gider kaydı bulunamadı" description="Filtreleri temizleyebilir veya yeni gider kaydı oluşturabilirsiniz." icon={Receipt} /></td></tr>}
             </tbody>
           </table>
         </div>

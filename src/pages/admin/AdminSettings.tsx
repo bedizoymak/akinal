@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { AdminPageHeader } from "@/components/admin/AdminPage";
 
 export default function AdminSettings() {
   const [data, setData] = useState<any>(null);
@@ -48,8 +49,11 @@ export default function AdminSettings() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="font-display text-3xl font-bold mb-1">Site Ayarları</h1>
-      <p className="text-muted-foreground text-sm mb-6">Web sitesinin genel ayarları, iletişim bilgileri ve hero metinleri.</p>
+      <AdminPageHeader
+        eyebrow="Sistem"
+        title="Ayarlar"
+        description="Web sitesinin iletişim bilgileri, sosyal medya bağlantıları, ana sayfa metinleri ve SEO alanlarını yönetin."
+      />
       <div className="space-y-4 bg-card border border-border rounded-md p-6">
         {fields.map(([k, label, type]) => (
           <div key={k}>

@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Edit, Trash2, Eye, Download, Phone, MessageCircle } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Eye, Download, Phone, MessageCircle, Users, Wallet, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CUSTOMER_TYPES, CUSTOMER_STATUSES, customerDisplayName, formatTRY, statusBadgeClass, exportCSV, whatsappLink } from "@/lib/finance";
 import { cn } from "@/lib/utils";
+import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 
 export default function AdminCustomers() {
   const [customers, setCustomers] = useState<any[]>([]);
@@ -62,6 +63,13 @@ export default function AdminCustomers() {
     return true;
   });
 
+  const summary = {
+    totalCustomers: enriched.length,
+    totalCollected: enriched.reduce((sum, customer) => sum + customer.totalPaid, 0),
+    pendingBalance: enriched.reduce((sum, customer) => sum + Math.max(0, customer.balance), 0),
+    clearAccounts: enriched.filter((customer) => customer.balance <= 0).length,
+  };
+
   async function remove(id: string, name: string) {
     if (!confirm(`"${name}" müşterisini silmek istediğinize emin misiniz? Bağlı ödeme planları ve tahsilatlar da silinecek.`)) return;
     await (supabase.from("customers" as any).delete().eq("id", id) as any);
@@ -77,7 +85,7 @@ export default function AdminCustomers() {
       "E-posta": c.email || "",
       "Şehir": c.city || "",
       "Projeler": c.projectNames.join(", "),
-      "Toplam Borç": c.totalDue,
+      "Planlanan Alacak": c.totalDue,
       "Tahsil Edilen": c.totalPaid,
       "Kalan Bakiye": c.balance,
       "Durum": c.status,
@@ -86,15 +94,23 @@ export default function AdminCustomers() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-bold">Müşteriler</h1>
-          <p className="text-muted-foreground text-sm">Müşterileri yönetin, bakiye ve ödeme durumunu takip edin.</p>
-        </div>
-        <div className="flex gap-2">
+      <AdminPageHeader
+        eyebrow="Cari Yönetimi"
+        title="Müşteriler"
+        description="Müşteri ilişkilerini, proje bağlantılarını, tahsilatları ve kalan bakiyeleri tek yerden izleyin."
+        actions={
+          <>
           <Button variant="outline" onClick={downloadCSV}><Download className="h-4 w-4 mr-1" /> CSV Olarak İndir</Button>
-          <Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to="/admin/musteriler/yeni"><Plus className="h-4 w-4 mr-1" /> Yeni Müşteri Ekle</Link></Button>
-        </div>
+          <Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to="/admin/musteriler/yeni"><Plus className="h-4 w-4" /> Yeni Müşteri</Link></Button>
+          </>
+        }
+      />
+
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminMetricCard label="Toplam Müşteri" value={summary.totalCustomers} description="Kayıtlı cari hesap" icon={Users} tone="accent" />
+        <AdminMetricCard label="Toplam Tahsilat" value={formatTRY(summary.totalCollected)} description="Müşterilerden alınan toplam" icon={Wallet} tone="success" />
+        <AdminMetricCard label="Bekleyen Tahsilat" value={formatTRY(summary.pendingBalance)} description="Kalan müşteri bakiyesi" icon={AlertTriangle} tone={summary.pendingBalance > 0 ? "warning" : "success"} />
+        <AdminMetricCard label="Bakiyesi Kapanan" value={summary.clearAccounts} description="Alacağı kalmayan müşteri" icon={CheckCircle2} tone="success" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-5 p-4 bg-card border border-border rounded-md">
@@ -111,7 +127,12 @@ export default function AdminCustomers() {
       {loading ? (
         <div className="text-center text-muted-foreground py-12">Yükleniyor...</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center text-muted-foreground py-12 border border-dashed border-border rounded-md">Müşteri bulunamadı.</div>
+        <AdminEmptyState
+          title="Müşteri bulunamadı"
+          description="Arama veya filtreleri temizleyebilir, yeni müşteri kaydı oluşturarak cari takibe başlayabilirsiniz."
+          icon={Users}
+          action={<Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to="/admin/musteriler/yeni">Yeni Müşteri Ekle</Link></Button>}
+        />
       ) : (
         <div className="overflow-x-auto bg-card border border-border rounded-md">
           <table className="w-full text-sm">
@@ -120,7 +141,7 @@ export default function AdminCustomers() {
                 <th className="p-3">Müşteri</th>
                 <th className="p-3">Telefon</th>
                 <th className="p-3">Projeler</th>
-                <th className="p-3 text-right">Toplam Borç</th>
+                <th className="p-3 text-right">Planlanan Alacak</th>
                 <th className="p-3 text-right">Tahsil Edilen</th>
                 <th className="p-3 text-right">Kalan Bakiye</th>
                 <th className="p-3">Durum</th>

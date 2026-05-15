@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { FINANCE_COLORS, formatTRY, formatDate, customerDisplayName, statusBadgeClass, derivePlanStatus } from "@/lib/finance";
 import { cn } from "@/lib/utils";
+import { AdminPageHeader } from "@/components/admin/AdminPage";
 
 function Stat({ label, value, color }: any) {
   return (
@@ -65,20 +66,19 @@ export default function AdminProjectFinance() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button asChild variant="ghost" size="icon"><Link to="/admin/finans-dashboard"><ArrowLeft className="h-5 w-5" /></Link></Button>
-        <div>
-          <h1 className="font-display text-3xl font-bold">{project.title}</h1>
-          <p className="text-muted-foreground text-sm">Proje finans detayları</p>
-        </div>
-      </div>
+      <AdminPageHeader
+        eyebrow="Proje Kontrol Merkezi"
+        title={project.title}
+        description="Bu projeye ait gelir planı, tahsilatlar, giderler, müşteri bakiyeleri ve net kâr durumunu izleyin."
+        actions={<Button asChild variant="outline"><Link to="/admin/finans-dashboard"><ArrowLeft className="h-4 w-4" /> Finans Özetine Dön</Link></Button>}
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Stat label="Toplam Borç" value={formatTRY(stats.totalDue)} />
-        <Stat label="Alınan" value={formatTRY(stats.received)} color="text-emerald-700" />
-        <Stat label="Alınacak" value={formatTRY(stats.receivable)} color="text-amber-600" />
-        <Stat label="Harcanan" value={formatTRY(stats.expense)} color="text-red-600" />
-        <Stat label="Net Durum" value={formatTRY(stats.net)} color={stats.net >= 0 ? "text-emerald-700" : "text-red-600"} />
+        <Stat label="Planlanan Gelir" value={formatTRY(stats.totalDue)} />
+        <Stat label="Toplam Tahsilat" value={formatTRY(stats.received)} color="text-emerald-700" />
+        <Stat label="Bekleyen Tahsilat" value={formatTRY(stats.receivable)} color="text-amber-600" />
+        <Stat label="Toplam Gider" value={formatTRY(stats.expense)} color="text-red-600" />
+        <Stat label="Net Kâr" value={formatTRY(stats.net)} color={stats.net >= 0 ? "text-emerald-700" : "text-red-600"} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -109,7 +109,7 @@ export default function AdminProjectFinance() {
       </div>
 
       <section>
-        <h2 className="font-display text-xl font-bold mb-3">Ödeme Planı</h2>
+        <h2 className="font-display text-xl font-bold mb-3">Gelir / Tahsilat Planı</h2>
         <div className="bg-card border border-border rounded-md overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Müşteri</th><th className="p-3 text-left">Başlık</th><th className="p-3">Vade</th><th className="p-3 text-right">Tutar</th><th className="p-3">Durum</th></tr></thead>

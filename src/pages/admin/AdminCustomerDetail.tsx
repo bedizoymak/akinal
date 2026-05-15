@@ -9,6 +9,7 @@ import { customerDisplayName, formatTRY, formatDate, statusBadgeClass, daysUntil
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { AdminPageHeader } from "@/components/admin/AdminPage";
 
 function Stat({ label, value, color }: any) {
   return (
@@ -94,27 +95,23 @@ export default function AdminCustomerDetail() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="icon"><Link to="/admin/musteriler"><ArrowLeft className="h-5 w-5" /></Link></Button>
-          <div>
-            <h1 className="font-display text-3xl font-bold">{name}</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-muted-foreground">{customer.customer_type}</span>
-              <span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(customer.status))}>{customer.status}</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2">
+      <AdminPageHeader
+        eyebrow="Müşteri Detayı"
+        title={name}
+        description={`${customer.customer_type} · ${customer.status} · müşteri bakiyesi, tahsilat planı, notlar ve belgeler.`}
+        actions={
+          <>
+          <Button asChild variant="outline"><Link to="/admin/musteriler"><ArrowLeft className="h-4 w-4" /> Müşterilere Dön</Link></Button>
           {customer.whatsapp && <Button asChild variant="outline"><a href={whatsappLink(customer.whatsapp, `Merhaba ${name},`)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 mr-1" /> WhatsApp</a></Button>}
           <Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to={`/admin/musteriler/${id}/duzenle`}><Edit className="h-4 w-4 mr-1" /> Düzenle</Link></Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-        <Stat label="Toplam Borç" value={formatTRY(stats.totalDue)} />
+        <Stat label="Planlanan Alacak" value={formatTRY(stats.totalDue)} />
         <Stat label="Tahsil Edilen" value={formatTRY(stats.totalPaid)} color="text-emerald-700" />
-        <Stat label="Kalan Bakiye" value={formatTRY(stats.balance)} color={stats.balance > 0 ? "text-red-600" : "text-emerald-700"} />
+        <Stat label="Müşteri Bakiyesi" value={formatTRY(stats.balance)} color={stats.balance > 0 ? "text-red-600" : "text-emerald-700"} />
         <Stat label="Vadesi Geçen Tutar" value={formatTRY(stats.overdue)} color="text-red-600" />
         <Stat label="Yaklaşan Ödeme" value={formatTRY(stats.upcoming)} color="text-amber-600" />
       </div>

@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Trash2, Search } from "lucide-react";
+import { Copy, Trash2, Search, Image as ImageIcon } from "lucide-react";
 import { resolveImageUrl } from "@/lib/projects";
+import { AdminEmptyState, AdminPageHeader } from "@/components/admin/AdminPage";
 
 export default function AdminMedia() {
   const [items, setItems] = useState<any[]>([]);
@@ -28,14 +29,17 @@ export default function AdminMedia() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold mb-1">Medya Galerisi</h1>
-      <p className="text-muted-foreground text-sm mb-6">Tüm proje görsellerinin merkezi listesi.</p>
+      <AdminPageHeader
+        eyebrow="Proje Yönetimi"
+        title="Medya"
+        description="Projelerde kullanılan görselleri merkezi olarak inceleyin, URL kopyalayın veya gereksiz görselleri temizleyin."
+      />
       <div className="relative mb-5 max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input className="pl-9" placeholder="Ara..." value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
       {filtered.length === 0 ? (
-        <div className="text-center text-muted-foreground py-12 border border-dashed border-border rounded-md">Görsel bulunamadı.</div>
+        <AdminEmptyState title="Görsel bulunamadı" description="Proje düzenleme ekranından görsel yüklediğinizde medya kayıtları burada görünür." icon={ImageIcon} />
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {filtered.map((img) => (

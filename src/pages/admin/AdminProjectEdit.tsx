@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PROJECT_STATUSES, PROJECT_TYPES, turkishSlugify, resolveImageUrl } from "@/lib/projects";
 import { ArrowLeft, Upload, Trash2, Star, Crop, GripVertical, ExternalLink } from "lucide-react";
 import ImageCropDialog from "@/components/admin/ImageCropDialog";
+import { AdminPageHeader } from "@/components/admin/AdminPage";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -212,17 +213,19 @@ export default function AdminProjectEdit() {
 
   return (
     <div className="max-w-5xl">
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="sm"><Link to="/admin/projeler"><ArrowLeft className="h-4 w-4 mr-1" /> Projeler</Link></Button>
-          <h1 className="font-display text-2xl md:text-3xl font-bold">{isNew ? "Yeni Proje Ekle" : "Projeyi Düzenle"}</h1>
-        </div>
-        <div className="flex gap-2 flex-wrap">
+      <AdminPageHeader
+        eyebrow="Proje Yönetimi"
+        title={isNew ? "Yeni Proje" : "Proje Düzenle"}
+        description="Projenin yayın bilgilerini, konumunu, teknik detaylarını, görsellerini ve SEO alanlarını yönetin."
+        actions={
+          <>
+          <Button asChild variant="outline" size="sm"><Link to="/admin/projeler"><ArrowLeft className="h-4 w-4" /> Projelere Dön</Link></Button>
           {!isNew && data.slug && <Button asChild variant="outline" size="sm"><Link to={`/projelerimiz/${data.slug}`} target="_blank"><ExternalLink className="h-4 w-4 mr-1" /> Önizle</Link></Button>}
           <Button variant="outline" onClick={() => save(false)} disabled={saving}>Taslak Olarak Kaydet</Button>
           <Button onClick={() => save(true)} disabled={saving} className="bg-accent hover:bg-accent-glow text-accent-foreground">{saving ? "Kaydediliyor..." : "Yayınla"}</Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">

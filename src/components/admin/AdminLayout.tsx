@@ -1,36 +1,109 @@
-import { NavLink, Outlet, Navigate, useNavigate } from "react-router-dom";
-import { LayoutDashboard, FolderKanban, PlusSquare, Image as ImageIcon, Inbox, Settings, LogOut, Menu, Users, UserPlus, CalendarClock, Wallet, Receipt, PieChart, Bell, FileBarChart } from "lucide-react";
+import { useMemo, useState } from "react";
+import { NavLink, Outlet, Navigate, useLocation, useNavigate, Link } from "react-router-dom";
+import {
+  BarChart3,
+  Bell,
+  ChevronRight,
+  FileBarChart,
+  FolderKanban,
+  Home,
+  Image as ImageIcon,
+  Inbox,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Plus,
+  Receipt,
+  Settings,
+  Users,
+  Wallet,
+} from "lucide-react";
 import NotificationBell from "@/components/admin/NotificationBell";
 import logoImg from "@/assets/logo.png";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
 
-const ITEMS = [
-  { to: "/admin", label: "Panel Ana Sayfa", icon: LayoutDashboard, end: true },
-  { to: "/admin/projeler", label: "Projeler", icon: FolderKanban },
-  { to: "/admin/projeler/yeni", label: "Yeni Proje Ekle", icon: PlusSquare },
-  { to: "/admin/musteriler", label: "Müşteriler", icon: Users },
-  { to: "/admin/musteriler/yeni", label: "Yeni Müşteri Ekle", icon: UserPlus },
-  { to: "/admin/odeme-planlari", label: "Ödeme Planları", icon: CalendarClock },
-  { to: "/admin/tahsilatlar", label: "Tahsilatlar", icon: Wallet },
-  { to: "/admin/giderler", label: "Giderler", icon: Receipt },
-  { to: "/admin/finans-dashboard", label: "Finans Dashboard", icon: PieChart },
-  { to: "/admin/medya", label: "Medya Galerisi", icon: ImageIcon },
-  { to: "/admin/talepler", label: "İletişim Talepleri", icon: Inbox },
-  { to: "/admin/bildirimler", label: "Bildirimler", icon: Bell },
-  { to: "/admin/raporlar", label: "Raporlar", icon: FileBarChart },
-  { to: "/admin/ayarlar", label: "Site Ayarları", icon: Settings },
+const NAV_GROUPS = [
+  {
+    title: "Genel Bakış",
+    items: [{ to: "/admin", label: "Genel Bakış", description: "Şirket özeti", icon: LayoutDashboard, end: true }],
+  },
+  {
+    title: "Proje Yönetimi",
+    items: [
+      { to: "/admin/projeler", label: "Projeler", description: "Proje portföyü", icon: FolderKanban },
+      { to: "/admin/medya", label: "Medya", description: "Proje görselleri", icon: ImageIcon },
+    ],
+  },
+  {
+    title: "Finans",
+    items: [
+      { to: "/admin/finans-dashboard", label: "Finans Özeti", description: "Kasa ve kârlılık", icon: BarChart3 },
+      { to: "/admin/tahsilatlar", label: "Tahsilatlar", description: "Gelen ödemeler", icon: Wallet },
+      { to: "/admin/odeme-planlari", label: "Ödeme Planları", description: "Alacak takibi", icon: Wallet },
+      { to: "/admin/giderler", label: "Giderler", description: "Masraf takibi", icon: Receipt },
+      { to: "/admin/raporlar", label: "Raporlar", description: "Yönetim raporları", icon: FileBarChart },
+    ],
+  },
+  {
+    title: "Cari Yönetimi",
+    items: [{ to: "/admin/musteriler", label: "Müşteriler", description: "Cari ve ilişki takibi", icon: Users }],
+  },
+  {
+    title: "Operasyon",
+    items: [
+      { to: "/admin/talepler", label: "İletişim Talepleri", description: "Web form talepleri", icon: Inbox },
+      { to: "/admin/bildirimler", label: "Bildirimler", description: "Hatırlatmalar", icon: Bell },
+    ],
+  },
+  {
+    title: "Sistem",
+    items: [{ to: "/admin/ayarlar", label: "Ayarlar", description: "Site ayarları", icon: Settings }],
+  },
 ];
+
+const PAGE_META = [
+  { path: "/admin/projeler/yeni", title: "Yeni Proje", group: "Proje Yönetimi" },
+  { path: "/admin/musteriler/yeni", title: "Yeni Müşteri", group: "Cari Yönetimi" },
+  { path: "/admin/projeler", title: "Projeler", group: "Proje Yönetimi" },
+  { path: "/admin/musteriler", title: "Müşteriler", group: "Cari Yönetimi" },
+  { path: "/admin/finans-dashboard", title: "Finans Özeti", group: "Finans" },
+  { path: "/admin/tahsilatlar", title: "Tahsilatlar", group: "Finans" },
+  { path: "/admin/odeme-planlari", title: "Ödeme Planları", group: "Finans" },
+  { path: "/admin/giderler", title: "Giderler", group: "Finans" },
+  { path: "/admin/raporlar", title: "Raporlar", group: "Finans" },
+  { path: "/admin/medya", title: "Medya", group: "Proje Yönetimi" },
+  { path: "/admin/talepler", title: "İletişim Talepleri", group: "Operasyon" },
+  { path: "/admin/bildirimler", title: "Bildirimler", group: "Operasyon" },
+  { path: "/admin/ayarlar", title: "Ayarlar", group: "Sistem" },
+  { path: "/admin", title: "Genel Bakış", group: "Genel Bakış", exact: true },
+];
+
+function findPageMeta(pathname: string) {
+  return (
+    PAGE_META.find((item) => (item.exact ? pathname === item.path : pathname.startsWith(item.path))) ?? {
+      title: "Yönetim Paneli",
+      group: "Akınal İnşaat",
+    }
+  );
+}
 
 export default function AdminLayout() {
   const { session, isAdmin, loading } = useAuth();
   const nav = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
+  const page = useMemo(() => findPageMeta(location.pathname), [location.pathname]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Yükleniyor...</div>;
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-light text-sm text-muted-foreground">
+        Yönetim paneli yükleniyor...
+      </div>
+    );
+  }
   if (!session) return <Navigate to="/admin/giris" replace />;
   if (!isAdmin) return <Navigate to="/admin/giris" replace />;
 
@@ -40,58 +113,105 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-light flex">
-      {/* Sidebar */}
-      <aside className={cn(
-        "fixed lg:static inset-y-0 left-0 z-40 w-64 bg-sidebar text-sidebar-foreground flex flex-col transition-transform print:hidden",
-        open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-      )}>
-        <div className="p-5 border-b border-sidebar-border flex items-center gap-3">
-          <div className="bg-white rounded-md p-1.5 shadow-card-soft">
-            <img src={logoImg} alt="Akınal İnşaat" className="h-9 w-auto object-contain" />
-          </div>
-          <div className="leading-tight">
-            <div className="font-display font-bold">Akınal İnşaat</div>
-            <div className="text-[10px] uppercase tracking-[0.15em] opacity-70">Yönetim Paneli</div>
-          </div>
+    <div className="flex min-h-screen bg-surface-light">
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-sidebar text-sidebar-foreground shadow-2xl transition-transform print:hidden lg:static lg:shadow-none",
+          open ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+        )}
+      >
+        <div className="border-b border-sidebar-border p-5">
+          <Link to="/admin" className="flex items-center gap-3">
+            <div className="rounded-md bg-white p-1.5 shadow-card-soft">
+              <img src={logoImg} alt="Akınal İnşaat" className="h-10 w-auto object-contain" />
+            </div>
+            <div className="min-w-0 leading-tight">
+              <div className="font-display text-lg font-bold">Akınal İnşaat</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/65">Yönetim Paneli</div>
+            </div>
+          </Link>
         </div>
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {ITEMS.map((it) => (
-            <NavLink
-              key={it.to}
-              to={it.to}
-              end={it.end}
-              onClick={() => setOpen(false)}
-              className={({ isActive }) => cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors",
-                isActive ? "bg-accent text-accent-foreground font-semibold" : "text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-white"
-              )}
-            >
-              <it.icon className="h-4 w-4" />
-              {it.label}
-            </NavLink>
-          ))}
+
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
+          <div className="space-y-5">
+            {NAV_GROUPS.map((group) => (
+              <div key={group.title}>
+                <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/50">{group.title}</div>
+                <div className="space-y-1">
+                  {group.items.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.end}
+                      onClick={() => setOpen(false)}
+                      className={({ isActive }) =>
+                        cn(
+                          "group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors",
+                          isActive
+                            ? "bg-accent text-accent-foreground shadow-accent-glow"
+                            : "text-sidebar-foreground/82 hover:bg-sidebar-accent hover:text-white",
+                        )
+                      }
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">{item.label}</span>
+                        <span className="block truncate text-[11px] opacity-65">{item.description}</span>
+                      </span>
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </nav>
-        <div className="p-3 border-t border-sidebar-border">
+
+        <div className="border-t border-sidebar-border p-3">
+          <div className="mb-3 rounded-md bg-sidebar-accent/70 p-3">
+            <div className="text-xs text-sidebar-foreground/65">Oturum</div>
+            <div className="mt-1 truncate text-sm font-semibold">{session.user.email || "Yönetici"}</div>
+          </div>
           <Button onClick={logout} variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-white">
-            <LogOut className="h-4 w-4 mr-2" /> Çıkış Yap
+            <LogOut className="mr-2 h-4 w-4" /> Çıkış Yap
           </Button>
         </div>
       </aside>
 
-      {open && <button className="lg:hidden fixed inset-0 bg-black/50 z-30" onClick={() => setOpen(false)} aria-label="Kapat" />}
+      {open && <button className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setOpen(false)} aria-label="Menüyü kapat" />}
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 bg-card border-b border-border flex items-center px-4 gap-3 print:hidden">
-          <button onClick={() => setOpen(true)} aria-label="Menü" className="lg:hidden"><Menu className="h-5 w-5" /></button>
-          <div className="font-display font-bold lg:hidden">Akınal İnşaat — Panel</div>
-          <div className="ml-auto flex items-center gap-2">
-            <NotificationBell />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 border-b border-border bg-card/95 px-4 backdrop-blur print:hidden md:px-6">
+          <div className="flex h-16 items-center gap-3">
+            <button
+              onClick={() => setOpen(true)}
+              aria-label="Menüyü aç"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-background lg:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Home className="h-3.5 w-3.5" />
+                <span>{page.group}</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+                <span className="font-medium text-foreground">{page.title}</span>
+              </div>
+              <div className="truncate font-display text-lg font-bold md:text-xl">{page.title}</div>
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <Button asChild size="sm" className="hidden bg-accent text-accent-foreground hover:bg-accent-glow md:inline-flex">
+                <Link to="/admin/projeler/yeni">
+                  <Plus className="h-4 w-4" />
+                  Yeni Proje
+                </Link>
+              </Button>
+              <NotificationBell />
+            </div>
           </div>
         </header>
-        <div className="p-5 md:p-8 flex-1 min-w-0">
+        <main className="min-w-0 flex-1 p-4 md:p-6 xl:p-8">
           <Outlet />
-        </div>
+        </main>
       </div>
     </div>
   );
