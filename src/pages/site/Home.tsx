@@ -1,24 +1,43 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { ArrowRight, ShieldCheck, Compass, Layers, HardHat, Building, FileCheck, Hammer, ClipboardList, Search, FileSignature, Stamp, Package, MessageCircle, Phone as PhoneIcon, Mail } from "lucide-react";
+import {
+  ArrowRight,
+  ShieldCheck,
+  Compass,
+  Layers,
+  HardHat,
+  Building,
+  FileCheck,
+  Hammer,
+  ClipboardList,
+  Search,
+  FileSignature,
+  Stamp,
+  Package,
+  MessageCircle,
+  Phone as PhoneIcon,
+  Mail,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import ProjectCard, { ProjectCardData } from "@/components/site/ProjectCard";
 import Seo from "@/components/site/Seo";
 import { useSiteSettings, getWhatsAppLink, getTelLink } from "@/hooks/useSiteSettings";
 import heroImg from "@/assets/hero-construction.jpg";
+import sampleProject1 from "@/assets/sample-project-1.jpg";
+import sampleProject2 from "@/assets/sample-project-2.jpg";
 
 const TRUST = ["Kentsel Dönüşüm Uzmanlığı", "Şeffaf Süreç Yönetimi", "Anahtar Teslim Çözümler", "Teknik ve Güvenilir Yaklaşım"];
 
 const VALUES = [
-  { title: "Güven", text: "Her projede şeffaf iletişim, doğru planlama ve sürdürülebilir çözüm anlayışı.", icon: ShieldCheck },
-  { title: "Teknik Yaklaşım", text: "Proje geliştirme, ruhsat ve uygulama süreçlerinde mühendislik temelli yönetim.", icon: Compass },
-  { title: "Değer Üretimi", text: "Yaşam alanlarını yalnızca yenilemek değil, bulunduğu bölgeye değer katacak şekilde geliştirmek.", icon: Layers },
+  { title: "Güven", text: "Her projede şeffaf iletişim, doğru planlama ve kontrollü süreç yönetimi.", icon: ShieldCheck },
+  { title: "Teknik Yaklaşım", text: "Ruhsat, proje geliştirme ve uygulama aşamalarında mühendislik temelli karar alma.", icon: Compass },
+  { title: "Değer Üretimi", text: "Yaşam alanlarını yenilerken bulunduğu çevreye uzun vadeli değer katma hedefi.", icon: Layers },
 ];
 
 const SERVICES = [
   { title: "Kentsel Dönüşüm", text: "Riskli yapıların yenilenmesi, fizibilite çalışmaları, hak sahipleriyle süreç yönetimi ve uygulama desteği.", icon: HardHat },
-  { title: "Kat Karşılığı İnşaat", text: "Arsa sahipleri için güvenilir, şeffaf ve kazanç odaklı kat karşılığı proje geliştirme çözümleri.", icon: Building },
+  { title: "Kat Karşılığı İnşaat", text: "Arsa sahipleri için güvenilir, şeffaf ve değer odaklı kat karşılığı proje geliştirme çözümleri.", icon: Building },
   { title: "Anahtar Teslim İnşaat", text: "Planlamadan teslim aşamasına kadar tüm inşaat sürecinin tek elden profesyonel yönetimi.", icon: Hammer },
   { title: "Proje Geliştirme", text: "Arsa, konum, imar durumu ve yatırım potansiyeline göre uygulanabilir proje senaryolarının oluşturulması.", icon: ClipboardList },
   { title: "Ruhsat ve Resmi Süreç Takibi", text: "Belediye, ruhsat, proje onay ve yasal süreçlerin düzenli ve kontrollü şekilde takip edilmesi.", icon: FileCheck },
@@ -26,20 +45,27 @@ const SERVICES = [
 ];
 
 const STEPS = [
-  { title: "Ön Görüşme", text: "Bina, arsa veya proje ihtiyacı hakkında ilk değerlendirme yapılır.", icon: MessageCircle },
-  { title: "Yerinde İnceleme", text: "Mevcut yapı, konum, imar durumu ve proje potansiyeli analiz edilir.", icon: Search },
+  { title: "Ön Görüşme", text: "Bina, arsa veya proje ihtiyacı hakkında ilk kapsam ve beklenti değerlendirmesi yapılır.", icon: MessageCircle },
+  { title: "Yerinde İnceleme", text: "Mevcut yapı, konum, imar durumu ve proje potansiyeli teknik açıdan analiz edilir.", icon: Search },
   { title: "Fizibilite Çalışması", text: "Teknik, mali ve yasal uygunluk değerlendirilerek uygulanabilir yol haritası hazırlanır.", icon: ClipboardList },
-  { title: "Sözleşme ve Planlama", text: "Hak sahipleriyle şeffaf anlaşma zemini oluşturulur ve proje takvimi belirlenir.", icon: FileSignature },
+  { title: "Sözleşme ve Planlama", text: "Hak sahipleriyle şeffaf anlaşma zemini oluşturulur ve süreç planı netleştirilir.", icon: FileSignature },
   { title: "Ruhsat ve Uygulama", text: "Resmi süreçler takip edilir, inşaat uygulaması kontrollü şekilde yürütülür.", icon: Stamp },
   { title: "Teslim", text: "Proje tamamlanır, yaşam alanları kullanıma hazır şekilde teslim edilir.", icon: Package },
 ];
 
 const REASONS = [
-  { title: "Şeffaf Süreç Yönetimi", text: "Her aşamada açık iletişim, düzenli raporlama ve hak sahiplerini bilgilendirme önceliğimizdir." },
-  { title: "Teknik ve Planlı Yaklaşım", text: "Mühendislik temelli planlama ile her detay önceden değerlendirilir ve kontrol altında tutulur." },
-  { title: "Kentsel Dönüşüm Deneyimi", text: "Riskli yapı süreçlerinde edinilen deneyim, projelerde güvenli ve doğru kararlar alınmasını sağlar." },
-  { title: "Kaliteli Malzeme ve İşçilik", text: "Uzun ömürlü yapılar için seçilmiş malzemeler ve titiz işçilik standartları uygulanır." },
-  { title: "Zamanında ve Kontrollü Teslim Hedefi", text: "Belirlenen takvim doğrultusunda planlı ilerleyerek teslim sürelerine sadık kalınır." },
+  { title: "Şeffaf Süreç Yönetimi", text: "Her aşamada açık iletişim, düzenli bilgilendirme ve karar süreçlerinde netlik sağlanır." },
+  { title: "Teknik ve Planlı Yaklaşım", text: "Mühendislik temelli planlama ile proje başlamadan önce kritik başlıklar kontrol altına alınır." },
+  { title: "Kentsel Dönüşüm Odağı", text: "Riskli yapı süreçlerinde güvenli, uygulanabilir ve hak sahiplerini gözeten yol haritaları oluşturulur." },
+  { title: "Malzeme ve İşçilik Disiplini", text: "Uzun ömürlü yapılar için uygulama kalitesi, saha takibi ve detay çözümü önceliklendirilir." },
+  { title: "Kontrollü Teslim Hedefi", text: "Süreç, belirlenen plan doğrultusunda izlenir; olası riskler erken aşamada yönetilir." },
+];
+
+const APPROACH = [
+  { title: "Teknik Ön Değerlendirme", text: "Proje başlamadan önce arsa, yapı, imar ve ihtiyaç başlıkları birlikte ele alınır.", icon: Search },
+  { title: "Şeffaf Süreç Yönetimi", text: "Hak sahipleri ve yatırımcılar için anlaşılır, takip edilebilir bir süreç dili kurulur.", icon: FileCheck },
+  { title: "Güvenilir Uygulama", text: "Saha uygulaması, planlama ve kalite odağıyla kontrollü şekilde yürütülür.", icon: HardHat },
+  { title: "Teslim Sonrası Destek", text: "Proje tamamlandıktan sonra da ihtiyaç duyulan yönlendirme ve iletişim sürdürülür.", icon: Package },
 ];
 
 export default function Home() {
@@ -97,53 +123,79 @@ export default function Home() {
       </section>
 
       {/* ABOUT */}
-      <section className="py-20 md:py-28">
-        <div className="container-narrow">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-start">
+      <section className="relative overflow-hidden py-20 md:py-28">
+        <div className="absolute inset-y-0 right-0 hidden w-1/2 bg-surface-light lg:block" />
+        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)", backgroundSize: "42px 42px" }} />
+        <div className="container-narrow relative">
+          <div className="grid items-center gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
             <div>
-              <div className="text-xs uppercase tracking-[0.2em] text-accent font-semibold mb-3">Hakkımızda</div>
-              <h2 className="font-display text-3xl md:text-5xl font-bold leading-tight mb-6">Akınal İnşaat Hakkında</h2>
-              <p className="text-muted-foreground text-base md:text-lg leading-relaxed">
-                Akınal İnşaat; güvenli, estetik ve uzun ömürlü yapılar üretme hedefiyle kentsel dönüşüm ve inşaat projelerinde profesyonel çözümler sunar. Arsa sahipleri, bina sakinleri ve yatırımcılar için sürecin her aşamasında şeffaf, planlı ve teknik bir yaklaşım benimser.
+              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Hakkımızda</div>
+              <h2 className="mb-6 font-display text-3xl font-bold leading-tight md:text-5xl">Güvenli yapılar için planlı, teknik ve şeffaf yaklaşım</h2>
+              <p className="text-base leading-relaxed text-muted-foreground md:text-lg">
+                Akınal İnşaat; kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde süreci yalnızca inşa etmekle değil, doğru kararlarla yönetmekle ele alır. Arsa sahipleri, bina sakinleri ve yatırımcılar için her adımda anlaşılır, kontrollü ve güven veren bir çalışma modeli sunar.
               </p>
-              <Button asChild variant="outline" className="mt-8 border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground">
-                <Link to="/hakkimizda">Daha Fazla Bilgi <ArrowRight className="ml-2 h-4 w-4" /></Link>
-              </Button>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Button asChild className="bg-primary text-primary-foreground hover:bg-primary-glow">
+                  <Link to="/hakkimizda">Akınal Yaklaşımını İnceleyin <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                </Button>
+                <Button asChild variant="outline" className="border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground">
+                  <Link to="/iletisim">Ön Görüşme Planlayın</Link>
+                </Button>
+              </div>
             </div>
-            <div className="grid sm:grid-cols-1 gap-4">
-              {VALUES.map((v) => (
-                <div key={v.title} className="group p-6 rounded-lg border border-border bg-card hover:border-accent/50 hover:shadow-card-soft transition-all">
-                  <div className="flex items-start gap-4">
-                    <div className="h-12 w-12 rounded-md bg-primary/5 text-primary flex items-center justify-center group-hover:bg-accent group-hover:text-accent-foreground transition-colors shrink-0">
-                      <v.icon className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h3 className="font-display text-xl font-bold mb-2">{v.title}</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{v.text}</p>
-                    </div>
-                  </div>
+
+            <div className="relative">
+              <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-elegant">
+                <img src={sampleProject1} alt="Akınal İnşaat proje uygulama yaklaşımı" className="aspect-[4/3] w-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-secondary/70 via-secondary/10 to-transparent" />
+                <div className="absolute bottom-5 left-5 right-5 rounded-lg border border-white/15 bg-white/90 p-4 shadow-card-soft backdrop-blur">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Akınal Yaklaşımı</div>
+                  <div className="mt-1 font-display text-xl font-bold text-foreground">Projeye başlamadan önce netlik sağlarız.</div>
                 </div>
-              ))}
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                {VALUES.map((value) => (
+                  <div key={value.title} className="rounded-lg border border-border bg-card p-4 shadow-card-soft transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-elegant">
+                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-accent/10 text-accent">
+                      <value.icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="font-display text-lg font-bold">{value.title}</h3>
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{value.text}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* SERVICES */}
-      <section className="py-20 md:py-28 bg-surface-light">
-        <div className="container-narrow">
-          <div className="max-w-2xl mb-14">
-            <div className="text-xs uppercase tracking-[0.2em] text-accent font-semibold mb-3">Hizmetlerimiz</div>
-            <h2 className="font-display text-3xl md:text-5xl font-bold leading-tight">Sunduğumuz Profesyonel Çözümler</h2>
+      <section className="relative overflow-hidden bg-surface-light py-20 md:py-28">
+        <div className="absolute left-0 top-0 h-40 w-full bg-gradient-to-b from-background to-transparent" />
+        <div className="container-narrow relative">
+          <div className="mb-14 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-2xl">
+              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Hizmetlerimiz</div>
+              <h2 className="font-display text-3xl font-bold leading-tight md:text-5xl">İnşaat sürecinin her aşaması için profesyonel çözümler</h2>
+            </div>
+            <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+              İhtiyaç analizinden resmi süreçlere, uygulamadan teslim aşamasına kadar bütüncül bir çalışma disipliniyle ilerliyoruz.
+            </p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {SERVICES.map((s) => (
-              <div key={s.title} className="group p-7 rounded-lg bg-card border border-border hover:border-accent/40 hover:-translate-y-1 transition-all duration-300 shadow-card-soft">
-                <div className="h-12 w-12 rounded-md bg-primary text-primary-foreground flex items-center justify-center mb-5 group-hover:bg-accent transition-colors">
-                  <s.icon className="h-6 w-6" />
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {SERVICES.map((service) => (
+              <div key={service.title} className="group relative min-h-[250px] overflow-hidden rounded-lg border border-border bg-card p-7 shadow-card-soft transition-all duration-300 hover:-translate-y-1 hover:border-accent/50 hover:shadow-elegant">
+                <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-accent/5 transition-transform duration-500 group-hover:scale-125" />
+                <div className="relative">
+                  <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-card-soft transition-colors group-hover:bg-accent">
+                    <service.icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="font-display text-xl font-bold">{service.title}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{service.text}</p>
+                  <div className="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.16em] text-accent opacity-0 transition-all duration-300 group-hover:translate-x-1 group-hover:opacity-100">
+                    Detaylı bilgi <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                  </div>
                 </div>
-                <h3 className="font-display text-xl font-bold mb-3">{s.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{s.text}</p>
               </div>
             ))}
           </div>
@@ -153,41 +205,52 @@ export default function Home() {
       {/* KENTSEL DÖNÜŞÜM TIMELINE */}
       <section className="py-20 md:py-28">
         <div className="container-narrow">
-          <div className="max-w-3xl mb-14">
-            <div className="text-xs uppercase tracking-[0.2em] text-accent font-semibold mb-3">Kentsel Dönüşüm</div>
-            <h2 className="font-display text-3xl md:text-5xl font-bold leading-tight mb-5">Kentsel Dönüşüm Sürecini Sizin İçin Yönetiyoruz</h2>
+          <div className="mb-14 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+            <div>
+              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Kentsel Dönüşüm</div>
+              <h2 className="font-display text-3xl font-bold leading-tight md:text-5xl">Dönüşüm sürecini anlaşılır bir yol haritasına çeviriyoruz</h2>
+            </div>
             <p className="text-muted-foreground leading-relaxed">
               Kentsel dönüşüm yalnızca eski bir binanın yenilenmesi değildir. Doğru fizibilite, doğru sözleşme, doğru planlama ve güvenilir uygulama ile hem güvenli hem de değerli yaşam alanları oluşturulur.
             </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {STEPS.map((s, i) => (
-              <div key={s.title} className="relative p-6 rounded-lg border border-border bg-card hover:shadow-card-soft transition-shadow">
-                <div className="absolute -top-3 -right-3 h-10 w-10 rounded-full bg-accent text-accent-foreground font-display font-bold flex items-center justify-center text-sm shadow-accent-glow">
-                  {String(i + 1).padStart(2, "0")}
+          <div className="relative">
+            <div className="absolute left-6 top-8 hidden h-[calc(100%-4rem)] w-px bg-border md:block lg:left-0 lg:top-1/2 lg:h-px lg:w-full" />
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-6">
+              {STEPS.map((step, index) => (
+                <div key={step.title} className="relative rounded-lg border border-border bg-card p-5 shadow-card-soft transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-elegant">
+                  <div className="mb-5 flex items-center justify-between gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-md bg-accent text-accent-foreground shadow-accent-glow">
+                      <step.icon className="h-5 w-5" />
+                    </div>
+                    <div className="font-display text-2xl font-bold text-accent/30">{String(index + 1).padStart(2, "0")}</div>
+                  </div>
+                  <h3 className="font-display text-lg font-bold">{step.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.text}</p>
                 </div>
-                <s.icon className="h-7 w-7 text-accent mb-4" />
-                <h3 className="font-display text-lg font-bold mb-2">{s.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{s.text}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* WHY US — DARK */}
-      <section className="py-20 md:py-28 bg-gradient-dark text-white">
-        <div className="container-narrow">
-          <div className="max-w-2xl mb-14">
-            <div className="text-xs uppercase tracking-[0.2em] text-accent font-semibold mb-3">Neden Biz?</div>
-            <h2 className="font-display text-3xl md:text-5xl font-bold leading-tight">Neden Akınal İnşaat?</h2>
+      <section className="relative overflow-hidden bg-gradient-dark py-20 text-white md:py-28">
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "linear-gradient(135deg, white 1px, transparent 1px)", backgroundSize: "26px 26px" }} />
+        <div className="container-narrow relative">
+          <div className="mb-14 max-w-3xl">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Neden Akınal?</div>
+            <h2 className="font-display text-3xl font-bold leading-tight md:text-5xl">Güven, teknik disiplin ve şeffaf yönetim aynı masada</h2>
+            <p className="mt-5 text-white/70 leading-relaxed">
+              Her proje; hak sahipleri, yatırımcılar ve kullanıcılar için netlik gerektirir. Akınal İnşaat bu netliği tasarım, resmi süreç, saha uygulaması ve iletişim başlıklarında birlikte kurar.
+            </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {REASONS.map((r, i) => (
-              <div key={r.title} className="p-6 rounded-lg bg-white/5 backdrop-blur border border-white/10 hover:border-accent/40 transition-colors">
-                <div className="font-display text-accent text-3xl font-bold mb-3">{String(i + 1).padStart(2, "0")}</div>
-                <h3 className="font-display text-lg font-bold mb-2">{r.title}</h3>
-                <p className="text-sm text-white/70 leading-relaxed">{r.text}</p>
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
+            {REASONS.map((reason, index) => (
+              <div key={reason.title} className="rounded-lg border border-white/10 bg-white/[0.06] p-6 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-accent/50 hover:bg-white/[0.09]">
+                <div className="mb-5 font-display text-3xl font-bold text-accent">{String(index + 1).padStart(2, "0")}</div>
+                <h3 className="font-display text-lg font-bold">{reason.title}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-white/70">{reason.text}</p>
               </div>
             ))}
           </div>
@@ -218,27 +281,61 @@ export default function Home() {
         </div>
       </section>
 
+      {/* APPROACH */}
+      <section className="bg-surface-light py-20 md:py-28">
+        <div className="container-narrow">
+          <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+            <div>
+              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Akınal Yaklaşımı</div>
+              <h2 className="font-display text-3xl font-bold leading-tight md:text-5xl">Projeye başlamadan önce netlik sağlarız</h2>
+              <p className="mt-5 text-muted-foreground leading-relaxed">
+                Güven veren bir inşaat süreci, ilk görüşmeden itibaren doğru soruları sormakla başlar. Teknik değerlendirme, resmi süreç ve uygulama planı aynı çerçevede ele alınır.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {APPROACH.map((item) => (
+                <div key={item.title} className="rounded-lg border border-border bg-card p-6 shadow-card-soft transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-elegant">
+                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md bg-primary/5 text-primary">
+                    <item.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-display text-lg font-bold">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* MAIN CTA */}
-      <section className="py-20 md:py-28 bg-primary text-primary-foreground relative overflow-hidden">
-        <div className="absolute inset-0 opacity-20" style={{ background: "radial-gradient(circle at 80% 20%, hsl(var(--accent)) 0%, transparent 50%)" }} />
+      <section className="relative overflow-hidden bg-primary py-20 text-primary-foreground md:py-28">
+        <img src={sampleProject2} alt="Akınal İnşaat iletişim ve ön değerlendirme" className="absolute inset-0 h-full w-full object-cover opacity-20" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/95 to-primary/75" />
+        <div className="absolute inset-0 opacity-20" style={{ background: "radial-gradient(circle at 82% 20%, hsl(var(--accent)) 0%, transparent 48%)" }} />
         <div className="container-narrow relative">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="font-display text-3xl md:text-5xl font-bold leading-tight mb-5">Binanız veya Arsanız İçin Ön Değerlendirme Alın</h2>
-            <p className="text-primary-foreground/80 text-base md:text-lg leading-relaxed mb-9">
-              Kentsel dönüşüm, kat karşılığı inşaat veya proje geliştirme ihtiyaçlarınız için Akınal İnşaat ile iletişime geçin. Ekibimiz, projeniz için en uygun yol haritasını belirlemek üzere sizinle görüşsün.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button asChild size="lg" className="bg-[#25D366] hover:bg-[#20BD5C] text-white font-semibold">
-                <a href={getWhatsAppLink(settings.whatsapp_number, settings.whatsapp_message)} target="_blank" rel="noreferrer">
-                  <MessageCircle className="mr-2 h-5 w-5" /> WhatsApp ile Görüş
-                </a>
-              </Button>
-              <Button asChild size="lg" className="bg-accent hover:bg-accent-glow text-accent-foreground font-semibold">
-                <a href={getTelLink(settings.phone)}><PhoneIcon className="mr-2 h-5 w-5" /> Telefonla Ara</a>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="bg-transparent border-white/40 text-white hover:bg-white hover:text-primary">
-                <Link to="/iletisim"><Mail className="mr-2 h-5 w-5" /> İletişim Formu Doldur</Link>
-              </Button>
+          <div className="grid gap-10 lg:grid-cols-[1fr_0.85fr] lg:items-center">
+            <div>
+              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Ön Değerlendirme</div>
+              <h2 className="font-display text-3xl font-bold leading-tight md:text-5xl">Binanız veya arsanız için doğru yol haritasını birlikte çıkaralım</h2>
+              <p className="mt-5 max-w-2xl text-base leading-relaxed text-primary-foreground/80 md:text-lg">
+                Kentsel dönüşüm, kat karşılığı inşaat veya proje geliştirme ihtiyaçlarınız için Akınal İnşaat ile iletişime geçin. Ekibimiz, projeniz için en uygun başlangıç adımını belirlemek üzere sizinle görüşsün.
+              </p>
+            </div>
+            <div className="rounded-lg border border-white/15 bg-white/10 p-5 shadow-elegant backdrop-blur">
+              <div className="mb-5 font-display text-2xl font-bold">Görüşme kanalı seçin</div>
+              <div className="grid gap-3">
+                <Button asChild size="lg" className="justify-start bg-[#25D366] text-white hover:bg-[#20BD5C]">
+                  <a href={getWhatsAppLink(settings.whatsapp_number, settings.whatsapp_message)} target="_blank" rel="noreferrer">
+                    <MessageCircle className="mr-2 h-5 w-5" /> WhatsApp ile Görüş
+                  </a>
+                </Button>
+                <Button asChild size="lg" className="justify-start bg-accent text-accent-foreground hover:bg-accent-glow">
+                  <a href={getTelLink(settings.phone)}><PhoneIcon className="mr-2 h-5 w-5" /> Telefonla Ara</a>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="justify-start border-white/40 bg-transparent text-white hover:bg-white hover:text-primary">
+                  <Link to="/iletisim"><Mail className="mr-2 h-5 w-5" /> İletişim Formu Doldur</Link>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
