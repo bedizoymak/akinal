@@ -7,8 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PROJECT_STATUSES, PROJECT_TYPES } from "@/lib/projects";
 import { Search } from "lucide-react";
 
+type ProjectListItem = ProjectCardData & {
+  is_featured: boolean | null;
+  sort_order: number | null;
+  created_at: string;
+};
+
 export default function Projects() {
-  const [items, setItems] = useState<ProjectCardData[]>([]);
+  const [items, setItems] = useState<ProjectListItem[]>([]);
   const [q, setQ] = useState("");
   const [type, setType] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
@@ -21,7 +27,7 @@ export default function Projects() {
       .select("id,title,slug,short_description,project_type,project_status,location,cover_image_url,is_featured,sort_order,created_at")
       .eq("is_published", true)
       .then(({ data }) => {
-        setItems((data as any) || []);
+        setItems((data as ProjectListItem[]) || []);
         setLoading(false);
       });
   }, []);
@@ -34,15 +40,23 @@ export default function Projects() {
     }
     if (type !== "all") list = list.filter((p) => p.project_type === type);
     if (status !== "all") list = list.filter((p) => p.project_status === status);
-    if (sort === "newest") list.sort((a: any, b: any) => b.created_at.localeCompare(a.created_at));
-    else if (sort === "oldest") list.sort((a: any, b: any) => a.created_at.localeCompare(b.created_at));
-    else list.sort((a: any, b: any) => Number(b.is_featured) - Number(a.is_featured) || a.sort_order - b.sort_order);
+    if (sort === "newest") list.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    else if (sort === "oldest") list.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    else list.sort((a, b) => Number(b.is_featured) - Number(a.is_featured) || (a.sort_order ?? 0) - (b.sort_order ?? 0));
     return list;
   }, [items, q, type, status, sort]);
 
   return (
     <>
-      <Seo title="Projelerimiz" description="Akınal İnşaat'ın tamamlanan ve süren projeleri." />
+      <Seo
+        title="Projelerimiz"
+        description="Akınal İnşaat'ın tamamlanan ve süren konut, ticari proje ve kentsel dönüşüm çalışmalarını inceleyin."
+        canonical="/projelerimiz"
+        breadcrumbs={[
+          { name: "Ana Sayfa", path: "/" },
+          { name: "Projelerimiz", path: "/projelerimiz" },
+        ]}
+      />
       <section className="py-16 md:py-20 bg-gradient-dark text-white">
         <div className="container-narrow">
           <div className="text-xs uppercase tracking-[0.2em] text-accent font-semibold mb-3">Projelerimiz</div>

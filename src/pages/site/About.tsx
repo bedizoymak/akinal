@@ -13,7 +13,15 @@ const VALUES = [
 export default function About() {
   return (
     <>
-      <Seo title="Hakkımızda" description="Akınal İnşaat hakkında: kuruluş, vizyon, misyon ve değerler." />
+      <Seo
+        title="Hakkımızda"
+        description="Akınal İnşaat'ın kentsel dönüşüm, inşaat yaklaşımı, vizyonu, misyonu ve kurumsal değerleri hakkında bilgi alın."
+        canonical="/hakkimizda"
+        breadcrumbs={[
+          { name: "Ana Sayfa", path: "/" },
+          { name: "Hakkımızda", path: "/hakkimizda" },
+        ]}
+      />
       <section className="py-16 md:py-24 bg-gradient-dark text-white">
         <div className="container-narrow">
           <div className="text-xs uppercase tracking-[0.2em] text-accent font-semibold mb-3">Hakkımızda</div>

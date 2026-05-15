@@ -59,7 +59,15 @@ export default function Contact() {
 
   return (
     <>
-      <Seo title="İletişim" description="Akınal İnşaat iletişim bilgileri ve teklif formu." />
+      <Seo
+        title="İletişim"
+        description="Akınal İnşaat telefon, WhatsApp, e-posta, adres ve iletişim formu üzerinden proje ve kentsel dönüşüm talepleriniz için bize ulaşın."
+        canonical="/iletisim"
+        breadcrumbs={[
+          { name: "Ana Sayfa", path: "/" },
+          { name: "İletişim", path: "/iletisim" },
+        ]}
+      />
       <section className="py-16 md:py-20 bg-gradient-dark text-white">
         <div className="container-narrow">
           <div className="text-xs uppercase tracking-[0.2em] text-accent font-semibold mb-3">İletişim</div>

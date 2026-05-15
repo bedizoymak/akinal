@@ -55,12 +55,12 @@ export default function Home() {
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false })
       .limit(6)
-      .then(({ data }) => setProjects((data as any) || []));
+      .then(({ data }) => setProjects((data as ProjectCardData[]) || []));
   }, []);
 
   return (
     <>
-      <Seo />
+      <Seo canonical="/" />
 
       {/* HERO */}
       <section className="relative min-h-[90vh] flex items-center overflow-hidden">

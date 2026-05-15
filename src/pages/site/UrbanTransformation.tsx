@@ -15,7 +15,15 @@ const STEPS = [
 export default function UrbanTransformation() {
   return (
     <>
-      <Seo title="Kentsel Dönüşüm" description="Riskli yapı dönüşüm sürecini Akınal İnşaat ile yönetin." />
+      <Seo
+        title="Kentsel Dönüşüm"
+        description="Riskli yapı, arsa ve bina yenileme süreçlerinde kentsel dönüşüm danışmanlığı ve inşaat uygulama yaklaşımımızı inceleyin."
+        canonical="/kentsel-donusum"
+        breadcrumbs={[
+          { name: "Ana Sayfa", path: "/" },
+          { name: "Kentsel Dönüşüm", path: "/kentsel-donusum" },
+        ]}
+      />
       <section className="py-16 md:py-24 bg-gradient-dark text-white">
         <div className="container-narrow max-w-4xl">
           <div className="text-xs uppercase tracking-[0.2em] text-accent font-semibold mb-3">Kentsel Dönüşüm</div>

@@ -11,11 +11,47 @@ import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { useSiteSettings, getWhatsAppLink } from "@/hooks/useSiteSettings";
 
+type ProjectDetailData = {
+  id: string;
+  title: string;
+  slug: string;
+  seo_title?: string | null;
+  seo_description?: string | null;
+  short_description?: string | null;
+  detailed_description?: string | null;
+  cover_image_url?: string | null;
+  project_type?: string | null;
+  project_status?: string | null;
+  location?: string | null;
+  start_year?: string | number | null;
+  delivery_year?: string | number | null;
+  land_area?: string | null;
+  construction_area?: string | null;
+  apartment_count?: string | number | null;
+  floor_count?: string | number | null;
+  block_count?: string | number | null;
+};
+
+type ProjectImage = {
+  id: string;
+  image_url: string;
+  title?: string | null;
+  alt_text?: string | null;
+};
+
+type ProjectSibling = {
+  id: string;
+  title: string;
+  slug: string;
+  sort_order: number | null;
+  created_at: string;
+};
+
 export default function ProjectDetail() {
   const { slug } = useParams();
-  const [project, setProject] = useState<any | null>(null);
-  const [images, setImages] = useState<any[]>([]);
-  const [siblings, setSiblings] = useState<any[]>([]);
+  const [project, setProject] = useState<ProjectDetailData | null>(null);
+  const [images, setImages] = useState<ProjectImage[]>([]);
+  const [siblings, setSiblings] = useState<ProjectSibling[]>([]);
   const [loading, setLoading] = useState(true);
   const [lbIndex, setLbIndex] = useState(-1);
   const [emblaRef, embla] = useEmblaCarousel({ loop: true });
@@ -27,13 +63,14 @@ export default function ProjectDetail() {
     (async () => {
       const { data: p } = await supabase.from("projects").select("*").eq("slug", slug).eq("is_published", true).maybeSingle();
       if (!p) { setLoading(false); return; }
-      setProject(p);
+      const projectData = p as ProjectDetailData;
+      setProject(projectData);
       const [{ data: imgs }, { data: all }] = await Promise.all([
-        supabase.from("project_images").select("*").eq("project_id", p.id).order("sort_order"),
+        supabase.from("project_images").select("*").eq("project_id", projectData.id).order("sort_order"),
         supabase.from("projects").select("id,title,slug,sort_order,created_at").eq("is_published", true),
       ]);
-      setImages(imgs || []);
-      const sorted = (all || []).sort((a: any, b: any) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at));
+      setImages((imgs as ProjectImage[]) || []);
+      const sorted = ((all as ProjectSibling[]) || []).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.created_at.localeCompare(b.created_at));
       setSiblings(sorted);
       setLoading(false);
     })();
@@ -47,12 +84,12 @@ export default function ProjectDetail() {
     </div>
   );
 
-  const sliderImages = images.length > 0 ? images : (project.cover_image_url ? [{ id: "cover", image_url: project.cover_image_url, title: project.title }] : []);
+  const sliderImages: ProjectImage[] = images.length > 0 ? images : (project.cover_image_url ? [{ id: "cover", image_url: project.cover_image_url, title: project.title }] : []);
   const idx = siblings.findIndex((s) => s.id === project.id);
   const prev = idx > 0 ? siblings[idx - 1] : null;
   const next = idx >= 0 && idx < siblings.length - 1 ? siblings[idx + 1] : null;
 
-  const techRows: [string, string | null | undefined][] = [
+  const techRows: [string, string | number | null | undefined][] = [
     ["Proje Türü", project.project_type],
     ["Proje Durumu", project.project_status],
     ["Konum", project.location],
@@ -67,7 +104,16 @@ export default function ProjectDetail() {
 
   return (
     <>
-      <Seo title={project.seo_title || project.title} description={project.seo_description || project.short_description} />
+      <Seo
+        title={project.seo_title || project.title}
+        description={project.seo_description || project.short_description}
+        canonical={`/projelerimiz/${project.slug}`}
+        breadcrumbs={[
+          { name: "Ana Sayfa", path: "/" },
+          { name: "Projelerimiz", path: "/projelerimiz" },
+          { name: project.title, path: `/projelerimiz/${project.slug}` },
+        ]}
+      />
 
       {/* Hero */}
       <section className="relative h-[60vh] md:h-[70vh] overflow-hidden bg-primary">
@@ -186,7 +232,7 @@ export default function ProjectDetail() {
         open={lbIndex >= 0}
         index={lbIndex < 0 ? 0 : lbIndex}
         close={() => setLbIndex(-1)}
-        slides={sliderImages.map((img: any) => ({ src: resolveImageUrl(img.image_url), title: img.title || project.title }))}
+        slides={sliderImages.map((img) => ({ src: resolveImageUrl(img.image_url), title: img.title || project.title }))}
       />
     </>
   );

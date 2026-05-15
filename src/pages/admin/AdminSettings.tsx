@@ -436,6 +436,23 @@ export default function AdminSettings() {
                 <p className="mt-1 text-sm leading-relaxed text-[#4d5156]">{data.seo_description || "SEO açıklaması girilmemiş"}</p>
               </div>
             </PreviewPanel>
+
+            <PreviewPanel title="Google Sitelinks Hedef Önizlemesi" description="Ana marka aramasında hedeflenen bağlantı mimarisinin temsili görünümü.">
+              <div className="rounded-lg border border-border bg-white p-4">
+                <div className="text-sm text-[#202124]">{domainPreview}</div>
+                <div className="mt-1 text-xl text-[#1a0dab]">{data.company_name || "Akınal İnşaat"}</div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {["Projelerimiz", "Kentsel Dönüşüm", "Hakkımızda", "İletişim"].map((item) => (
+                    <div key={item} className="rounded-md border border-[#dadce0] px-3 py-2">
+                      <div className="text-sm font-medium text-[#1a0dab]">{item}</div>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+                  Google sitelinks bağlantılarını garanti etmez. Bu alan, doğru site mimarisi ve SEO çalışmasıyla hedeflenen görünümü temsil eder.
+                </p>
+              </div>
+            </PreviewPanel>
           </SettingsSection>
         </div>
 
@@ -475,6 +492,7 @@ export default function AdminSettings() {
                 ["İletişim sayfası", "Aktif", "success"],
                 ["Harita", textValue(data.map_embed_url) ? "Aktif" : "Eksik", textValue(data.map_embed_url) ? "success" : "danger"],
                 ["Genel SEO", "Kısmi", "warning"],
+                ["Sitelinks Hazırlığı", "Teknik altyapı hazır / Google tarafından otomatik belirlenir", "success"],
                 ["Sayfa bazlı SEO", "Gelecek geliştirme", "warning"],
                 ["Chatbot WhatsApp entegrasyonu", "Ayrı yapı / kontrol gerekli", "warning"],
               ].map(([label, status, tone]) => (

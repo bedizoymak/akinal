@@ -15,7 +15,15 @@ const SERVICES = [
 export default function Services() {
   return (
     <>
-      <Seo title="Hizmetlerimiz" description="Kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim ve proje geliştirme hizmetleri." />
+      <Seo
+        title="Hizmetlerimiz"
+        description="Akınal İnşaat'ın kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme hizmetlerini inceleyin."
+        canonical="/hizmetlerimiz"
+        breadcrumbs={[
+          { name: "Ana Sayfa", path: "/" },
+          { name: "Hizmetlerimiz", path: "/hizmetlerimiz" },
+        ]}
+      />
       <section className="py-16 md:py-24 bg-gradient-dark text-white">
         <div className="container-narrow">
           <div className="text-xs uppercase tracking-[0.2em] text-accent font-semibold mb-3">Hizmetlerimiz</div>

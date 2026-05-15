@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://akinalinsaat.com/</loc>
+  </url>
+  <url>
+    <loc>https://akinalinsaat.com/hakkimizda</loc>
+  </url>
+  <url>
+    <loc>https://akinalinsaat.com/hizmetlerimiz</loc>
+  </url>
+  <url>
+    <loc>https://akinalinsaat.com/projelerimiz</loc>
+  </url>
+  <url>
+    <loc>https://akinalinsaat.com/kentsel-donusum</loc>
+  </url>
+  <url>
+    <loc>https://akinalinsaat.com/iletisim</loc>
+  </url>
+  <!-- TODO: Dynamic project detail URLs are not included because they cannot be generated safely at build time yet. -->
+</urlset>
