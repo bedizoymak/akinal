@@ -28,11 +28,7 @@ import sampleProject1 from "@/assets/sample-project-1.jpg";
 import sampleProject2 from "@/assets/sample-project-2.jpg";
 import sampleProject3 from "@/assets/sample-project-3.jpg";
 import blueprintPattern from "@/assets/homepage/blueprint-pattern.svg";
-import constructionGrid from "@/assets/homepage/construction-grid.svg";
-import buildingLines from "@/assets/homepage/building-lines.svg";
 import urbanSilhouette from "@/assets/homepage/urban-silhouette.svg";
-import architecturalFrame from "@/assets/homepage/architectural-frame.svg";
-import facadePattern from "@/assets/homepage/facade-pattern.svg";
 
 const TRUST = ["Kentsel Dönüşüm Uzmanlığı", "Şeffaf Süreç Yönetimi", "Anahtar Teslim Çözümler", "Teknik ve Güvenilir Yaklaşım"];
 
@@ -43,12 +39,12 @@ const VALUES = [
 ];
 
 const SERVICES = [
-  { title: "Kentsel Dönüşüm", text: "Riskli yapıların yenilenmesi, fizibilite çalışmaları, hak sahipleriyle süreç yönetimi ve uygulama desteği.", icon: HardHat, visual: blueprintPattern },
-  { title: "Kat Karşılığı İnşaat", text: "Arsa sahipleri için güvenilir, şeffaf ve değer odaklı kat karşılığı proje geliştirme çözümleri.", icon: Building, visual: constructionGrid },
-  { title: "Anahtar Teslim İnşaat", text: "Planlamadan teslim aşamasına kadar tüm inşaat sürecinin tek elden profesyonel yönetimi.", icon: Hammer, visual: architecturalFrame },
-  { title: "Proje Geliştirme", text: "Arsa, konum, imar durumu ve yatırım potansiyeline göre uygulanabilir proje senaryolarının oluşturulması.", icon: ClipboardList, visual: buildingLines },
-  { title: "Ruhsat ve Resmi Süreç Takibi", text: "Belediye, ruhsat, proje onay ve yasal süreçlerin düzenli ve kontrollü şekilde takip edilmesi.", icon: FileCheck, visual: facadePattern },
-  { title: "Riskli Yapı Danışmanlığı", text: "Bina sahipleri için ön değerlendirme, süreç bilgilendirme ve dönüşüm yol haritası desteği.", icon: ShieldCheck, visual: urbanSilhouette },
+  { title: "Kentsel Dönüşüm", text: "Riskli yapıların yenilenmesi, fizibilite çalışmaları, hak sahipleriyle süreç yönetimi ve uygulama desteği.", icon: HardHat },
+  { title: "Kat Karşılığı İnşaat", text: "Arsa sahipleri için güvenilir, şeffaf ve değer odaklı kat karşılığı proje geliştirme çözümleri.", icon: Building },
+  { title: "Anahtar Teslim İnşaat", text: "Planlamadan teslim aşamasına kadar tüm inşaat sürecinin tek elden profesyonel yönetimi.", icon: Hammer },
+  { title: "Proje Geliştirme", text: "Arsa, konum, imar durumu ve yatırım potansiyeline göre uygulanabilir proje senaryolarının oluşturulması.", icon: ClipboardList },
+  { title: "Ruhsat ve Resmi Süreç Takibi", text: "Belediye, ruhsat, proje onay ve yasal süreçlerin düzenli ve kontrollü şekilde takip edilmesi.", icon: FileCheck },
+  { title: "Riskli Yapı Danışmanlığı", text: "Bina sahipleri için ön değerlendirme, süreç bilgilendirme ve dönüşüm yol haritası desteği.", icon: ShieldCheck },
 ];
 
 const STEPS = [
@@ -131,13 +127,9 @@ export default function Home() {
 
       {/* ABOUT */}
       <section className="relative overflow-hidden py-20 md:py-28">
-        <div className="absolute inset-y-0 right-0 hidden w-1/2 bg-surface-light lg:block" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,hsl(var(--accent)/0.08),transparent_34%),linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--surface-light)/0.55)_100%)]" />
-        {/* Temporary decorative visual; replace with real Akınal project imagery before production if needed. */}
-        <img src={architecturalFrame} alt="" aria-hidden="true" className="absolute -left-32 top-20 hidden h-[420px] w-[420px] rotate-6 object-cover opacity-[0.08] lg:block" />
-        <img src={blueprintPattern} alt="" aria-hidden="true" className="absolute -right-28 bottom-10 hidden h-[520px] w-[620px] object-cover opacity-[0.08] lg:block" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-surface-light/40 to-background" />
         <div className="container-narrow relative">
-          <div className="grid items-center gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
+          <div className="grid items-center gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
             <div>
               <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Hakkımızda</div>
               <h2 className="mb-6 font-display text-3xl font-bold leading-tight md:text-5xl">Güvenli yapılar için planlı, teknik ve şeffaf yaklaşım</h2>
@@ -154,8 +146,8 @@ export default function Home() {
               </div>
               <div className="mt-8 grid gap-3 sm:grid-cols-3">
                 {VALUES.map((value) => (
-                  <div key={value.title} className="group rounded-lg border border-border/80 bg-card/90 p-4 shadow-card-soft backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-elegant">
-                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-accent-foreground">
+                  <div key={value.title} className="rounded-lg border border-border bg-card p-4 shadow-card-soft transition-all duration-300 hover:-translate-y-1 hover:border-accent/35">
+                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-accent/10 text-accent">
                       <value.icon className="h-5 w-5" />
                     </div>
                     <h3 className="font-display text-lg font-bold">{value.title}</h3>
@@ -165,32 +157,14 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="relative lg:min-h-[620px]">
-              <div className="absolute -left-5 top-10 hidden h-40 w-40 border-l border-t border-accent/35 lg:block" />
-              <div className="absolute -right-4 bottom-16 hidden h-48 w-48 border-b border-r border-primary/25 lg:block" />
-              <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-elegant lg:ml-10">
+            <div className="relative">
+              <div className="absolute -inset-4 hidden rounded-lg border border-accent/15 lg:block" />
+              <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-elegant">
                 <img src={sampleProject1} alt="Akınal İnşaat proje uygulama yaklaşımı" className="aspect-[4/3] w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-secondary/80 via-secondary/20 to-transparent" />
-                <img src={blueprintPattern} alt="" aria-hidden="true" className="absolute inset-y-0 right-0 w-1/2 object-cover opacity-20 mix-blend-screen" />
-                <div className="absolute bottom-5 left-5 right-5 rounded-lg border border-white/15 bg-white/90 p-4 shadow-card-soft backdrop-blur">
+                <div className="border-t border-border bg-card p-5">
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Akınal Yaklaşımı</div>
                   <div className="mt-1 font-display text-xl font-bold text-foreground">Projeye başlamadan önce netlik sağlarız.</div>
                 </div>
-              </div>
-              <div className="absolute -left-1 bottom-10 hidden w-[42%] overflow-hidden rounded-lg border border-white bg-card shadow-elegant sm:block">
-                <img src={sampleProject2} alt="Akınal İnşaat saha ve uygulama görseli" className="aspect-[4/3] w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-primary/75 to-transparent" />
-                <div className="absolute bottom-4 left-4 right-4 text-sm font-semibold text-white">Saha, planlama ve uygulama aynı çerçevede ilerler.</div>
-              </div>
-              <div className="absolute -right-1 top-8 hidden w-[36%] overflow-hidden rounded-lg border border-border bg-card p-3 shadow-card-soft md:block">
-                <img src={architecturalFrame} alt="" aria-hidden="true" className="aspect-square w-full rounded-md object-cover opacity-80" />
-              </div>
-              <div className="absolute right-8 top-[46%] hidden max-w-[240px] rounded-lg border border-border bg-white/95 p-4 shadow-elegant backdrop-blur md:block">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <div className="font-display text-lg font-bold">Şeffaf karar zemini</div>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">İlk değerlendirmeden teslim adımına kadar anlaşılır süreç dili.</p>
               </div>
             </div>
           </div>
@@ -199,10 +173,6 @@ export default function Home() {
 
       {/* SERVICES */}
       <section className="relative overflow-hidden bg-surface-light py-20 md:py-28">
-        <div className="absolute left-0 top-0 h-40 w-full bg-gradient-to-b from-background to-transparent" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_18%,hsl(var(--accent)/0.1),transparent_30%)]" />
-        {/* Temporary decorative visual; replace with real Akınal project imagery before production if needed. */}
-        <img src={constructionGrid} alt="" aria-hidden="true" className="absolute -left-24 top-24 hidden h-[560px] w-[760px] object-cover opacity-[0.16] mix-blend-multiply lg:block" />
         <div className="container-narrow relative">
           <div className="mb-14 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
@@ -214,62 +184,32 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="mb-10 grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="relative min-h-[320px] overflow-hidden rounded-lg border border-border bg-secondary shadow-elegant">
-              <img src={sampleProject3} alt="Akınal İnşaat hizmet kapsamı" className="absolute inset-0 h-full w-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-r from-secondary/90 via-secondary/55 to-secondary/10" />
-              <img src={facadePattern} alt="" aria-hidden="true" className="absolute inset-y-0 right-0 h-full w-1/2 object-cover opacity-25 mix-blend-screen" />
-              <div className="relative flex min-h-[320px] max-w-xl flex-col justify-end p-6 text-white md:p-8">
-                <div className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-accent backdrop-blur">
+          <div className="mb-10 overflow-hidden rounded-lg border border-border bg-card shadow-elegant">
+            <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
+              <img src={sampleProject3} alt="Akınal İnşaat hizmet kapsamı" className="aspect-[16/10] h-full w-full object-cover lg:aspect-auto" />
+              <div className="flex flex-col justify-center p-6 md:p-8 lg:p-10">
+                <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
                   <Building className="h-3.5 w-3.5" /> Uçtan Uca Hizmet
                 </div>
-                <h3 className="font-display text-2xl font-bold md:text-4xl">Teknik plan, resmi süreç ve saha uygulaması birlikte yönetilir.</h3>
-                <p className="mt-4 text-sm leading-relaxed text-white/75">
+                <h3 className="font-display text-2xl font-bold leading-tight md:text-4xl">Teknik plan, resmi süreç ve saha uygulaması birlikte yönetilir.</h3>
+                <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
                   Projenin başlangıç kararlarından teslim aşamasına kadar her başlık aynı kalite çizgisinde ele alınır.
                 </p>
-              </div>
-            </div>
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1">
-              <div className="relative overflow-hidden rounded-lg border border-border bg-card p-6 shadow-card-soft">
-                <img src={architecturalFrame} alt="" aria-hidden="true" className="absolute -right-14 -top-14 h-56 w-56 object-cover opacity-20" />
-                <div className="relative">
-                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                    <Compass className="h-5 w-5" />
-                  </div>
-                  <h3 className="font-display text-xl font-bold">Doğru başlangıç</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">İmar, ihtiyaç, maliyet ve uygulama gerçekleri ilk aşamada birlikte değerlendirilir.</p>
-                </div>
-              </div>
-              <div className="relative overflow-hidden rounded-lg border border-primary/15 bg-primary p-6 text-primary-foreground shadow-elegant">
-                <img src={blueprintPattern} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-25 mix-blend-screen" />
-                <div className="relative">
-                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md bg-white/10 text-accent">
-                    <FileCheck className="h-5 w-5" />
-                  </div>
-                  <h3 className="font-display text-xl font-bold">Kontrollü ilerleme</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-primary-foreground/75">Resmi takip, saha koordinasyonu ve karar süreçleri tek bir net yol haritasında toplanır.</p>
-                </div>
               </div>
             </div>
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {SERVICES.map((service) => (
-              <div key={service.title} className="group relative min-h-[300px] overflow-hidden rounded-lg border border-border bg-card shadow-card-soft transition-all duration-300 hover:-translate-y-1 hover:border-accent/50 hover:shadow-elegant">
-                <div className="relative h-28 overflow-hidden bg-primary">
-                  <img src={service.visual} alt="" aria-hidden="true" className="h-full w-full object-cover opacity-55 transition-transform duration-500 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary/90 via-primary/60 to-accent/30" />
-                  <div className="absolute bottom-4 left-5 flex h-12 w-12 items-center justify-center rounded-lg bg-white text-primary shadow-card-soft transition-colors group-hover:bg-accent group-hover:text-accent-foreground">
-                    <service.icon className="h-6 w-6" />
-                  </div>
+              <div key={service.title} className="group relative rounded-lg border border-border bg-card p-6 shadow-card-soft transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-elegant">
+                <div className="absolute inset-x-0 top-0 h-1 bg-accent/70 opacity-70 transition-opacity group-hover:opacity-100" />
+                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-md bg-primary/5 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <service.icon className="h-6 w-6" />
                 </div>
-                <div className="relative p-6">
-                  <div className="absolute right-5 top-6 h-16 w-16 border-r border-t border-accent/20 transition-all duration-300 group-hover:h-20 group-hover:w-20" />
-                  <h3 className="font-display text-xl font-bold">{service.title}</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{service.text}</p>
-                  <div className="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.16em] text-accent opacity-0 transition-all duration-300 group-hover:translate-x-1 group-hover:opacity-100">
-                    Detaylı bilgi <ArrowRight className="ml-2 h-3.5 w-3.5" />
-                  </div>
+                <h3 className="font-display text-xl font-bold">{service.title}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{service.text}</p>
+                <div className="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.16em] text-accent opacity-0 transition-all duration-300 group-hover:translate-x-1 group-hover:opacity-100">
+                  Detaylı bilgi <ArrowRight className="ml-2 h-3.5 w-3.5" />
                 </div>
               </div>
             ))}
@@ -280,8 +220,7 @@ export default function Home() {
       {/* KENTSEL DÖNÜŞÜM TIMELINE */}
       <section className="relative overflow-hidden py-20 md:py-28">
         {/* Temporary decorative visual; replace with real Akınal project imagery before production if needed. */}
-        <img src={blueprintPattern} alt="" aria-hidden="true" className="absolute -right-32 top-12 hidden h-[520px] w-[680px] object-cover opacity-[0.06] lg:block" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--surface-light)/0.72)_48%,hsl(var(--background))_100%)]" />
+        <img src={blueprintPattern} alt="" aria-hidden="true" className="absolute -right-40 top-10 hidden h-[560px] w-[680px] object-cover opacity-[0.045] lg:block" />
         <div className="container-narrow relative">
           <div className="mb-14 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
             <div>
@@ -293,46 +232,11 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="mb-12 grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
-            <div className="relative overflow-hidden rounded-lg border border-border bg-primary p-6 text-primary-foreground shadow-elegant md:p-8">
-              <img src={blueprintPattern} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-35 mix-blend-screen" />
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/75 to-secondary/60" />
-              <div className="relative">
-                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-accent backdrop-blur">
-                  <ClipboardList className="h-3.5 w-3.5" /> Süreç Haritası
-                </div>
-                <div className="relative grid gap-4">
-                  {["Analiz", "Fizibilite", "Planlama", "Uygulama"].map((item, index) => (
-                    <div key={item} className="relative flex items-center gap-4 rounded-lg border border-white/10 bg-white/[0.07] p-4 backdrop-blur">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground font-display text-sm font-bold">
-                        {String(index + 1).padStart(2, "0")}
-                      </div>
-                      <div>
-                        <div className="font-display text-lg font-bold">{item}</div>
-                        <div className="text-xs text-primary-foreground/65">Net karar ve kontrollü ilerleme</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="relative min-h-[360px] overflow-hidden rounded-lg border border-border bg-card shadow-elegant">
-              <img src={sampleProject2} alt="Akınal İnşaat kentsel dönüşüm süreci" className="absolute inset-0 h-full w-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-secondary/85 via-secondary/25 to-transparent" />
-              <img src={constructionGrid} alt="" aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1/2 w-full object-cover opacity-20 mix-blend-screen" />
-              <div className="absolute bottom-5 left-5 right-5 rounded-lg border border-white/15 bg-white/90 p-5 shadow-card-soft backdrop-blur">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Dönüşüm Yolculuğu</div>
-                <div className="mt-1 font-display text-2xl font-bold text-foreground">Her adım teknik, resmi ve uygulama başlıklarıyla birlikte okunur.</div>
-              </div>
-            </div>
-          </div>
-
           <div className="relative">
-            <div className="absolute left-6 top-8 hidden h-[calc(100%-4rem)] w-px bg-gradient-to-b from-accent/0 via-accent/50 to-accent/0 md:block lg:left-0 lg:top-1/2 lg:h-px lg:w-full" />
+            <div className="absolute left-6 top-8 hidden h-[calc(100%-4rem)] w-px bg-border md:block lg:left-0 lg:top-1/2 lg:h-px lg:w-full" />
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {STEPS.map((step, index) => (
-                <div key={step.title} className="group relative overflow-hidden rounded-lg border border-border bg-card p-5 shadow-card-soft transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-elegant">
-                  <div className="absolute -right-12 -top-12 h-28 w-28 rounded-full bg-accent/5 transition-transform duration-500 group-hover:scale-125" />
+                <div key={step.title} className="relative rounded-lg border border-border bg-card p-5 shadow-card-soft transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-elegant">
                   <div className="mb-5 flex items-center justify-between gap-3">
                     <div className="flex h-11 w-11 items-center justify-center rounded-md bg-accent text-accent-foreground shadow-accent-glow">
                       <step.icon className="h-5 w-5" />
@@ -350,35 +254,20 @@ export default function Home() {
 
       {/* WHY US — DARK */}
       <section className="relative overflow-hidden bg-gradient-dark py-20 text-white md:py-28">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,hsl(var(--accent)/0.26),transparent_30%),linear-gradient(180deg,transparent_0%,hsl(0_0%_0%/0.2)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,hsl(var(--accent)/0.18),transparent_32%)]" />
         {/* Temporary decorative visual; replace with real Akınal project imagery before production if needed. */}
-        <img src={urbanSilhouette} alt="" aria-hidden="true" className="absolute inset-x-0 bottom-0 h-72 w-full object-cover opacity-35 mix-blend-screen" />
-        <img src={facadePattern} alt="" aria-hidden="true" className="absolute -right-28 top-10 hidden h-[520px] w-[620px] object-cover opacity-20 mix-blend-screen lg:block" />
+        <img src={urbanSilhouette} alt="" aria-hidden="true" className="absolute inset-x-0 bottom-0 h-64 w-full object-cover opacity-[0.18] mix-blend-screen" />
         <div className="container-narrow relative">
-          <div className="mb-14 grid gap-8 lg:grid-cols-[0.95fr_0.75fr] lg:items-end">
-            <div className="max-w-3xl">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Neden Akınal?</div>
-              <h2 className="font-display text-3xl font-bold leading-tight md:text-5xl">Güven, teknik disiplin ve şeffaf yönetim aynı masada</h2>
-              <p className="mt-5 text-white/70 leading-relaxed">
-                Her proje; hak sahipleri, yatırımcılar ve kullanıcılar için netlik gerektirir. Akınal İnşaat bu netliği tasarım, resmi süreç, saha uygulaması ve iletişim başlıklarında birlikte kurar.
-              </p>
-            </div>
-            <div className="relative overflow-hidden rounded-lg border border-white/10 bg-white/[0.06] p-4 shadow-elegant backdrop-blur">
-              <div className="relative overflow-hidden rounded-md">
-                <img src={sampleProject1} alt="Akınal İnşaat güven veren uygulama yaklaşımı" className="aspect-[16/10] w-full object-cover opacity-80" />
-                <div className="absolute inset-0 bg-gradient-to-t from-secondary/85 via-secondary/20 to-transparent" />
-                <img src={buildingLines} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-35 mix-blend-screen" />
-                <div className="absolute bottom-4 left-4 right-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Güven Alanı</div>
-                  <div className="mt-1 font-display text-xl font-bold">Karar, saha ve teslim çizgisi net tutulur.</div>
-                </div>
-              </div>
-            </div>
+          <div className="mb-14 max-w-3xl">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Neden Akınal?</div>
+            <h2 className="font-display text-3xl font-bold leading-tight md:text-5xl">Güven, teknik disiplin ve şeffaf yönetim aynı masada</h2>
+            <p className="mt-5 text-white/70 leading-relaxed">
+              Her proje; hak sahipleri, yatırımcılar ve kullanıcılar için netlik gerektirir. Akınal İnşaat bu netliği tasarım, resmi süreç, saha uygulaması ve iletişim başlıklarında birlikte kurar.
+            </p>
           </div>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
             {REASONS.map((reason, index) => (
-              <div key={reason.title} className="group relative overflow-hidden rounded-lg border border-white/10 bg-white/[0.07] p-6 shadow-card-soft backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-accent/50 hover:bg-white/[0.1]">
-                <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full border border-accent/20 transition-transform duration-500 group-hover:scale-125" />
+              <div key={reason.title} className="rounded-lg border border-white/10 bg-white/[0.06] p-6 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:bg-white/[0.09]">
                 <div className="mb-5 font-display text-3xl font-bold text-accent">{String(index + 1).padStart(2, "0")}</div>
                 <h3 className="font-display text-lg font-bold">{reason.title}</h3>
                 <p className="mt-3 text-sm leading-relaxed text-white/70">{reason.text}</p>
@@ -414,32 +303,13 @@ export default function Home() {
 
       {/* APPROACH */}
       <section className="relative overflow-hidden bg-surface-light py-20 md:py-28">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,hsl(var(--accent)/0.12),transparent_34%),linear-gradient(135deg,hsl(var(--surface-light))_0%,hsl(var(--background))_100%)]" />
-        {/* Temporary decorative visual; replace with real Akınal project imagery before production if needed. */}
-        <img src={architecturalFrame} alt="" aria-hidden="true" className="absolute -right-20 -top-24 hidden h-[520px] w-[520px] rotate-12 object-cover opacity-[0.12] lg:block" />
         <div className="container-narrow relative">
           <div className="grid gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-center">
-            <div className="relative lg:min-h-[520px]">
-              <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-elegant">
-                <img src={sampleProject3} alt="Akınal İnşaat proje değerlendirme yaklaşımı" className="aspect-[4/5] w-full object-cover md:aspect-[5/4] lg:aspect-[4/5]" />
-                <div className="absolute inset-0 bg-gradient-to-t from-secondary/85 via-secondary/20 to-transparent" />
-                <img src={blueprintPattern} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-20 mix-blend-screen" />
-                <div className="absolute bottom-5 left-5 right-5 rounded-lg border border-white/15 bg-white/90 p-5 text-foreground shadow-card-soft backdrop-blur">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Başlangıç Netliği</div>
-                  <div className="mt-1 font-display text-2xl font-bold">Projeye başlamadan önce teknik çerçeve görünür olur.</div>
-                </div>
-              </div>
-              <div className="absolute -right-3 top-10 hidden w-56 rounded-lg border border-border bg-card p-4 shadow-elegant md:block">
-                <img src={constructionGrid} alt="" aria-hidden="true" className="mb-4 aspect-[16/9] w-full rounded-md object-cover opacity-70" />
-                <div className="font-display text-lg font-bold">Ön değerlendirme</div>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Arsa, yapı ve süreç başlıkları birlikte incelenir.</p>
-              </div>
-              <div className="absolute -left-3 bottom-12 hidden max-w-[260px] rounded-lg border border-primary/15 bg-primary p-4 text-primary-foreground shadow-elegant md:block">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-white/10 text-accent">
-                  <Compass className="h-5 w-5" />
-                </div>
-                <div className="font-display text-lg font-bold">Şeffaf yönlendirme</div>
-                <p className="mt-1 text-xs leading-relaxed text-primary-foreground/70">Karar almadan önce yol haritası anlaşılır hale gelir.</p>
+            <div className="overflow-hidden rounded-lg border border-border bg-card shadow-elegant">
+              <img src={sampleProject3} alt="Akınal İnşaat proje değerlendirme yaklaşımı" className="aspect-[4/3] w-full object-cover" />
+              <div className="border-t border-border bg-card p-5">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Başlangıç Netliği</div>
+                <div className="mt-1 font-display text-xl font-bold">Teknik çerçeve sade, anlaşılır ve uygulanabilir şekilde kurulur.</div>
               </div>
             </div>
 
@@ -451,9 +321,8 @@ export default function Home() {
               </p>
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 {APPROACH.map((item) => (
-                  <div key={item.title} className="group relative overflow-hidden rounded-lg border border-border bg-card/95 p-6 shadow-card-soft backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-elegant">
-                    <div className="absolute right-0 top-0 h-20 w-20 translate-x-8 -translate-y-8 rounded-full bg-accent/5 transition-transform duration-500 group-hover:scale-125" />
-                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md bg-primary/5 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <div key={item.title} className="rounded-lg border border-border bg-card p-6 shadow-card-soft transition-all duration-300 hover:-translate-y-1 hover:border-accent/40">
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md bg-primary/5 text-primary">
                       <item.icon className="h-5 w-5" />
                     </div>
                     <h3 className="font-display text-lg font-bold">{item.title}</h3>
@@ -469,29 +338,16 @@ export default function Home() {
       {/* MAIN CTA */}
       <section className="relative overflow-hidden bg-primary py-20 text-primary-foreground md:py-28">
         <img src={sampleProject2} alt="Akınal İnşaat iletişim ve ön değerlendirme" className="absolute inset-0 h-full w-full object-cover opacity-20" />
-        <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/95 to-secondary/80" />
-        {/* Temporary decorative visual; replace with real Akınal project imagery before production if needed. */}
-        <img src={urbanSilhouette} alt="" aria-hidden="true" className="absolute inset-x-0 bottom-0 h-64 w-full object-cover opacity-30 mix-blend-screen" />
-        <img src={blueprintPattern} alt="" aria-hidden="true" className="absolute -right-20 top-0 hidden h-full w-[560px] object-cover opacity-25 mix-blend-screen lg:block" />
-        <div className="absolute inset-0 opacity-25" style={{ background: "radial-gradient(circle at 82% 20%, hsl(var(--accent)) 0%, transparent 48%)" }} />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/95 to-secondary/85" />
         <div className="container-narrow relative">
-          <div className="relative overflow-hidden rounded-lg border border-white/15 bg-white/[0.08] p-4 shadow-elegant backdrop-blur md:p-8">
-            <div className="absolute left-4 top-4 h-24 w-24 border-l border-t border-accent/40" />
-            <div className="absolute bottom-4 right-4 h-24 w-24 border-b border-r border-white/20" />
-            <div className="relative grid gap-10 lg:grid-cols-[1fr_0.85fr] lg:items-center">
+          <div className="rounded-lg border border-white/15 bg-white/[0.08] p-6 shadow-elegant backdrop-blur md:p-10">
+            <div className="grid gap-10 lg:grid-cols-[1fr_0.85fr] lg:items-center">
               <div>
                 <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Ön Değerlendirme</div>
                 <h2 className="font-display text-3xl font-bold leading-tight md:text-5xl">Binanız veya arsanız için doğru yol haritasını birlikte çıkaralım</h2>
                 <p className="mt-5 max-w-2xl text-base leading-relaxed text-primary-foreground/80 md:text-lg">
                   Kentsel dönüşüm, kat karşılığı inşaat veya proje geliştirme ihtiyaçlarınız için Akınal İnşaat ile iletişime geçin. Ekibimiz, projeniz için en uygun başlangıç adımını belirlemek üzere sizinle görüşsün.
                 </p>
-                <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                  {["İhtiyacı dinleyelim", "Teknik çerçeveyi çıkaralım", "İlk adımı netleştirelim"].map((item) => (
-                    <div key={item} className="rounded-lg border border-white/10 bg-white/[0.07] p-4 text-sm font-semibold text-white/85 backdrop-blur">
-                      {item}
-                    </div>
-                  ))}
-                </div>
               </div>
               <div className="rounded-lg border border-white/15 bg-white/10 p-5 shadow-elegant backdrop-blur">
                 <div className="mb-5 flex items-center gap-3">
