@@ -3,9 +3,10 @@ const ALLOWED_ORIGINS = [
   "http://127.0.0.1:8080",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
-  // TODO: Confirm the final production domain before launch.
   "https://akinalinsaat.com",
   "https://www.akinalinsaat.com",
+  "https://akinalinsaat.com.tr",
+  "https://www.akinalinsaat.com.tr",
 ];
 
 const baseCorsHeaders = {
