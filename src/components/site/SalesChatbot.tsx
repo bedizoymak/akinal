@@ -1,29 +1,13 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Building2, MessageCircle, Send, Sparkles, X } from "lucide-react";
+import { Bot, MessageCircle, Mic, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { getWhatsAppLink, useSiteSettings } from "@/hooks/useSiteSettings";
 import { cn } from "@/lib/utils";
 
-const ASSISTANT_NAME = "Akınal İnşaat Dijital Danışmanı";
+const ASSISTANT_NAME = "AKINAL Yapay Zeka Asistanı";
 const MESSAGE_LIMIT = 500;
-
-const initialMessages: ChatMessage[] = [
-  {
-    id: "welcome",
-    role: "assistant",
-    text: "Merhaba, ben Akınal İnşaat Dijital Danışmanı. Projelerimiz, kentsel dönüşüm ve iletişim konularında size yardımcı olabilirim.",
-  },
-];
-
-const quickActions = [
-  "Projeleriniz hakkında bilgi almak istiyorum",
-  "Kentsel dönüşüm hakkında bilgi almak istiyorum",
-  "Kat karşılığı inşaat yapıyor musunuz?",
-  "Satış temsilcisiyle görüşmek istiyorum",
-  "İletişim bilgilerinizi paylaşır mısınız?",
-];
 
 type ChatMessage = {
   id: string;
@@ -32,6 +16,22 @@ type ChatMessage = {
   isLoading?: boolean;
   isError?: boolean;
 };
+
+const initialMessages: ChatMessage[] = [
+  {
+    id: "welcome",
+    role: "assistant",
+    text: "Görüştüğümüze sevindim. Size nasıl yardımcı olabilirim?",
+  },
+];
+
+const quickActions = [
+  { label: "Projeler", message: "Projeleriniz hakkında bilgi almak istiyorum" },
+  { label: "Kentsel Dönüşüm", message: "Kentsel dönüşüm hakkında bilgi almak istiyorum" },
+  { label: "Kat Karşılığı", message: "Kat karşılığı inşaat yapıyor musunuz?" },
+  { label: "Satış Görüşmesi", message: "Satış temsilcisiyle görüşmek istiyorum" },
+  { label: "İletişim", message: "İletişim bilgilerinizi paylaşır mısınız?" },
+];
 
 function createMessage(role: ChatMessage["role"], text: string, extras?: Partial<ChatMessage>): ChatMessage {
   return {
@@ -74,7 +74,7 @@ function getLocalFallbackResponse(question: string) {
   }
 
   if (includesAny(normalized, ["iletisim", "telefon", "whatsapp", "adres", "konum", "nerede", "ulasim"])) {
-    return "İletişim bilgileri ve konum için İletişim sayfasını ziyaret edebilirsiniz: /iletisim. Dilerseniz aşağıdaki WhatsApp butonuyla doğrudan satış ekibine bağlanabilirsiniz.";
+    return "İletişim bilgileri ve konum için İletişim sayfasını ziyaret edebilirsiniz: /iletisim. Dilerseniz satış ekibine bağlan bağlantısıyla doğrudan WhatsApp görüşmesi başlatabilirsiniz.";
   }
 
   if (includesAny(normalized, ["hizmet", "ne yapiyorsunuz", "ne is yapiyorsunuz", "insaat"])) {
@@ -94,6 +94,27 @@ function getHistoryForFunction(messages: ChatMessage[]) {
     }));
 }
 
+function AssistantAvatar() {
+  return (
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent ring-1 ring-accent/15">
+      <Bot className="h-5 w-5" />
+    </div>
+  );
+}
+
+function TypingBubble() {
+  return (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <span>AKINAL yazıyor</span>
+      <span className="flex items-center gap-1" aria-hidden="true">
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.2s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.1s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50" />
+      </span>
+    </div>
+  );
+}
+
 export default function SalesChatbot() {
   const { settings } = useSiteSettings();
   const [isOpen, setIsOpen] = useState(false);
@@ -107,6 +128,8 @@ export default function SalesChatbot() {
     () => getWhatsAppLink(settings.whatsapp_number, settings.whatsapp_message),
     [settings.whatsapp_number, settings.whatsapp_message],
   );
+
+  const showCharacterCount = input.length >= 420 || Boolean(formError);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -125,7 +148,7 @@ export default function SalesChatbot() {
     setFormError("");
     const history = getHistoryForFunction(messages);
     const visitorMessage = createMessage("visitor", text);
-    const loadingMessage = createMessage("assistant", "Yanıt hazırlanıyor...", { isLoading: true });
+    const loadingMessage = createMessage("assistant", "AKINAL yazıyor...", { isLoading: true });
 
     setMessages((current) => [...current, visitorMessage, loadingMessage]);
     setInput("");
@@ -173,107 +196,109 @@ export default function SalesChatbot() {
   }
 
   return (
-    <div className="fixed bottom-24 right-5 z-40 flex flex-col items-end gap-3 md:bottom-28 md:right-6">
+    <>
       {isOpen && (
         <section
-          aria-label="Akınal İnşaat dijital danışmanı"
-          className="w-[calc(100vw-2rem)] max-w-[420px] overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-elegant animate-in fade-in slide-in-from-bottom-3 zoom-in-95 duration-200"
+          aria-label="AKINAL Yapay Zeka Asistanı"
+          className="fixed inset-0 z-40 flex h-[100dvh] w-screen flex-col overflow-hidden bg-background text-foreground shadow-elegant animate-in fade-in slide-in-from-bottom-3 duration-200 sm:inset-auto sm:bottom-28 sm:right-6 sm:h-[min(620px,calc(100dvh-8rem))] sm:w-[420px] sm:rounded-2xl sm:border sm:border-border sm:bg-card"
         >
-          <div className="bg-gradient-dark px-4 py-4 text-white">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/12 ring-1 ring-white/20">
-                  <Building2 className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-sans text-sm font-bold leading-tight tracking-normal">{ASSISTANT_NAME}</h2>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-100 ring-1 ring-emerald-300/25">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-                      Aktif
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs leading-relaxed text-white/75">Projeler, kentsel dönüşüm ve iletişim için yardımcı olur.</p>
-                </div>
+          <header className="flex shrink-0 items-center gap-3 border-b border-border/70 bg-card/95 px-4 py-4 backdrop-blur">
+            <AssistantAvatar />
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-2">
+                <h2 className="truncate font-sans text-sm font-bold tracking-normal text-foreground">{ASSISTANT_NAME}</h2>
+                <span className="hidden shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100 min-[380px]:inline-flex">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Aktif
+                </span>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label="Sohbeti kapat"
-                title="Sohbeti kapat"
-                onClick={() => setIsOpen(false)}
-                className="h-8 w-8 shrink-0 text-white hover:bg-white/10 hover:text-white"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <p className="mt-1 truncate text-xs text-muted-foreground">Projeler ve kentsel dönüşüm hakkında yardımcı olur.</p>
             </div>
-          </div>
-
-          <div className="space-y-4 p-4">
-            <div className="max-h-[310px] space-y-3 overflow-y-auto pr-1">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "flex animate-in fade-in slide-in-from-bottom-1 duration-150",
-                    message.role === "visitor" ? "justify-end" : "justify-start",
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "max-w-[86%] rounded-lg px-3 py-2 text-sm leading-relaxed",
-                      message.role === "visitor"
-                        ? "bg-primary text-primary-foreground"
-                        : "border border-border bg-surface-light text-foreground",
-                      message.isLoading && "text-muted-foreground",
-                    )}
-                  >
-                    {message.text}
-                  </div>
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                <Sparkles className="h-3.5 w-3.5" />
-                Hızlı Başlangıç
-              </div>
-              <div className="grid gap-2">
-                {quickActions.map((question) => (
-                  <Button
-                    key={question}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isSending}
-                    onClick={() => sendMessage(question)}
-                    className="h-auto justify-start whitespace-normal rounded-md px-3 py-2 text-left text-xs leading-relaxed hover:border-accent hover:bg-accent/5"
-                  >
-                    {question}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <Button asChild className="w-full bg-[#25D366] font-semibold text-white hover:bg-[#1fb856]">
+            <Button asChild variant="ghost" size="sm" className="hidden h-8 px-2 text-xs text-muted-foreground hover:text-accent min-[380px]:inline-flex">
               <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                <MessageCircle className="h-4 w-4" />
-                WhatsApp ile Satış Ekibine Bağlan
+                Satış ekibine bağlan
               </a>
             </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Sohbeti kapat"
+              title="Sohbeti kapat"
+              onClick={() => setIsOpen(false)}
+              className="h-9 w-9 shrink-0 rounded-full"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </header>
 
-            <form onSubmit={handleSubmit} className="space-y-2">
-              <div className="flex gap-2">
+          <div className="flex min-h-0 flex-1 flex-col bg-gradient-to-b from-surface-light/60 to-background">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-5">
+              <div className="space-y-5">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={cn(
+                      "flex animate-in fade-in slide-in-from-bottom-1 duration-150",
+                      message.role === "visitor" ? "justify-end" : "justify-start",
+                    )}
+                  >
+                    {message.role === "assistant" && (
+                      <div className="mr-2 mt-1 hidden sm:block">
+                        <AssistantAvatar />
+                      </div>
+                    )}
+                    <div
+                      className={cn(
+                        "max-w-[84%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm",
+                        message.role === "visitor"
+                          ? "rounded-br-md bg-accent text-accent-foreground"
+                          : "rounded-bl-md bg-white text-foreground ring-1 ring-border/70",
+                        message.isLoading && "bg-white text-muted-foreground",
+                      )}
+                    >
+                      {message.isLoading ? <TypingBubble /> : message.text}
+                    </div>
+                  </div>
+                ))}
+
+                <div className="flex gap-2 overflow-x-auto pb-1 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {quickActions.map((action) => (
+                    <button
+                      key={action.label}
+                      type="button"
+                      disabled={isSending}
+                      onClick={() => sendMessage(action.message)}
+                      className="shrink-0 rounded-full border border-border bg-white px-3.5 py-2 text-xs font-medium text-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/50 hover:bg-accent/5 hover:text-accent disabled:pointer-events-none disabled:opacity-60"
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+                <div ref={messagesEndRef} />
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="shrink-0 border-t border-border/70 bg-card px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 sm:px-5 sm:pb-4">
+              <div className="flex items-end gap-2 rounded-full border border-border bg-background px-2 py-2 shadow-sm focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/10">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  disabled
+                  aria-label="Sesli mesaj şu anda aktif değil"
+                  title="Sesli mesaj şu anda aktif değil"
+                  className="h-9 w-9 shrink-0 rounded-full text-muted-foreground"
+                >
+                  <Mic className="h-4 w-4" />
+                </Button>
                 <Input
                   value={input}
                   onChange={(event) => handleInputChange(event.target.value)}
-                  placeholder="Sorunuzu yazın..."
+                  placeholder="Bir mesaj yazın"
                   aria-label="Mesajınız"
                   disabled={isSending}
-                  className="h-10 text-sm"
+                  className="h-9 flex-1 border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                 />
                 <Button
                   type="submit"
@@ -281,34 +306,32 @@ export default function SalesChatbot() {
                   aria-label="Mesaj gönder"
                   title="Mesaj gönder"
                   disabled={isSending || !input.trim()}
-                  className="h-10 w-10 shrink-0"
+                  className="h-9 w-9 shrink-0 rounded-full bg-accent text-accent-foreground hover:bg-accent-glow"
                 >
-                  {isSending ? <Bot className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+                  <Send className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="flex items-start justify-between gap-3 text-[11px] text-muted-foreground">
-                <span className={cn(formError && "font-medium text-destructive")}>
-                  {formError || "Konuşma yapay zeka desteklidir; kesin bilgiler için satış ekibiyle görüşünüz."}
-                </span>
-                <span className="shrink-0">{input.length}/{MESSAGE_LIMIT}</span>
+              <div className="mt-2 flex min-h-4 items-center justify-between gap-3 px-1 text-[11px] text-muted-foreground">
+                <span className={cn(formError && "font-medium text-destructive")}>{formError}</span>
+                {showCharacterCount && <span className="shrink-0">{input.length}/{MESSAGE_LIMIT}</span>}
               </div>
             </form>
           </div>
         </section>
       )}
 
-      <Button
-        type="button"
-        aria-label={isOpen ? "Dijital danışmanı kapat" : "Dijital danışmanı aç"}
-        title={isOpen ? "Dijital danışmanı kapat" : "Dijital danışmanı aç"}
-        onClick={() => setIsOpen((current) => !current)}
-        className="group h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-accent-glow transition-all duration-200 hover:scale-105 hover:bg-primary-glow md:h-16 md:w-16"
-      >
-        {isOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
-        <span className="pointer-events-none absolute right-full mr-3 hidden whitespace-nowrap rounded-md bg-foreground px-3 py-2 text-xs font-medium text-background opacity-0 transition-opacity group-hover:opacity-100 md:block">
-          Dijital Danışman
-        </span>
-      </Button>
-    </div>
+      {!isOpen && (
+        <Button
+          type="button"
+          aria-label="AKINAL Yapay Zeka Asistanı aç"
+          title="AKINAL Yapay Zeka Asistanı aç"
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-24 right-5 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-accent-glow transition-all duration-200 hover:scale-105 hover:bg-primary-glow md:bottom-28 md:right-6 md:h-16 md:w-16"
+        >
+          <span className="text-sm font-black tracking-wide">AI</span>
+          <MessageCircle className="absolute -right-0.5 -top-0.5 h-5 w-5 rounded-full bg-accent p-1 text-accent-foreground ring-2 ring-background" />
+        </Button>
+      )}
+    </>
   );
 }
