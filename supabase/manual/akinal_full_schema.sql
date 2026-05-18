@@ -460,6 +460,14 @@ BEGIN
     $pol$;
   END IF;
 
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'projects' AND policyname = 'Admins view all projects') THEN
+    EXECUTE $pol$
+      CREATE POLICY "Admins view all projects"
+      ON public.projects FOR SELECT TO authenticated
+      USING (private.has_role(auth.uid(), 'admin'::public.app_role))
+    $pol$;
+  END IF;
+
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'project_images' AND policyname = 'Anyone views images of published projects') THEN
     EXECUTE $pol$
       CREATE POLICY "Anyone views images of published projects"
@@ -474,6 +482,14 @@ BEGIN
       ON public.project_images FOR ALL TO authenticated
       USING (private.has_role(auth.uid(), 'admin'::public.app_role))
       WITH CHECK (private.has_role(auth.uid(), 'admin'::public.app_role))
+    $pol$;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'project_images' AND policyname = 'Admins view all images') THEN
+    EXECUTE $pol$
+      CREATE POLICY "Admins view all images"
+      ON public.project_images FOR SELECT TO authenticated
+      USING (private.has_role(auth.uid(), 'admin'::public.app_role))
     $pol$;
   END IF;
 
@@ -525,6 +541,14 @@ BEGIN
       ON public.contact_requests FOR ALL TO authenticated
       USING (private.has_role(auth.uid(), 'admin'::public.app_role))
       WITH CHECK (private.has_role(auth.uid(), 'admin'::public.app_role))
+    $pol$;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'contact_requests' AND policyname = 'Admins view contacts') THEN
+    EXECUTE $pol$
+      CREATE POLICY "Admins view contacts"
+      ON public.contact_requests FOR SELECT TO authenticated
+      USING (private.has_role(auth.uid(), 'admin'::public.app_role))
     $pol$;
   END IF;
 END $$;
@@ -715,6 +739,14 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Public read project images') THEN
     EXECUTE $pol$
       CREATE POLICY "Public read project images"
+      ON storage.objects FOR SELECT TO public
+      USING (bucket_id = 'project-images' AND name IS NOT NULL)
+    $pol$;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Public read individual project images') THEN
+    EXECUTE $pol$
+      CREATE POLICY "Public read individual project images"
       ON storage.objects FOR SELECT TO public
       USING (bucket_id = 'project-images' AND name IS NOT NULL)
     $pol$;
