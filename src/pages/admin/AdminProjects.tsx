@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, Edit, Eye, EyeOff, Copy, Trash2, ExternalLink, GripVertical, Star, Search, Plus, FolderKanban } from "lucide-react";
+import { BarChart3, Edit, Eye, EyeOff, Copy, Trash2, ExternalLink, GripVertical, Star, Search, Plus, FolderKanban, Download, Upload, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { resolveImageUrl, statusBadgeVariant, PROJECT_STATUSES, PROJECT_TYPES, turkishSlugify } from "@/lib/projects";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { downloadJsonFile, exportProjectsWithImages, importProjectsWithImages } from "@/features/admin/projects/projectImportExport";
 
 function Row({ p, onChange }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
@@ -54,6 +55,9 @@ export default function AdminProjects() {
   const [status, setStatus] = useState("all");
   const [pub, setPub] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const { toast } = useToast();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -92,6 +96,51 @@ export default function AdminProjects() {
     toast({ title: "Sıralama kaydedildi" });
   }
 
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const data = await exportProjectsWithImages();
+      if (data.projects.length === 0) {
+        toast({ title: "Dışa aktarılacak proje bulunamadı." });
+        return;
+      }
+      downloadJsonFile(data);
+      toast({ title: "Projeler başarıyla dışa aktarıldı." });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Beklenmeyen bir hata oluştu.";
+      toast({ title: "Projeler dışa aktarılamadı.", description: message, variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleImportFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!confirm("Bu işlem JSON dosyasındaki projeleri mevcut veritabanına aktaracak. Aynı ID veya slug varsa kayıtlar güncellenecek.")) {
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const result = await importProjectsWithImages(file);
+      const description = result.errors.length > 0 ? result.errors.slice(0, 4).join("\n") : undefined;
+      toast({
+        title: `${result.projectCount} proje ve ${result.imageCount} görsel içe aktarıldı.`,
+        description,
+        variant: result.errors.length > 0 ? "destructive" : "default",
+      });
+      await load();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Beklenmeyen bir hata oluştu.";
+      toast({ title: "Projeler içe aktarılamadı.", description: message, variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
+  }
+
   const filtered = items.filter((p) => {
     if (q && !`${p.title} ${p.location} ${p.project_type}`.toLowerCase().includes(q.toLowerCase())) return false;
     if (type !== "all" && p.project_type !== type) return false;
@@ -114,7 +163,20 @@ export default function AdminProjects() {
         eyebrow="Proje Yönetimi"
         title="Projeler"
         description="Proje portföyünü yönetin, yayın durumlarını takip edin ve her proje için finans kontrol merkezine ulaşın."
-        actions={<Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to="/admin/projeler/yeni"><Plus className="h-4 w-4" /> Yeni Proje</Link></Button>}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" onClick={handleExport} disabled={exporting || importing}>
+              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Dışa Aktar
+            </Button>
+            <Button type="button" variant="outline" onClick={() => importInputRef.current?.click()} disabled={exporting || importing}>
+              {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              İçe Aktar
+            </Button>
+            <input ref={importInputRef} type="file" accept=".json,application/json" className="hidden" onChange={handleImportFile} />
+            <Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to="/admin/projeler/yeni"><Plus className="h-4 w-4" /> Yeni Proje</Link></Button>
+          </div>
+        }
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
