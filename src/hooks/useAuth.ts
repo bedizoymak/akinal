@@ -10,17 +10,7 @@ async function checkAdmin(user: User) {
     .eq("role", "admin")
     .maybeSingle();
 
-  if (role) return true;
-  if (!user.email) return false;
-
-  const { data: allowlisted } = await (supabase
-    .from("admin_users" as any)
-    .select("id")
-    .eq("email", user.email)
-    .eq("is_active", true)
-    .maybeSingle() as any);
-
-  return !!allowlisted;
+  return !!role;
 }
 
 export function useAuth() {
@@ -45,10 +35,15 @@ export function useAuth() {
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session: sess } }) => {
+    supabase.auth.getSession().then(async ({ data: { session: sess } }) => {
       setSession(sess);
       setUser(sess?.user ?? null);
-      if (!sess) setLoading(false);
+      if (sess?.user) {
+        setIsAdmin(await checkAdmin(sess.user));
+      } else {
+        setIsAdmin(false);
+      }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();

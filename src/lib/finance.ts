@@ -19,6 +19,27 @@ export type EntryDirection = typeof ENTRY_DIRECTIONS[number];
 export type EntryStatus = typeof ENTRY_STATUSES[number];
 export type CardType = typeof CARD_TYPES[number];
 
+export type LegacyPaymentLike = {
+  amount?: number | string | null;
+  payment_plan_id?: string | null;
+};
+
+export type PaymentPlanLike = {
+  id?: string | null;
+  amount?: number | string | null;
+  due_date?: string | null;
+  status?: string | null;
+};
+
+export type FinancialEntryLike = {
+  amount?: number | string | null;
+  entry_date?: string | null;
+  direction?: string | null;
+  status?: string | null;
+  currency_tag?: string | null;
+  project_id?: string | null;
+};
+
 export const FINANCE_COLORS = {
   received: "hsl(145, 55%, 25%)",
   receivable: "hsl(142, 48%, 50%)",
@@ -29,13 +50,22 @@ export const FINANCE_COLORS = {
   paid: "hsl(145, 55%, 25%)",
 };
 
+export function safeNumber(value: number | string | null | undefined): number {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function sumBy<T>(items: T[], pick: (item: T) => number | string | null | undefined): number {
+  return items.reduce((sum, item) => sum + safeNumber(pick(item)), 0);
+}
+
 export function formatTRY(n: number | string | null | undefined): string {
-  const v = Number(n ?? 0);
+  const v = safeNumber(n);
   return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 2 }).format(v);
 }
 
 export function formatMoney(amount: number | string | null | undefined, currency: CurrencyTag = "TRY"): string {
-  const value = Number(amount ?? 0);
+  const value = safeNumber(amount);
   return new Intl.NumberFormat("tr-TR", {
     style: "currency",
     currency,
@@ -54,8 +84,10 @@ export function customerDisplayName(c: { customer_type?: string; full_name?: str
 }
 
 export function daysUntil(date: string): number {
+  if (!date) return 0;
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const d = new Date(date); d.setHours(0, 0, 0, 0);
+  if (Number.isNaN(d.getTime())) return 0;
   return Math.round((d.getTime() - today.getTime()) / 86400000);
 }
 
@@ -95,8 +127,54 @@ export function whatsappLink(phone: string, message: string): string {
 }
 
 export function paymentPlanRemaining(plan: { amount: number | string }, paymentsForPlan: { amount: number | string }[]): number {
-  const total = paymentsForPlan.reduce((s, p) => s + Number(p.amount), 0);
-  return Math.max(0, Number(plan.amount) - total);
+  const total = sumBy(paymentsForPlan, (payment) => payment.amount);
+  return Math.max(0, safeNumber(plan.amount) - total);
+}
+
+export function paidForPlan(planId: string | null | undefined, payments: LegacyPaymentLike[]): number {
+  if (!planId) return 0;
+  return sumBy(payments.filter((payment) => payment.payment_plan_id === planId), (payment) => payment.amount);
+}
+
+export function paymentPlanRemainingFromPayments(plan: PaymentPlanLike, payments: LegacyPaymentLike[]): number {
+  return Math.max(0, safeNumber(plan.amount) - paidForPlan(plan.id, payments));
+}
+
+export function isCanceledStatus(status: string | null | undefined): boolean {
+  return status === "İptal";
+}
+
+export function isPaidStatus(status: string | null | undefined): boolean {
+  return status === "Ödendi";
+}
+
+export function isRealizedStatus(status: string | null | undefined): boolean {
+  return status === "Gerçekleşti";
+}
+
+export function isPlannedStatus(status: string | null | undefined): boolean {
+  return status === "Planlandı";
+}
+
+export function realizedFinancialIncome(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
+  return sumBy(
+    entries.filter((entry) => entry.currency_tag === currency && isRealizedStatus(entry.status) && entry.direction === "Gelir"),
+    (entry) => entry.amount,
+  );
+}
+
+export function realizedFinancialExpense(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
+  return sumBy(
+    entries.filter((entry) => entry.currency_tag === currency && isRealizedStatus(entry.status) && entry.direction === "Gider"),
+    (entry) => entry.amount,
+  );
+}
+
+export function plannedFinancialIncome(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
+  return sumBy(
+    entries.filter((entry) => entry.currency_tag === currency && isPlannedStatus(entry.status) && entry.direction === "Gelir"),
+    (entry) => entry.amount,
+  );
 }
 
 export function derivePlanStatus(plan: { amount: number | string; due_date: string; status: string }, paid: number): string {
@@ -105,6 +183,6 @@ export function derivePlanStatus(plan: { amount: number | string; due_date: stri
     if (daysUntil(plan.due_date) < 0) return "Gecikti";
     return "Bekliyor";
   }
-  if (paid >= Number(plan.amount)) return "Ödendi";
+  if (paid >= safeNumber(plan.amount)) return "Ödendi";
   return "Kısmi Ödendi";
 }

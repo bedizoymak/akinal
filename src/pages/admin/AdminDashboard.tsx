@@ -33,7 +33,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader, AdminSection } from "@/components/admin/AdminPage";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatTRY, formatDate, customerDisplayName, daysUntil, derivePlanStatus } from "@/lib/finance";
+import {
+  formatTRY,
+  formatDate,
+  customerDisplayName,
+  daysUntil,
+  derivePlanStatus,
+  isCanceledStatus,
+  isPaidStatus,
+  paymentPlanRemainingFromPayments,
+  paidForPlan,
+  realizedFinancialExpense,
+  realizedFinancialIncome,
+  safeNumber,
+  sumBy,
+} from "@/lib/finance";
 import { statusBadgeVariant } from "@/lib/projects";
 import {
   previewCollectionStatus,
@@ -49,6 +63,7 @@ type DashboardData = {
   plans: any[];
   payments: any[];
   expenses: any[];
+  financialEntries: any[];
   requests: any[];
 };
 
@@ -58,6 +73,7 @@ const initialData: DashboardData = {
   plans: [],
   payments: [],
   expenses: [],
+  financialEntries: [],
   requests: [],
 };
 
@@ -71,7 +87,7 @@ const pieColors = ["hsl(142 48% 28%)", "hsl(220 9% 35%)", "hsl(38 92% 50%)", "hs
 const collectionColors = ["hsl(142 48% 28%)", "hsl(38 92% 50%)", "hsl(0 72% 51%)"];
 
 function sumAmount(items: any[]) {
-  return items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  return sumBy(items, (item) => item.amount);
 }
 
 function isThisMonth(date: string | null | undefined, monthStart: string, monthEnd: string) {
@@ -141,12 +157,13 @@ export default function AdminDashboard() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const [projects, customers, plans, payments, expenses, requests] = await Promise.all([
+      const [projects, customers, plans, payments, expenses, financialEntries, requests] = await Promise.all([
         supabase.from("projects").select("id,title,project_status,location,is_published,slug,sort_order").order("sort_order"),
         (supabase.from("customers" as any).select("*").order("created_at", { ascending: false })) as any,
         (supabase.from("payment_plans" as any).select("*").order("due_date")) as any,
         (supabase.from("payments" as any).select("*").order("payment_date", { ascending: false })) as any,
         (supabase.from("expenses" as any).select("*").order("expense_date", { ascending: false })) as any,
+        (supabase.from("financial_entries").select("*").order("entry_date", { ascending: false })) as any,
         supabase.from("contact_requests").select("*").order("created_at", { ascending: false }),
       ]);
 
@@ -156,6 +173,7 @@ export default function AdminDashboard() {
         plans: (plans.data as any[]) || [],
         payments: (payments.data as any[]) || [],
         expenses: (expenses.data as any[]) || [],
+        financialEntries: (financialEntries.data as any[]) || [],
         requests: requests.data || [],
       });
       setLoading(false);
@@ -168,15 +186,17 @@ export default function AdminDashboard() {
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
     const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
 
-    const totalIncome = sumAmount(data.payments);
-    const totalExpenses = sumAmount(data.expenses);
-    const monthIncome = sumAmount(data.payments.filter((payment) => isThisMonth(payment.payment_date, monthStart, monthEnd)));
-    const monthExpenses = sumAmount(data.expenses.filter((expense) => isThisMonth(expense.expense_date, monthStart, monthEnd)));
+    const totalIncome = sumAmount(data.payments) + realizedFinancialIncome(data.financialEntries);
+    const totalExpenses = sumAmount(data.expenses) + realizedFinancialExpense(data.financialEntries);
+    const monthIncome = sumAmount(data.payments.filter((payment) => isThisMonth(payment.payment_date, monthStart, monthEnd)))
+      + realizedFinancialIncome(data.financialEntries.filter((entry) => isThisMonth(entry.entry_date, monthStart, monthEnd)));
+    const monthExpenses = sumAmount(data.expenses.filter((expense) => isThisMonth(expense.expense_date, monthStart, monthEnd)))
+      + realizedFinancialExpense(data.financialEntries.filter((entry) => isThisMonth(entry.entry_date, monthStart, monthEnd)));
     const activeProjects = data.projects.filter((project) => project.project_status !== "Tamamlandı");
 
     const planRows = data.plans.map((plan) => {
-      const paid = sumAmount(data.payments.filter((payment) => payment.payment_plan_id === plan.id));
-      const remaining = Math.max(0, Number(plan.amount || 0) - paid);
+      const paid = paidForPlan(plan.id, data.payments);
+      const remaining = paymentPlanRemainingFromPayments(plan, data.payments);
       const status = derivePlanStatus(plan, paid);
       const customer = data.customers.find((item) => item.id === plan.customer_id);
       const project = data.projects.find((item) => item.id === plan.project_id);
@@ -186,16 +206,17 @@ export default function AdminDashboard() {
 
     const pendingCollections = planRows.reduce((sum, plan) => sum + plan.remaining, 0);
     const overdueCollections = planRows
-      .filter((plan) => plan.days < 0 && plan.remaining > 0 && plan.status !== "Ödendi" && plan.status !== "İptal")
+      .filter((plan) => plan.days < 0 && plan.remaining > 0 && !isPaidStatus(plan.status) && !isCanceledStatus(plan.status))
       .reduce((sum, plan) => sum + plan.remaining, 0);
     const upcomingPlans = planRows
-      .filter((plan) => plan.days >= 0 && plan.days <= 30 && plan.remaining > 0 && plan.status !== "Ödendi" && plan.status !== "İptal")
+      .filter((plan) => plan.days >= 0 && plan.days <= 30 && plan.remaining > 0 && !isPaidStatus(plan.status) && !isCanceledStatus(plan.status))
       .sort((a, b) => a.days - b.days);
 
     const months = lastSixMonths();
     const monthlyFinancials = months.map((month) => {
-      const income = sumAmount(data.payments.filter((payment) => String(payment.payment_date || "").startsWith(month.key)));
-      const expenses = sumAmount(data.expenses.filter((expense) => String(expense.expense_date || "").startsWith(month.key)));
+      const entries = data.financialEntries.filter((entry) => String(entry.entry_date || "").startsWith(month.key));
+      const income = sumAmount(data.payments.filter((payment) => String(payment.payment_date || "").startsWith(month.key))) + realizedFinancialIncome(entries);
+      const expenses = sumAmount(data.expenses.filter((expense) => String(expense.expense_date || "").startsWith(month.key))) + realizedFinancialExpense(entries);
       return { month: month.month, income, expenses, net: income - expenses };
     });
 
@@ -210,8 +231,9 @@ export default function AdminDashboard() {
       .map((project) => {
         const projectPayments = data.payments.filter((payment) => payment.project_id === project.id);
         const projectExpenses = data.expenses.filter((expense) => expense.project_id === project.id);
-        const income = sumAmount(projectPayments);
-        const expense = sumAmount(projectExpenses);
+        const projectEntries = data.financialEntries.filter((entry) => entry.project_id === project.id);
+        const income = sumAmount(projectPayments) + realizedFinancialIncome(projectEntries);
+        const expense = sumAmount(projectExpenses) + realizedFinancialExpense(projectEntries);
         return { ...project, income, expense, net: income - expense };
       })
       .sort((a, b) => b.net - a.net);
@@ -244,6 +266,17 @@ export default function AdminDashboard() {
         title: expense.title,
         project: data.projects.find((item) => item.id === expense.project_id),
       })),
+      ...data.financialEntries
+        .filter((entry) => entry.currency_tag === "TRY")
+        .map((entry) => ({
+          id: `entry-${entry.id}`,
+          type: entry.direction === "Gelir" ? "Finans Geliri" : "Finans Gideri",
+          date: entry.entry_date,
+          amount: safeNumber(entry.amount),
+          tone: entry.direction === "Gelir" ? "success" as const : "danger" as const,
+          title: entry.title,
+          project: data.projects.find((item) => item.id === entry.project_id),
+        })),
     ]
       .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
       .slice(0, 8);
@@ -263,8 +296,8 @@ export default function AdminDashboard() {
       recentMovements,
       newRequests: data.requests.filter((request) => request.status === "Yeni"),
       financialChart: {
-        data: data.payments.length || data.expenses.length ? monthlyFinancials : previewFinancialSeries,
-        isPreview: data.payments.length === 0 && data.expenses.length === 0,
+        data: data.payments.length || data.expenses.length || data.financialEntries.length ? monthlyFinancials : previewFinancialSeries,
+        isPreview: data.payments.length === 0 && data.expenses.length === 0 && data.financialEntries.length === 0,
       },
       expenseChart: {
         data: expenseDistribution.length ? expenseDistribution : previewExpenseDistribution,

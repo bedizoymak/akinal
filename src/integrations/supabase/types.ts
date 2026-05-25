@@ -214,6 +214,69 @@ export type Database = {
           },
         ]
       }
+      employees: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          notes: string | null
+          phone: string | null
+          role: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      expense_cards: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
@@ -264,6 +327,95 @@ export type Database = {
           },
           {
             foreignKeyName: "expenses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_entries: {
+        Row: {
+          amount: number
+          card_type: string
+          created_at: string
+          currency_tag: string
+          customer_id: string | null
+          description: string | null
+          direction: string
+          document_url: string | null
+          employee_id: string | null
+          entry_date: string
+          expense_card_id: string | null
+          group_tag: string
+          id: string
+          project_id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          card_type: string
+          created_at?: string
+          currency_tag?: string
+          customer_id?: string | null
+          description?: string | null
+          direction: string
+          document_url?: string | null
+          employee_id?: string | null
+          entry_date?: string
+          expense_card_id?: string | null
+          group_tag?: string
+          id?: string
+          project_id: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          card_type?: string
+          created_at?: string
+          currency_tag?: string
+          customer_id?: string | null
+          description?: string | null
+          direction?: string
+          document_url?: string | null
+          employee_id?: string | null
+          entry_date?: string
+          expense_card_id?: string | null
+          group_tag?: string
+          id?: string
+          project_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_entries_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_entries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_entries_expense_card_id_fkey"
+            columns: ["expense_card_id"]
+            isOneToOne: false
+            referencedRelation: "expense_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_entries_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"

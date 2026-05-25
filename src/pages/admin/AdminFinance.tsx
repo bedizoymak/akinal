@@ -4,7 +4,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Download, MessageCircle } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
-import { FINANCE_COLORS, formatTRY, formatDate, customerDisplayName, daysUntil, exportCSV, whatsappLink, statusBadgeClass, derivePlanStatus } from "@/lib/finance";
+import {
+  FINANCE_COLORS,
+  formatTRY,
+  formatDate,
+  customerDisplayName,
+  daysUntil,
+  exportCSV,
+  whatsappLink,
+  statusBadgeClass,
+  derivePlanStatus,
+  isCanceledStatus,
+  isPaidStatus,
+  paymentPlanRemainingFromPayments,
+  paidForPlan,
+  realizedFinancialExpense,
+  realizedFinancialIncome,
+  sumBy,
+} from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { AdminPageHeader } from "@/components/admin/AdminPage";
 
@@ -42,49 +59,50 @@ export default function AdminFinance() {
   const [plans, setPlans] = useState<any[]>([]);
   const [pays, setPays] = useState<any[]>([]);
   const [exps, setExps] = useState<any[]>([]);
+  const [financialEntries, setFinancialEntries] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
-    const [pl, py, ex, c, pr] = await Promise.all([
+    const [pl, py, ex, fe, c, pr] = await Promise.all([
       (supabase.from("payment_plans" as any).select("*")) as any,
       (supabase.from("payments" as any).select("*")) as any,
       (supabase.from("expenses" as any).select("*")) as any,
+      (supabase.from("financial_entries").select("*")) as any,
       (supabase.from("customers" as any).select("*")) as any,
       supabase.from("projects").select("id,title,slug").order("sort_order"),
     ]);
     setPlans((pl.data as any[]) || []); setPays((py.data as any[]) || []);
-    setExps((ex.data as any[]) || []); setCustomers((c.data as any[]) || []); setProjects((pr.data as any[]) || []);
+    setExps((ex.data as any[]) || []); setFinancialEntries((fe.data as any[]) || []);
+    setCustomers((c.data as any[]) || []); setProjects((pr.data as any[]) || []);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
 
   const stats = useMemo(() => {
-    const totalReceived = pays.reduce((s, p) => s + Number(p.amount), 0);
-    const totalDue = plans.reduce((s, p) => s + Number(p.amount), 0);
-    const totalReceivable = Math.max(0, totalDue - totalReceived);
-    const totalExpense = exps.reduce((s, e) => s + Number(e.amount), 0);
+    const totalReceived = sumBy(pays, (payment) => payment.amount) + realizedFinancialIncome(financialEntries);
+    const totalReceivable = plans.reduce((sum, plan) => sum + paymentPlanRemainingFromPayments(plan, pays), 0);
+    const totalExpense = sumBy(exps, (expense) => expense.amount) + realizedFinancialExpense(financialEntries);
     const net = totalReceived - totalExpense;
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const overdue = plans.reduce((s, p) => {
-      if (p.status === "Ödendi" || p.status === "İptal") return s;
+      if (isPaidStatus(p.status) || isCanceledStatus(p.status)) return s;
       if (daysUntil(p.due_date) >= 0) return s;
-      const paid = pays.filter((x) => x.payment_plan_id === p.id).reduce((a, x) => a + Number(x.amount), 0);
-      return s + Math.max(0, Number(p.amount) - paid);
+      return s + paymentPlanRemainingFromPayments(p, pays);
     }, 0);
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
     const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
-    const expectedThisMonth = plans.filter((p) => p.due_date >= monthStart && p.due_date <= monthEnd && p.status !== "Ödendi" && p.status !== "İptal")
-      .reduce((s, p) => {
-        const paid = pays.filter((x) => x.payment_plan_id === p.id).reduce((a, x) => a + Number(x.amount), 0);
-        return s + Math.max(0, Number(p.amount) - paid);
-      }, 0);
-    const receivedThisMonth = pays.filter((p) => p.payment_date >= monthStart && p.payment_date <= monthEnd).reduce((s, p) => s + Number(p.amount), 0);
-    const expenseThisMonth = exps.filter((e) => e.expense_date >= monthStart && e.expense_date <= monthEnd).reduce((s, e) => s + Number(e.amount), 0);
+    const expectedThisMonth = plans.filter((p) => p.due_date >= monthStart && p.due_date <= monthEnd && !isPaidStatus(p.status) && !isCanceledStatus(p.status))
+      .reduce((s, p) => s + paymentPlanRemainingFromPayments(p, pays), 0);
+    const monthEntries = financialEntries.filter((entry) => entry.entry_date >= monthStart && entry.entry_date <= monthEnd);
+    const receivedThisMonth = sumBy(pays.filter((p) => p.payment_date >= monthStart && p.payment_date <= monthEnd), (payment) => payment.amount)
+      + realizedFinancialIncome(monthEntries);
+    const expenseThisMonth = sumBy(exps.filter((e) => e.expense_date >= monthStart && e.expense_date <= monthEnd), (expense) => expense.amount)
+      + realizedFinancialExpense(monthEntries);
     return { totalReceived, totalReceivable, totalExpense, net, overdue, expectedThisMonth, receivedThisMonth, expenseThisMonth };
-  }, [plans, pays, exps]);
+  }, [plans, pays, exps, financialEntries]);
 
   const overallPie = [
     { name: "Alınan", value: stats.totalReceived, color: FINANCE_COLORS.received },
@@ -95,9 +113,9 @@ export default function AdminFinance() {
   const statusPie = useMemo(() => {
     const counts = { "Ödendi": 0, "Bekliyor": 0, "Kısmi Ödendi": 0, "Gecikti": 0 } as Record<string, number>;
     plans.forEach((p) => {
-      const paid = pays.filter((x) => x.payment_plan_id === p.id).reduce((a, x) => a + Number(x.amount), 0);
+      const paid = paidForPlan(p.id, pays);
       const computed = derivePlanStatus(p, paid);
-      if (counts[computed] !== undefined) counts[computed] += Number(p.amount);
+      if (counts[computed] !== undefined) counts[computed] += paymentPlanRemainingFromPayments(p, pays) || Number(p.amount);
     });
     return [
       { name: "Ödendi", value: counts["Ödendi"], color: FINANCE_COLORS.paid },
@@ -111,17 +129,17 @@ export default function AdminFinance() {
     const projPlans = plans.filter((p) => p.project_id === pr.id);
     const projPays = pays.filter((p) => p.project_id === pr.id);
     const projExps = exps.filter((e) => e.project_id === pr.id);
-    const totalDue = projPlans.reduce((s, p) => s + Number(p.amount), 0);
-    const received = projPays.reduce((s, p) => s + Number(p.amount), 0);
-    const receivable = Math.max(0, totalDue - received);
-    const expense = projExps.reduce((s, e) => s + Number(e.amount), 0);
+    const projEntries = financialEntries.filter((entry) => entry.project_id === pr.id);
+    const received = sumBy(projPays, (payment) => payment.amount) + realizedFinancialIncome(projEntries);
+    const receivable = projPlans.reduce((sum, plan) => sum + paymentPlanRemainingFromPayments(plan, pays), 0);
+    const expense = sumBy(projExps, (expense) => expense.amount) + realizedFinancialExpense(projEntries);
     return { ...pr, received, receivable, expense, net: received - expense };
-  }), [projects, plans, pays, exps]);
+  }), [projects, plans, pays, exps, financialEntries]);
 
   const upcoming = useMemo(() => {
     return plans.map((p) => {
-      const paid = pays.filter((x) => x.payment_plan_id === p.id).reduce((a, x) => a + Number(x.amount), 0);
-      const remain = Math.max(0, Number(p.amount) - paid);
+      const paid = paidForPlan(p.id, pays);
+      const remain = paymentPlanRemainingFromPayments(p, pays);
       const computed = derivePlanStatus(p, paid);
       const customer = customers.find((c) => c.id === p.customer_id);
       const project = projects.find((pr) => pr.id === p.project_id);

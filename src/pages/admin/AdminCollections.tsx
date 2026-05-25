@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { PAYMENT_METHODS, formatTRY, formatDate, customerDisplayName, exportCSV } from "@/lib/finance";
+import { PAYMENT_METHODS, derivePlanStatus, formatTRY, formatDate, customerDisplayName, exportCSV, paidForPlan } from "@/lib/finance";
 import { Plus, Edit, Trash2, Download, Upload, Wallet, Users, FolderKanban, CalendarDays } from "lucide-react";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 
@@ -37,7 +37,7 @@ export default function AdminCollections() {
       (supabase.from("payments" as any).select("*").order("payment_date", { ascending: false })) as any,
       (supabase.from("customers" as any).select("*")) as any,
       supabase.from("projects").select("id,title"),
-      (supabase.from("payment_plans" as any).select("id,title,customer_id,amount,due_date")) as any,
+      (supabase.from("payment_plans" as any).select("id,title,customer_id,project_id,amount,due_date,status")) as any,
     ]);
     setItems((it.data as any[]) || []); setCustomers((c.data as any[]) || []);
     setProjects((pr.data as any[]) || []); setPlans((pl.data as any[]) || []);
@@ -48,6 +48,16 @@ export default function AdminCollections() {
 
   function openNew() { setForm({ ...empty, customer_id: filterCustomer !== "all" ? filterCustomer : "" }); setEditId(null); setOpen(true); }
   function openEdit(it: any) { setForm({ ...it, project_id: it.project_id || "", payment_plan_id: it.payment_plan_id || "", description: it.description || "", document_url: it.document_url || "", amount: String(it.amount) }); setEditId(it.id); setOpen(true); }
+
+  async function syncPlanStatus(planId: string | null | undefined) {
+    if (!planId) return;
+    const plan = plans.find((p) => p.id === planId);
+    if (!plan) return;
+    const { data: allPays } = await (supabase.from("payments" as any).select("amount,payment_plan_id").eq("payment_plan_id", planId)) as any;
+    const total = paidForPlan(planId, (allPays as any[]) || []);
+    const status = derivePlanStatus(plan, total);
+    await (supabase.from("payment_plans" as any).update({ status }).eq("id", plan.id)) as any;
+  }
 
   async function uploadDoc(file: File) {
     setUploading(true);
@@ -63,22 +73,19 @@ export default function AdminCollections() {
 
   async function save() {
     if (!form.customer_id || !form.amount || !form.payment_date) { toast({ title: "Müşteri, tutar ve tarih zorunludur", variant: "destructive" }); return; }
-    const payload: any = { ...form, amount: Number(form.amount), project_id: form.project_id || null, payment_plan_id: form.payment_plan_id || null };
+    const selectedPlan = plans.find((p) => p.id === form.payment_plan_id);
+    const payload: any = {
+      ...form,
+      amount: Number(form.amount),
+      project_id: form.project_id || selectedPlan?.project_id || null,
+      payment_plan_id: form.payment_plan_id || null,
+    };
+    const previousPlanId = editId ? items.find((item) => item.id === editId)?.payment_plan_id : null;
     if (editId) await (supabase.from("payments" as any).update(payload).eq("id", editId)) as any;
     else await (supabase.from("payments" as any).insert(payload)) as any;
 
-    // Auto-update plan status
-    if (form.payment_plan_id) {
-      const plan = plans.find((p) => p.id === form.payment_plan_id);
-      if (plan) {
-        const { data: allPays } = await (supabase.from("payments" as any).select("amount").eq("payment_plan_id", form.payment_plan_id)) as any;
-        const total = ((allPays as any[]) || []).reduce((s, x) => s + Number(x.amount), 0);
-        let status = "Bekliyor";
-        if (total >= Number(plan.amount)) status = "Ödendi";
-        else if (total > 0) status = "Kısmi Ödendi";
-        await (supabase.from("payment_plans" as any).update({ status }).eq("id", plan.id)) as any;
-      }
-    }
+    await syncPlanStatus(form.payment_plan_id);
+    if (previousPlanId && previousPlanId !== form.payment_plan_id) await syncPlanStatus(previousPlanId);
     toast({ title: editId ? "Tahsilat güncellendi" : "Tahsilat eklendi" });
     setOpen(false); load();
   }
@@ -87,15 +94,7 @@ export default function AdminCollections() {
     if (!confirm("Tahsilat silinsin mi?")) return;
     await (supabase.from("payments" as any).delete().eq("id", id)) as any;
     if (planId) {
-      const plan = plans.find((p) => p.id === planId);
-      if (plan) {
-        const { data: allPays } = await (supabase.from("payments" as any).select("amount").eq("payment_plan_id", planId)) as any;
-        const total = ((allPays as any[]) || []).reduce((s, x) => s + Number(x.amount), 0);
-        let status = "Bekliyor";
-        if (total >= Number(plan.amount)) status = "Ödendi";
-        else if (total > 0) status = "Kısmi Ödendi";
-        await (supabase.from("payment_plans" as any).update({ status }).eq("id", plan.id)) as any;
-      }
+      await syncPlanStatus(planId);
     }
     toast({ title: "Silindi" }); load();
   }
@@ -196,7 +195,14 @@ export default function AdminCollections() {
               </Select>
             </div>
             <div><Label>İlgili Ödeme Planı</Label>
-              <Select value={form.payment_plan_id || "none"} onValueChange={(v) => setForm((f: any) => ({ ...f, payment_plan_id: v === "none" ? "" : v }))}>
+              <Select value={form.payment_plan_id || "none"} onValueChange={(v) => {
+                const plan = plans.find((p) => p.id === v);
+                setForm((f: any) => ({
+                  ...f,
+                  payment_plan_id: v === "none" ? "" : v,
+                  project_id: v === "none" ? f.project_id : plan?.project_id || f.project_id,
+                }));
+              }}>
                 <SelectTrigger><SelectValue placeholder="Plan seçin" /></SelectTrigger>
                 <SelectContent><SelectItem value="none">— Yok —</SelectItem>{customerPlans.map((p) => <SelectItem key={p.id} value={p.id}>{p.title} ({formatTRY(p.amount)} - {formatDate(p.due_date)})</SelectItem>)}</SelectContent>
               </Select>

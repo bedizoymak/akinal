@@ -7,15 +7,38 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Download, Printer, FileText } from "lucide-react";
-import { formatTRY, formatDate, customerDisplayName, exportCSV, statusBadgeClass, daysUntil, PAYMENT_PLAN_STATUSES, EXPENSE_CATEGORIES, PAYMENT_METHODS, FINANCE_COLORS } from "@/lib/finance";
+import {
+  formatTRY,
+  formatDate,
+  customerDisplayName,
+  exportCSV,
+  statusBadgeClass,
+  daysUntil,
+  EXPENSE_CATEGORIES,
+  PAYMENT_METHODS,
+  FINANCE_COLORS,
+  isCanceledStatus,
+  isPaidStatus,
+  paymentPlanRemainingFromPayments,
+  plannedFinancialIncome,
+  realizedFinancialExpense,
+  realizedFinancialIncome,
+  safeNumber,
+  sumBy,
+} from "@/lib/finance";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
 import logoImg from "@/assets/logo.png";
 import { AdminPageHeader } from "@/components/admin/AdminPage";
 
 function inDateRange(d: string, from: string, to: string): boolean {
+  if (!d) return false;
   if (from && d < from) return false;
   if (to && d > to) return false;
   return true;
+}
+
+function entriesInDateRange(entries: any[], from: string, to: string) {
+  return entries.filter((entry) => inDateRange(entry.entry_date, from, to));
 }
 
 function SummaryCard({ label, value, color }: { label: string; value: string; color?: string }) {
@@ -73,7 +96,7 @@ function ExportBar({ onCSV, title }: { onCSV: () => void; title: string }) {
 
 // ========== Report 1: Project Finance ==========
 function ProjectFinanceReport({ data }: any) {
-  const { projects, plans, payments, expenses } = data;
+  const { projects, plans, payments, expenses, financialEntries } = data;
   const [from, setFrom] = useState(""); const [to, setTo] = useState(""); const [projectId, setProjectId] = useState("all");
 
   const rows = useMemo(() => {
@@ -82,9 +105,10 @@ function ProjectFinanceReport({ data }: any) {
       const pl = plans.data.filter((x: any) => x.project_id === p.id && inDateRange(x.due_date, from, to));
       const py = payments.data.filter((x: any) => x.project_id === p.id && inDateRange(x.payment_date, from, to));
       const ex = expenses.data.filter((x: any) => x.project_id === p.id && inDateRange(x.expense_date, from, to));
-      const totalReceivable = pl.reduce((s: number, x: any) => s + Number(x.amount), 0);
-      const totalReceived = py.reduce((s: number, x: any) => s + Number(x.amount), 0);
-      const totalSpent = ex.reduce((s: number, x: any) => s + Number(x.amount), 0);
+      const fe = entriesInDateRange(financialEntries.data, from, to).filter((x: any) => x.project_id === p.id);
+      const totalReceivable = pl.reduce((s: number, x: any) => s + paymentPlanRemainingFromPayments(x, payments.data), 0) + plannedFinancialIncome(fe);
+      const totalReceived = sumBy(py, (x: any) => x.amount) + realizedFinancialIncome(fe);
+      const totalSpent = sumBy(ex, (x: any) => x.amount) + realizedFinancialExpense(fe);
       return {
         id: p.id, title: p.title,
         totalReceived, totalReceivable, totalSpent,
@@ -93,7 +117,7 @@ function ProjectFinanceReport({ data }: any) {
         expenseRate: totalReceived > 0 ? (totalSpent / totalReceived) * 100 : 0,
       };
     });
-  }, [projects.data, plans.data, payments.data, expenses.data, from, to, projectId]);
+  }, [projects.data, plans.data, payments.data, expenses.data, financialEntries.data, from, to, projectId]);
 
   const dateRange = `${from || "Başlangıç"} - ${to || "Bugün"}`;
 
@@ -159,11 +183,11 @@ function CustomerPaymentReport({ data }: any) {
     return customers.data.filter((c: any) => customerId === "all" || c.id === customerId).map((c: any) => {
       const pl = plans.data.filter((x: any) => x.customer_id === c.id && (projectId === "all" || x.project_id === projectId) && inDateRange(x.due_date, from, to));
       const py = payments.data.filter((x: any) => x.customer_id === c.id && (projectId === "all" || x.project_id === projectId) && inDateRange(x.payment_date, from, to));
-      const totalDebt = pl.reduce((s: number, x: any) => s + Number(x.amount), 0);
-      const collected = py.reduce((s: number, x: any) => s + Number(x.amount), 0);
+      const totalDebt = sumBy(pl, (x: any) => x.amount);
+      const collected = sumBy(py, (x: any) => x.amount);
       const remaining = Math.max(0, totalDebt - collected);
-      const overdue = pl.filter((x: any) => x.due_date < today && x.status !== "Ödendi" && x.status !== "İptal")
-        .reduce((s: number, x: any) => s + Number(x.amount), 0);
+      const overdue = pl.filter((x: any) => x.due_date < today && !isPaidStatus(x.status) && !isCanceledStatus(x.status))
+        .reduce((s: number, x: any) => s + paymentPlanRemainingFromPayments(x, payments.data), 0);
       const lastPay = py.sort((a: any, b: any) => b.payment_date.localeCompare(a.payment_date))[0];
       const proj = pl[0] ? projects.data.find((p: any) => p.id === pl[0].project_id) : null;
       return {
@@ -262,7 +286,7 @@ function CollectionsReport({ data }: any) {
     const pr = projects.data.find((x: any) => x.id === p.project_id);
     return {
       id: p.id, customer: c ? customerDisplayName(c) : "-", project: pr?.title || "-",
-      amount: Number(p.amount), date: p.payment_date, method: p.payment_method, description: p.description || "",
+      amount: safeNumber(p.amount), date: p.payment_date, method: p.payment_method, description: p.description || "",
     };
   }), [payments.data, customers.data, projects.data, customerId, projectId, method, from, to]);
 
@@ -345,7 +369,7 @@ function ExpensesReport({ data }: any) {
     const pr = projects.data.find((x: any) => x.id === e.project_id);
     return {
       id: e.id, project: pr?.title || "-", title: e.title, category: e.category,
-      amount: Number(e.amount), date: e.expense_date, description: e.description || "",
+      amount: safeNumber(e.amount), date: e.expense_date, description: e.description || "",
     };
   }), [expenses.data, projects.data, projectId, category, from, to]);
 
@@ -409,23 +433,24 @@ function ExpensesReport({ data }: any) {
 
 // ========== Report 5: General Summary ==========
 function GeneralSummaryReport({ data }: any) {
-  const { plans, payments, expenses } = data;
+  const { plans, payments, expenses, financialEntries } = data;
   const today = new Date();
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
   const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
   const todayStr = today.toISOString().slice(0, 10);
 
-  const totalReceived = payments.data.reduce((s: number, x: any) => s + Number(x.amount), 0);
-  const totalReceivable = plans.data.reduce((s: number, x: any) => s + Number(x.amount), 0);
-  const totalSpent = expenses.data.reduce((s: number, x: any) => s + Number(x.amount), 0);
-  const overdue = plans.data.filter((x: any) => x.due_date < todayStr && x.status !== "Ödendi" && x.status !== "İptal")
-    .reduce((s: number, x: any) => s + Number(x.amount), 0);
-  const monthExpected = plans.data.filter((x: any) => x.due_date >= monthStart && x.due_date <= monthEnd && x.status !== "Ödendi" && x.status !== "İptal")
-    .reduce((s: number, x: any) => s + Number(x.amount), 0);
-  const monthCollected = payments.data.filter((x: any) => x.payment_date >= monthStart && x.payment_date <= monthEnd)
-    .reduce((s: number, x: any) => s + Number(x.amount), 0);
-  const monthSpent = expenses.data.filter((x: any) => x.expense_date >= monthStart && x.expense_date <= monthEnd)
-    .reduce((s: number, x: any) => s + Number(x.amount), 0);
+  const totalReceived = sumBy(payments.data, (x: any) => x.amount) + realizedFinancialIncome(financialEntries.data);
+  const totalReceivable = plans.data.reduce((s: number, x: any) => s + paymentPlanRemainingFromPayments(x, payments.data), 0) + plannedFinancialIncome(financialEntries.data);
+  const totalSpent = sumBy(expenses.data, (x: any) => x.amount) + realizedFinancialExpense(financialEntries.data);
+  const overdue = plans.data.filter((x: any) => x.due_date < todayStr && !isPaidStatus(x.status) && !isCanceledStatus(x.status))
+    .reduce((s: number, x: any) => s + paymentPlanRemainingFromPayments(x, payments.data), 0);
+  const monthEntries = financialEntries.data.filter((x: any) => x.entry_date >= monthStart && x.entry_date <= monthEnd);
+  const monthExpected = plans.data.filter((x: any) => x.due_date >= monthStart && x.due_date <= monthEnd && !isPaidStatus(x.status) && !isCanceledStatus(x.status))
+    .reduce((s: number, x: any) => s + paymentPlanRemainingFromPayments(x, payments.data), 0) + plannedFinancialIncome(monthEntries);
+  const monthCollected = sumBy(payments.data.filter((x: any) => x.payment_date >= monthStart && x.payment_date <= monthEnd), (x: any) => x.amount)
+    + realizedFinancialIncome(monthEntries);
+  const monthSpent = sumBy(expenses.data.filter((x: any) => x.expense_date >= monthStart && x.expense_date <= monthEnd), (x: any) => x.amount)
+    + realizedFinancialExpense(monthEntries);
   const net = totalReceived - totalSpent;
 
   const distData = [
@@ -443,8 +468,10 @@ function GeneralSummaryReport({ data }: any) {
     const label = d.toLocaleDateString("tr-TR", { month: "short", year: "2-digit" });
     monthly.push({
       ay: label,
-      Tahsilat: payments.data.filter((x: any) => x.payment_date >= ms && x.payment_date <= me).reduce((s: number, x: any) => s + Number(x.amount), 0),
-      Gider: expenses.data.filter((x: any) => x.expense_date >= ms && x.expense_date <= me).reduce((s: number, x: any) => s + Number(x.amount), 0),
+      Tahsilat: sumBy(payments.data.filter((x: any) => x.payment_date >= ms && x.payment_date <= me), (x: any) => x.amount)
+        + realizedFinancialIncome(financialEntries.data.filter((x: any) => x.entry_date >= ms && x.entry_date <= me)),
+      Gider: sumBy(expenses.data.filter((x: any) => x.expense_date >= ms && x.expense_date <= me), (x: any) => x.amount)
+        + realizedFinancialExpense(financialEntries.data.filter((x: any) => x.entry_date >= ms && x.entry_date <= me)),
     });
   }
 
@@ -507,7 +534,7 @@ function OverdueReport({ data }: any) {
 
   const rows = useMemo(() => plans.data.filter((p: any) => {
     if (p.due_date >= todayStr) return false;
-    if (p.status === "Ödendi" || p.status === "İptal") return false;
+    if (isPaidStatus(p.status) || isCanceledStatus(p.status)) return false;
     if (customerId !== "all" && p.customer_id !== customerId) return false;
     if (projectId !== "all" && p.project_id !== projectId) return false;
     if (!inDateRange(p.due_date, from, to)) return false;
@@ -515,12 +542,11 @@ function OverdueReport({ data }: any) {
   }).map((p: any) => {
     const c = customers.data.find((x: any) => x.id === p.customer_id);
     const pr = projects.data.find((x: any) => x.id === p.project_id);
-    const paid = payments.data.filter((x: any) => x.payment_plan_id === p.id).reduce((s: number, x: any) => s + Number(x.amount), 0);
-    const remaining = Math.max(0, Number(p.amount) - paid);
+    const remaining = paymentPlanRemainingFromPayments(p, payments.data);
     const days = Math.abs(daysUntil(p.due_date));
     return {
       id: p.id, customer: c ? customerDisplayName(c) : "-", project: pr?.title || "-",
-      dueDate: p.due_date, days, amount: Number(p.amount), remaining, status: p.status,
+      dueDate: p.due_date, days, amount: safeNumber(p.amount), remaining, status: p.status,
     };
   }).filter((r: any) => {
     if (delay === "1-30" && (r.days < 1 || r.days > 30)) return false;
