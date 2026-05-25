@@ -26,9 +26,14 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminCustomers from "./pages/admin/AdminCustomers";
 import AdminCustomerEdit from "./pages/admin/AdminCustomerEdit";
 import AdminCustomerDetail from "./pages/admin/AdminCustomerDetail";
+import AdminCustomerFinance from "./pages/admin/AdminCustomerFinance";
+import AdminEmployees from "./pages/admin/AdminEmployees";
+import AdminEmployeeFinance from "./pages/admin/AdminEmployeeFinance";
 import AdminPaymentPlans from "./pages/admin/AdminPaymentPlans";
 import AdminCollections from "./pages/admin/AdminCollections";
 import AdminExpenses from "./pages/admin/AdminExpenses";
+import AdminExpenseCards from "./pages/admin/AdminExpenseCards";
+import AdminExpenseCardFinance from "./pages/admin/AdminExpenseCardFinance";
 import AdminFinance from "./pages/admin/AdminFinance";
 import AdminProjectFinance from "./pages/admin/AdminProjectFinance";
 import AdminNotifications from "./pages/admin/AdminNotifications";
@@ -55,9 +60,14 @@ const App = () => (
               <Route path="musteriler/yeni" element={<AdminCustomerEdit />} />
               <Route path="musteriler/:id" element={<AdminCustomerDetail />} />
               <Route path="musteriler/:id/duzenle" element={<AdminCustomerEdit />} />
+              <Route path="musteriler/:id/finans" element={<AdminCustomerFinance />} />
+              <Route path="personeller" element={<AdminEmployees />} />
+              <Route path="personeller/:id/finans" element={<AdminEmployeeFinance />} />
               <Route path="odeme-planlari" element={<AdminPaymentPlans />} />
               <Route path="tahsilatlar" element={<AdminCollections />} />
               <Route path="giderler" element={<AdminExpenses />} />
+              <Route path="gider-kartlari" element={<AdminExpenseCards />} />
+              <Route path="gider-kartlari/:id/finans" element={<AdminExpenseCardFinance />} />
               <Route path="finans-dashboard" element={<AdminFinance />} />
               <Route path="medya" element={<AdminMedia />} />
               <Route path="talepler" element={<AdminContacts />} />

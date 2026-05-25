@@ -39,7 +39,7 @@ function Row({ p, onChange }: any) {
       </div>
       <div className="flex items-center gap-1">
         <Button asChild size="sm" variant="ghost" title="Önizle"><Link to={`/projelerimiz/${p.slug}`} target="_blank"><ExternalLink className="h-4 w-4" /></Link></Button>
-        <Button asChild size="sm" variant="ghost" title="Finans"><Link to={`/admin/projeler/${p.id}/finans`}><BarChart3 className="h-4 w-4" /></Link></Button>
+        <Button asChild size="sm" variant="outline" title="Ekstre"><Link to={`/admin/projeler/${p.id}/finans`}><BarChart3 className="h-4 w-4" /><span className="hidden xl:inline">Ekstre</span></Link></Button>
         <Button asChild size="sm" variant="ghost" title="Düzenle"><Link to={`/admin/projeler/${p.id}`}><Edit className="h-4 w-4" /></Link></Button>
         <Button size="sm" variant="ghost" title={p.is_published ? "Yayından Kaldır" : "Yayınla"} onClick={() => onChange("toggle", p)}>{p.is_published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
         <Button size="sm" variant="ghost" title="Çoğalt" onClick={() => onChange("duplicate", p)}><Copy className="h-4 w-4" /></Button>

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Edit, Trash2, Eye, Download, Phone, MessageCircle, Users, Wallet, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Eye, Download, Phone, MessageCircle, Users, Wallet, AlertTriangle, CheckCircle2, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CUSTOMER_TYPES, CUSTOMER_STATUSES, customerDisplayName, formatTRY, statusBadgeClass, exportCSV, whatsappLink } from "@/lib/finance";
 import { cn } from "@/lib/utils";
@@ -166,6 +166,7 @@ export default function AdminCustomers() {
                   <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(c.status))}>{c.status}</span></td>
                   <td className="p-3">
                     <div className="flex justify-end gap-1">
+                      <Button asChild size="sm" variant="outline"><Link to={`/admin/musteriler/${c.id}/finans`}><FileText className="h-4 w-4" /> Ekstre</Link></Button>
                       <Button asChild size="sm" variant="ghost"><Link to={`/admin/musteriler/${c.id}`}><Eye className="h-4 w-4" /></Link></Button>
                       <Button asChild size="sm" variant="ghost"><Link to={`/admin/musteriler/${c.id}/duzenle`}><Edit className="h-4 w-4" /></Link></Button>
                       <Button size="sm" variant="ghost" onClick={() => remove(c.id, customerDisplayName(c))}><Trash2 className="h-4 w-4 text-destructive" /></Button>

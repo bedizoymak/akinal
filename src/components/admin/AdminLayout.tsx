@@ -6,6 +6,7 @@ import {
   ChevronRight,
   FileBarChart,
   FolderKanban,
+  HardHat,
   Home,
   Image as ImageIcon,
   Inbox,
@@ -15,6 +16,7 @@ import {
   Plus,
   Receipt,
   Settings,
+  Tags,
   Users,
   Wallet,
 } from "lucide-react";
@@ -44,12 +46,16 @@ const NAV_GROUPS = [
       { to: "/admin/tahsilatlar", label: "Tahsilatlar", description: "Gelen ödemeler", icon: Wallet },
       { to: "/admin/odeme-planlari", label: "Ödeme Planları", description: "Alacak takibi", icon: Wallet },
       { to: "/admin/giderler", label: "Giderler", description: "Masraf takibi", icon: Receipt },
+      { to: "/admin/gider-kartlari", label: "Gider Kartları", description: "Sabit gider kartları", icon: Tags },
       { to: "/admin/raporlar", label: "Raporlar", description: "Yönetim raporları", icon: FileBarChart },
     ],
   },
   {
     title: "Cari Yönetimi",
-    items: [{ to: "/admin/musteriler", label: "Müşteriler", description: "Cari ve ilişki takibi", icon: Users }],
+    items: [
+      { to: "/admin/musteriler", label: "Müşteriler", description: "Cari ve ilişki takibi", icon: Users },
+      { to: "/admin/personeller", label: "Personeller", description: "Usta ve çalışan kartları", icon: HardHat },
+    ],
   },
   {
     title: "Operasyon",
@@ -64,15 +70,29 @@ const NAV_GROUPS = [
   },
 ];
 
-const PAGE_META = [
+type PageMeta = {
+  path: string;
+  title: string;
+  group: string;
+  exact?: boolean;
+  match?: (pathname: string) => boolean;
+};
+
+const PAGE_META: PageMeta[] = [
   { path: "/admin/projeler/yeni", title: "Yeni Proje", group: "Proje Yönetimi" },
   { path: "/admin/musteriler/yeni", title: "Yeni Müşteri", group: "Cari Yönetimi" },
+  { path: "/admin/projeler/:id/finans", title: "Proje Ekstresi", group: "Proje Yönetimi", match: (pathname) => /^\/admin\/projeler\/[^/]+\/finans$/.test(pathname) },
+  { path: "/admin/musteriler/:id/finans", title: "Müşteri Ekstresi", group: "Cari Yönetimi", match: (pathname) => /^\/admin\/musteriler\/[^/]+\/finans$/.test(pathname) },
+  { path: "/admin/personeller/:id/finans", title: "Personel Ekstresi", group: "Cari Yönetimi", match: (pathname) => /^\/admin\/personeller\/[^/]+\/finans$/.test(pathname) },
+  { path: "/admin/gider-kartlari/:id/finans", title: "Gider Kartı Ekstresi", group: "Finans", match: (pathname) => /^\/admin\/gider-kartlari\/[^/]+\/finans$/.test(pathname) },
   { path: "/admin/projeler", title: "Projeler", group: "Proje Yönetimi" },
   { path: "/admin/musteriler", title: "Müşteriler", group: "Cari Yönetimi" },
+  { path: "/admin/personeller", title: "Personeller", group: "Cari Yönetimi" },
   { path: "/admin/finans-dashboard", title: "Finans Özeti", group: "Finans" },
   { path: "/admin/tahsilatlar", title: "Tahsilatlar", group: "Finans" },
   { path: "/admin/odeme-planlari", title: "Ödeme Planları", group: "Finans" },
   { path: "/admin/giderler", title: "Giderler", group: "Finans" },
+  { path: "/admin/gider-kartlari", title: "Gider Kartları", group: "Finans" },
   { path: "/admin/raporlar", title: "Raporlar", group: "Finans" },
   { path: "/admin/medya", title: "Medya", group: "Proje Yönetimi" },
   { path: "/admin/talepler", title: "İletişim Talepleri", group: "Operasyon" },
@@ -83,7 +103,7 @@ const PAGE_META = [
 
 function findPageMeta(pathname: string) {
   return (
-    PAGE_META.find((item) => (item.exact ? pathname === item.path : pathname.startsWith(item.path))) ?? {
+    PAGE_META.find((item) => (item.match ? item.match(pathname) : item.exact ? pathname === item.path : pathname.startsWith(item.path))) ?? {
       title: "Yönetim Paneli",
       group: "Akınal İnşaat",
     }

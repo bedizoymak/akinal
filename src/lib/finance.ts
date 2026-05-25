@@ -2,11 +2,22 @@ export const CUSTOMER_TYPES = ["Bireysel", "Firma", "Arsa Sahibi", "Daire Sahibi
 export const CUSTOMER_STATUSES = ["Aktif", "Beklemede", "Tamamlandı", "Pasif"] as const;
 export const PAYMENT_PLAN_STATUSES = ["Bekliyor", "Kısmi Ödendi", "Ödendi", "Gecikti", "İptal"] as const;
 export const PAYMENT_METHODS = ["Nakit", "Havale / EFT", "Kredi Kartı", "Çek", "Senet", "Diğer"] as const;
+export const CURRENCIES = ["TRY", "USD", "EUR"] as const;
+export const GROUP_TAGS = ["Resmi", "Gayri Resmi"] as const;
+export const ENTRY_DIRECTIONS = ["Gelir", "Gider"] as const;
+export const ENTRY_STATUSES = ["Planlandı", "Gerçekleşti", "İptal"] as const;
+export const CARD_TYPES = ["customer", "employee", "expense"] as const;
 export const EXPENSE_CATEGORIES = [
   "Malzeme", "İşçilik", "Ruhsat / Resmi İşlemler", "Mimari / Proje",
   "Taşeron", "Nakliye", "Şantiye Gideri", "Ofis Gideri", "Diğer",
 ] as const;
 export const DOCUMENT_TYPES = ["Sözleşme", "Dekont", "Fatura", "Makbuz", "Ruhsat", "Tapu", "Kimlik", "Diğer"] as const;
+
+export type CurrencyTag = typeof CURRENCIES[number];
+export type GroupTag = typeof GROUP_TAGS[number];
+export type EntryDirection = typeof ENTRY_DIRECTIONS[number];
+export type EntryStatus = typeof ENTRY_STATUSES[number];
+export type CardType = typeof CARD_TYPES[number];
 
 export const FINANCE_COLORS = {
   received: "hsl(145, 55%, 25%)",
@@ -21,6 +32,15 @@ export const FINANCE_COLORS = {
 export function formatTRY(n: number | string | null | undefined): string {
   const v = Number(n ?? 0);
   return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 2 }).format(v);
+}
+
+export function formatMoney(amount: number | string | null | undefined, currency: CurrencyTag = "TRY"): string {
+  const value = Number(amount ?? 0);
+  return new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 export function formatDate(d: string | Date | null | undefined): string {
