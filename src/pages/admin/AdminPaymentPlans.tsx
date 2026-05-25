@@ -110,9 +110,9 @@ export default function AdminPaymentPlans() {
   return (
     <div>
       <AdminPageHeader
-        eyebrow="Finans"
+        eyebrow="Cari ve Tahsilat"
         title="Ödeme Planları"
-        description="Kimden, hangi tarihte, ne kadar tahsil edileceğini takip edin; gecikme ve kalan tutarları görün."
+        description="Beklenen veya vadeli alacakları takip edin. Gerçekleşen ödeme geldiğinde Tahsilatlar ekranından kaydedilir."
         actions={
           <>
           <Button variant="outline" onClick={downloadCSV}><Download className="h-4 w-4 mr-1" /> CSV Olarak İndir</Button>

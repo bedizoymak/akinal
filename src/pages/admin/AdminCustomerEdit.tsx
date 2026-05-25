@@ -74,7 +74,7 @@ export default function AdminCustomerEdit() {
   return (
     <div className="max-w-4xl">
       <AdminPageHeader
-        eyebrow="Cari Yönetimi"
+        eyebrow="Cari ve Tahsilat"
         title={isNew ? "Yeni Müşteri" : "Müşteri Düzenle"}
         description="Müşteri iletişim bilgilerini, cari durumunu ve ilgili proje bağlantılarını düzenleyin."
         actions={

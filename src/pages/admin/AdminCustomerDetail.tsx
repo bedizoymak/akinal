@@ -96,7 +96,7 @@ export default function AdminCustomerDetail() {
   return (
     <div>
       <AdminPageHeader
-        eyebrow="Müşteri Detayı"
+        eyebrow="Cari ve Tahsilat"
         title={name}
         description={`${customer.customer_type} · ${customer.status} · müşteri bakiyesi, tahsilat planı, notlar ve belgeler.`}
         actions={

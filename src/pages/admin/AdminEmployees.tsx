@@ -150,7 +150,7 @@ export default function AdminEmployees() {
   return (
     <div>
       <AdminPageHeader
-        eyebrow="Cari Yönetimi"
+        eyebrow="Personel"
         title="Personeller"
         description="Personel, usta, kalfa, taşeron ve şantiye çalışanı kartlarını yönetin."
         actions={<Button onClick={openCreate} className="bg-accent text-accent-foreground hover:bg-accent-glow"><Plus className="h-4 w-4" /> Yeni Personel</Button>}

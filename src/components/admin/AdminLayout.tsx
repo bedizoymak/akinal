@@ -3,6 +3,7 @@ import { NavLink, Outlet, Navigate, useLocation, useNavigate, Link } from "react
 import {
   BarChart3,
   Bell,
+  CalendarClock,
   ChevronRight,
   FileBarChart,
   FolderKanban,
@@ -13,7 +14,6 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  Plus,
   Receipt,
   Settings,
   Tags,
@@ -29,32 +29,37 @@ import { cn } from "@/lib/utils";
 
 const NAV_GROUPS = [
   {
-    title: "Genel Bakış",
-    items: [{ to: "/admin", label: "Genel Bakış", description: "Şirket özeti", icon: LayoutDashboard, end: true }],
+    title: "Genel",
+    items: [{ to: "/admin", label: "Genel Bakış", description: "Kısa şirket özeti", icon: LayoutDashboard, end: true }],
   },
   {
     title: "Proje Yönetimi",
     items: [
-      { to: "/admin/projeler", label: "Projeler", description: "Proje portföyü", icon: FolderKanban },
+      { to: "/admin/projeler", label: "Projeler", description: "Şantiye ve proje kayıtları", icon: FolderKanban },
       { to: "/admin/medya", label: "Medya", description: "Proje görselleri", icon: ImageIcon },
+    ],
+  },
+  {
+    title: "Cari ve Tahsilat",
+    items: [
+      { to: "/admin/musteriler", label: "Müşteriler", description: "Cari kayıtlar", icon: Users },
+      { to: "/admin/tahsilatlar", label: "Tahsilatlar", description: "Gelen ödemeler", icon: Wallet },
+      { to: "/admin/odeme-planlari", label: "Ödeme Planları", description: "Vadeli alacaklar", icon: CalendarClock },
     ],
   },
   {
     title: "Finans",
     items: [
-      { to: "/admin/finans-dashboard", label: "Finans Özeti", description: "Kasa ve kârlılık", icon: BarChart3 },
-      { to: "/admin/tahsilatlar", label: "Tahsilatlar", description: "Gelen ödemeler", icon: Wallet },
-      { to: "/admin/odeme-planlari", label: "Ödeme Planları", description: "Alacak takibi", icon: Wallet },
+      { to: "/admin/finans-dashboard", label: "Finans Özeti", description: "Gelir, gider ve net durum", icon: BarChart3 },
       { to: "/admin/giderler", label: "Giderler", description: "Masraf takibi", icon: Receipt },
-      { to: "/admin/gider-kartlari", label: "Gider Kartları", description: "Sabit gider kartları", icon: Tags },
+      { to: "/admin/gider-kartlari", label: "Gider Kartları", description: "Sabit gider başlıkları", icon: Tags },
       { to: "/admin/raporlar", label: "Raporlar", description: "Yönetim raporları", icon: FileBarChart },
     ],
   },
   {
-    title: "Cari Yönetimi",
+    title: "Personel",
     items: [
-      { to: "/admin/musteriler", label: "Müşteriler", description: "Cari ve ilişki takibi", icon: Users },
-      { to: "/admin/personeller", label: "Personeller", description: "Usta ve çalışan kartları", icon: HardHat },
+      { to: "/admin/personeller", label: "Personeller", description: "Usta ve çalışanlar", icon: HardHat },
     ],
   },
   {
@@ -80,20 +85,20 @@ type PageMeta = {
 
 const PAGE_META: PageMeta[] = [
   { path: "/admin/projeler/yeni", title: "Yeni Proje", group: "Proje Yönetimi" },
-  { path: "/admin/musteriler/yeni", title: "Yeni Müşteri", group: "Cari Yönetimi" },
+  { path: "/admin/musteriler/yeni", title: "Yeni Müşteri", group: "Cari ve Tahsilat" },
   { path: "/admin/projeler/:id/finans", title: "Proje Ekstresi", group: "Proje Yönetimi", match: (pathname) => /^\/admin\/projeler\/[^/]+\/finans$/.test(pathname) },
-  { path: "/admin/musteriler/:id/finans", title: "Müşteri Ekstresi", group: "Cari Yönetimi", match: (pathname) => /^\/admin\/musteriler\/[^/]+\/finans$/.test(pathname) },
-  { path: "/admin/personeller/:id/finans", title: "Personel Ekstresi", group: "Cari Yönetimi", match: (pathname) => /^\/admin\/personeller\/[^/]+\/finans$/.test(pathname) },
+  { path: "/admin/musteriler/:id/finans", title: "Müşteri Ekstresi", group: "Cari ve Tahsilat", match: (pathname) => /^\/admin\/musteriler\/[^/]+\/finans$/.test(pathname) },
+  { path: "/admin/personeller/:id/finans", title: "Personel Ekstresi", group: "Personel", match: (pathname) => /^\/admin\/personeller\/[^/]+\/finans$/.test(pathname) },
   { path: "/admin/gider-kartlari/:id/finans", title: "Gider Kartı Ekstresi", group: "Finans", match: (pathname) => /^\/admin\/gider-kartlari\/[^/]+\/finans$/.test(pathname) },
   { path: "/admin/projeler/:id", title: "Proje Düzenle", group: "Proje Yönetimi", match: (pathname) => /^\/admin\/projeler\/[^/]+$/.test(pathname) },
-  { path: "/admin/musteriler/:id/duzenle", title: "Müşteri Düzenle", group: "Cari Yönetimi", match: (pathname) => /^\/admin\/musteriler\/[^/]+\/duzenle$/.test(pathname) },
-  { path: "/admin/musteriler/:id", title: "Müşteri Detayı", group: "Cari Yönetimi", match: (pathname) => /^\/admin\/musteriler\/[^/]+$/.test(pathname) },
+  { path: "/admin/musteriler/:id/duzenle", title: "Müşteri Düzenle", group: "Cari ve Tahsilat", match: (pathname) => /^\/admin\/musteriler\/[^/]+\/duzenle$/.test(pathname) },
+  { path: "/admin/musteriler/:id", title: "Müşteri Detayı", group: "Cari ve Tahsilat", match: (pathname) => /^\/admin\/musteriler\/[^/]+$/.test(pathname) },
   { path: "/admin/projeler", title: "Projeler", group: "Proje Yönetimi" },
-  { path: "/admin/musteriler", title: "Müşteriler", group: "Cari Yönetimi" },
-  { path: "/admin/personeller", title: "Personeller", group: "Cari Yönetimi" },
+  { path: "/admin/musteriler", title: "Müşteriler", group: "Cari ve Tahsilat" },
+  { path: "/admin/personeller", title: "Personeller", group: "Personel" },
   { path: "/admin/finans-dashboard", title: "Finans Özeti", group: "Finans" },
-  { path: "/admin/tahsilatlar", title: "Tahsilatlar", group: "Finans" },
-  { path: "/admin/odeme-planlari", title: "Ödeme Planları", group: "Finans" },
+  { path: "/admin/tahsilatlar", title: "Tahsilatlar", group: "Cari ve Tahsilat" },
+  { path: "/admin/odeme-planlari", title: "Ödeme Planları", group: "Cari ve Tahsilat" },
   { path: "/admin/giderler", title: "Giderler", group: "Finans" },
   { path: "/admin/gider-kartlari", title: "Gider Kartları", group: "Finans" },
   { path: "/admin/raporlar", title: "Raporlar", group: "Finans" },
@@ -101,7 +106,7 @@ const PAGE_META: PageMeta[] = [
   { path: "/admin/talepler", title: "İletişim Talepleri", group: "Operasyon" },
   { path: "/admin/bildirimler", title: "Bildirimler", group: "Operasyon" },
   { path: "/admin/ayarlar", title: "Ayarlar", group: "Sistem" },
-  { path: "/admin", title: "Genel Bakış", group: "Genel Bakış", exact: true },
+  { path: "/admin", title: "Genel Bakış", group: "Genel", exact: true },
 ];
 
 function findPageMeta(pathname: string) {
@@ -222,12 +227,6 @@ export default function AdminLayout() {
               <div className="truncate font-display text-lg font-bold md:text-xl">{page.title}</div>
             </div>
             <div className="ml-auto flex items-center gap-2">
-              <Button asChild size="sm" className="hidden bg-accent text-accent-foreground hover:bg-accent-glow md:inline-flex">
-                <Link to="/admin/projeler/yeni">
-                  <Plus className="h-4 w-4" />
-                  Yeni Proje
-                </Link>
-              </Button>
               <NotificationBell />
             </div>
           </div>

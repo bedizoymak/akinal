@@ -95,7 +95,7 @@ export default function AdminCustomers() {
   return (
     <div>
       <AdminPageHeader
-        eyebrow="Cari Yönetimi"
+        eyebrow="Cari ve Tahsilat"
         title="Müşteriler"
         description="Müşteri ilişkilerini, proje bağlantılarını, tahsilatları ve kalan bakiyeleri tek yerden izleyin."
         actions={

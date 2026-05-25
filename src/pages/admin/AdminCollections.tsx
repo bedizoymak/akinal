@@ -17,6 +17,7 @@ const empty = { customer_id: "", project_id: "", payment_plan_id: "", amount: ""
 export default function AdminCollections() {
   const [params] = useSearchParams();
   const preCustomer = params.get("musteri") || "";
+  const shouldOpenNew = params.get("yeni") === "1";
   const [items, setItems] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
@@ -44,7 +45,13 @@ export default function AdminCollections() {
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
-  useEffect(() => { if (preCustomer) { setForm((f: any) => ({ ...f, customer_id: preCustomer })); setOpen(true); } }, [preCustomer]);
+  useEffect(() => {
+    if (preCustomer || shouldOpenNew) {
+      setForm((f: any) => ({ ...f, customer_id: preCustomer || f.customer_id }));
+      setEditId(null);
+      setOpen(true);
+    }
+  }, [preCustomer, shouldOpenNew]);
 
   function openNew() { setForm({ ...empty, customer_id: filterCustomer !== "all" ? filterCustomer : "" }); setEditId(null); setOpen(true); }
   function openEdit(it: any) { setForm({ ...it, project_id: it.project_id || "", payment_plan_id: it.payment_plan_id || "", description: it.description || "", document_url: it.document_url || "", amount: String(it.amount) }); setEditId(it.id); setOpen(true); }
@@ -131,9 +138,9 @@ export default function AdminCollections() {
   return (
     <div>
       <AdminPageHeader
-        eyebrow="Finans"
+        eyebrow="Cari ve Tahsilat"
         title="Tahsilatlar"
-        description="Müşterilerden alınan ödemeleri, proje bağlantılarını ve tahsilat belgelerini takip edin."
+        description="Gerçekleşen gelen ödemeleri takip edin. Ödeme planı seçerseniz ilgili proje bilgisi otomatik tamamlanır."
         actions={
           <>
           <Button variant="outline" onClick={downloadCSV}><Download className="h-4 w-4 mr-1" /> CSV Olarak İndir</Button>

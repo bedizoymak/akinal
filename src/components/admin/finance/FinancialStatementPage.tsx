@@ -426,12 +426,12 @@ function buildPayload(form: EntryFormState): FinancialEntryInsert {
 function validateForm(form: EntryFormState): string | null {
   if (!form.project_id) return "Proje seçimi zorunludur.";
   if (!form.entry_date) return "Tarih zorunludur.";
-  if (!form.card_type) return "Kart tipi zorunludur.";
+  if (!form.card_type) return "Hareket türü zorunludur.";
   if (!form.title.trim()) return "Başlık zorunludur.";
   if (!Number(form.amount) || Number(form.amount) <= 0) return "Tutar 0'dan büyük olmalıdır.";
   if (!form.currency_tag) return "Para birimi zorunludur.";
-  if (!form.group_tag) return "Grup zorunludur.";
-  if (!form.direction) return "Yön zorunludur.";
+  if (!form.group_tag) return "Kayıt grubu zorunludur.";
+  if (!form.direction) return "Hareket tipi zorunludur.";
   if (!form.status) return "Durum zorunludur.";
   if (form.card_type === "customer" && !form.customer_id) return "Müşteri seçimi zorunludur.";
   if (form.card_type === "employee" && !form.employee_id) return "Personel seçimi zorunludur.";
@@ -445,7 +445,7 @@ function SummaryCards({ kind, summary }: { kind: FinancialStatementKind; summary
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <AdminMetricCard label="Toplam Gelir" value={<MoneyLines totals={summary.realizedIncome} tone="success" />} description="Gerçekleşen gelir" />
         <AdminMetricCard label="Toplam Gider" value={<MoneyLines totals={summary.realizedExpense} tone="danger" />} description="Gerçekleşen gider" />
-        <AdminMetricCard label="Net Kâr / Zarar" value={<MoneyLines totals={summary.realizedNet} />} description="Gelir eksi gider" />
+        <AdminMetricCard label="Net Durum" value={<MoneyLines totals={summary.realizedNet} />} description="Gelir eksi gider" />
         <AdminMetricCard label="Planlanan Gelir" value={<MoneyLines totals={summary.plannedIncome} tone="warning" />} description="Beklenen gelir" />
         <AdminMetricCard label="Planlanan Gider" value={<MoneyLines totals={summary.plannedExpense} tone="warning" />} description="Beklenen gider" />
         <AdminMetricCard label="Resmi Bakiye" value={<MoneyLines totals={summary.officialBalance} />} description="Resmi hareketler" />
@@ -747,7 +747,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
 
           <AdminSection
             title={entity.tableTitle}
-            description="Finansal hareketleri tarih, kart, grup, yön, durum ve para birimine göre filtreleyin."
+            description="Finansal hareketleri tarih, kart, kayıt grubu, hareket tipi, durum ve para birimine göre filtreleyin."
             actions={<Button onClick={openCreate} className="bg-accent text-accent-foreground hover:bg-accent-glow"><Plus className="h-4 w-4" /> Yeni Hareket Ekle</Button>}
           >
             <div className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -765,9 +765,9 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
                 </Select>
               ) : (
                 <Select value={cardTypeFilter} onValueChange={setCardTypeFilter}>
-                  <SelectTrigger><SelectValue placeholder="Kart Tipi" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Hareket Türü" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tüm Kart Tipleri</SelectItem>
+                    <SelectItem value="all">Tüm Hareket Türleri</SelectItem>
                     {CARD_TYPES.map((type) => <SelectItem key={type} value={type}>{getCardTypeLabel(type)}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -775,12 +775,12 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
               <Input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} aria-label="Başlangıç Tarihi" />
               <Input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} aria-label="Bitiş Tarihi" />
               <Select value={groupFilter} onValueChange={setGroupFilter}>
-                <SelectTrigger><SelectValue placeholder="Grup" /></SelectTrigger>
-                <SelectContent><SelectItem value="all">Tüm Gruplar</SelectItem>{GROUP_TAGS.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
+                <SelectTrigger><SelectValue placeholder="Kayıt Grubu" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">Tüm Kayıt Grupları</SelectItem>{GROUP_TAGS.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={directionFilter} onValueChange={setDirectionFilter}>
-                <SelectTrigger><SelectValue placeholder="Yön" /></SelectTrigger>
-                <SelectContent><SelectItem value="all">Tüm Yönler</SelectItem>{ENTRY_DIRECTIONS.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
+                <SelectTrigger><SelectValue placeholder="Hareket Tipi" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">Tüm Hareket Tipleri</SelectItem>{ENTRY_DIRECTIONS.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger><SelectValue placeholder="Durum" /></SelectTrigger>
@@ -799,15 +799,15 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
                     <th className="p-3">Tarih</th>
                     {kind === "project" ? (
                       <>
-                        <th className="p-3">Kart Tipi</th>
+                        <th className="p-3">Hareket Türü</th>
                         <th className="p-3">Kart Adı</th>
                       </>
                     ) : (
                       <th className="p-3">Proje</th>
                     )}
                     <th className="p-3">Başlık</th>
-                    <th className="p-3">Grup</th>
-                    <th className="p-3">Yön</th>
+                    <th className="p-3">Kayıt Grubu</th>
+                    <th className="p-3">Hareket Tipi</th>
                     <th className="p-3">Durum</th>
                     <th className="p-3 text-right">Tutar</th>
                     <th className="p-3">Para Birimi</th>
@@ -877,7 +877,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
                   <Input value={entity.title} readOnly className="bg-muted" />
                 </div>
                 <div>
-                  <Label>Kart Tipi *</Label>
+                  <Label>Hareket Türü *</Label>
                   <Select value={form.card_type} onValueChange={handleCardTypeChange}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>{CARD_TYPES.map((type) => <SelectItem key={type} value={type}>{getCardTypeLabel(type)}</SelectItem>)}</SelectContent>
@@ -962,14 +962,14 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
               </Select>
             </div>
             <div>
-              <Label>Grup *</Label>
+              <Label>Kayıt Grubu *</Label>
               <Select value={form.group_tag} onValueChange={(value) => updateForm("group_tag", value as GroupTag)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{GROUP_TAGS.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Yön *</Label>
+              <Label>Hareket Tipi *</Label>
               <Select value={form.direction} onValueChange={(value) => updateForm("direction", value as EntryDirection)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{ENTRY_DIRECTIONS.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
