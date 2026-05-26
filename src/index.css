@@ -147,8 +147,23 @@
   to { opacity: 1; }
 }
 
+@keyframes publicPageIn {
+  from { opacity: 0.92; }
+  to { opacity: 1; }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.6s ease-out both;
+}
+
+.animate-public-page-in {
+  animation: publicPageIn 150ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-public-page-in {
+    animation: none;
+  }
 }
 
 @media print {

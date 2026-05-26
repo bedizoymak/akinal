@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+const CONTACT_ADDRESS = "Molla Gürani, Sarı Musa Sk. No:49/A, 34349 Fatih, İstanbul, Türkiye";
+const CONTACT_PHONE = "0532 622 67 29";
+const CONTACT_MAP_EMBED_URL = `https://www.google.com/maps?hl=tr&q=${encodeURIComponent(CONTACT_ADDRESS)}&z=17&output=embed`;
+
 export interface SiteSettings {
   id: string;
   company_name: string;
@@ -23,11 +27,11 @@ export interface SiteSettings {
 const defaults: SiteSettings = {
   id: "",
   company_name: "Akınal İnşaat",
-  phone: "+90 000 000 00 00",
-  whatsapp_number: "+90 000 000 00 00",
+  phone: CONTACT_PHONE,
+  whatsapp_number: CONTACT_PHONE,
   email: "info@akinalinsaat.com",
-  address: "İstanbul, Türkiye",
-  map_embed_url: null,
+  address: CONTACT_ADDRESS,
+  map_embed_url: CONTACT_MAP_EMBED_URL,
   instagram_url: null,
   facebook_url: null,
   linkedin_url: null,
@@ -50,7 +54,16 @@ export function useSiteSettings() {
       .limit(1)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) setSettings({ ...defaults, ...data });
+        if (data) {
+          setSettings({
+            ...defaults,
+            ...data,
+            phone: CONTACT_PHONE,
+            whatsapp_number: data.whatsapp_number || CONTACT_PHONE,
+            address: CONTACT_ADDRESS,
+            map_embed_url: CONTACT_MAP_EMBED_URL,
+          });
+        }
         setLoading(false);
       });
   }, []);
@@ -65,4 +78,8 @@ export function getWhatsAppLink(num: string, message: string) {
 
 export function getTelLink(num: string) {
   return `tel:${(num || "").replace(/\s/g, "")}`;
+}
+
+export function getMapsLink(address: string) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address || "")}`;
 }

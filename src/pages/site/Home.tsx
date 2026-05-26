@@ -100,7 +100,7 @@ export default function Home() {
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur border border-white/20 text-xs font-semibold uppercase tracking-widest text-accent mb-6 reveal-up">
               <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" /> Akınal İnşaat
             </div>
-            <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-bold leading-[1.05] mb-6 reveal-up">
+            <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-extrabold leading-[1.05] mb-6 reveal-up">
               {settings.hero_title}
             </h1>
             <p className="text-base md:text-lg text-white/85 max-w-2xl leading-relaxed mb-8 reveal-up">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { Phone, MessageCircle, Mail, MapPin } from "lucide-react";
 import Seo from "@/components/site/Seo";
@@ -9,8 +9,28 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useSiteSettings, getWhatsAppLink, getTelLink } from "@/hooks/useSiteSettings";
+import { useSiteSettings, getWhatsAppLink, getTelLink, getMapsLink } from "@/hooks/useSiteSettings";
 import { SERVICE_OPTIONS } from "@/lib/projects";
+
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
+
+type TurnstileRenderOptions = {
+  sitekey: string;
+  callback: (token: string) => void;
+  "expired-callback": () => void;
+  "error-callback": () => void;
+  theme: "light";
+  language: "tr";
+};
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (element: HTMLElement, options: TurnstileRenderOptions) => string;
+      reset: (widgetId?: string) => void;
+    };
+  }
+}
 
 const schema = z.object({
   full_name: z.string().trim().min(2, "Ad Soyad zorunludur.").max(100),
@@ -25,12 +45,58 @@ export default function Contact() {
   const { toast } = useToast();
   const [form, setForm] = useState({ full_name: "", phone: "", email: "", service_type: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaError, setCaptchaError] = useState("");
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string>();
+
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY || !turnstileRef.current || widgetIdRef.current) return;
+
+    const renderWidget = () => {
+      if (!window.turnstile || !turnstileRef.current || widgetIdRef.current) return;
+      widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
+        sitekey: TURNSTILE_SITE_KEY,
+        theme: "light",
+        language: "tr",
+        callback: (token) => {
+          setCaptchaToken(token);
+          setCaptchaError("");
+        },
+        "expired-callback": () => {
+          setCaptchaToken("");
+          setCaptchaError("Güvenlik doğrulamasının süresi doldu. Lütfen tekrar doğrulayın.");
+        },
+        "error-callback": () => {
+          setCaptchaToken("");
+          setCaptchaError("Güvenlik doğrulaması tamamlanamadı. Lütfen tekrar deneyin.");
+        },
+      });
+    };
+
+    if (window.turnstile) {
+      renderWidget();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&hl=tr";
+    script.async = true;
+    script.defer = true;
+    script.onload = renderWidget;
+    document.head.appendChild(script);
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const parsed = schema.safeParse(form);
     if (!parsed.success) {
       toast({ title: "Form eksik", description: parsed.error.errors[0].message, variant: "destructive" });
+      return;
+    }
+    if (!captchaToken) {
+      setCaptchaError("Lütfen Ben robot değilim doğrulamasını tamamlayın.");
+      toast({ title: "Güvenlik doğrulaması gerekli", description: "Formu göndermek için Ben robot değilim doğrulamasını tamamlayın.", variant: "destructive" });
       return;
     }
     setSubmitting(true);
@@ -48,13 +114,15 @@ export default function Contact() {
     }
     toast({ title: "Talebiniz alındı", description: "Talebiniz başarıyla alındı. En kısa sürede sizinle iletişime geçeceğiz." });
     setForm({ full_name: "", phone: "", email: "", service_type: "", message: "" });
+    setCaptchaToken("");
+    window.turnstile?.reset(widgetIdRef.current);
   }
 
   const cards = [
     { icon: Phone, title: "Telefon", value: settings.phone, href: getTelLink(settings.phone) },
     { icon: MessageCircle, title: "WhatsApp", value: settings.whatsapp_number, href: getWhatsAppLink(settings.whatsapp_number, settings.whatsapp_message) },
     { icon: Mail, title: "E-posta", value: settings.email, href: `mailto:${settings.email}` },
-    { icon: MapPin, title: "Adres", value: settings.address, href: undefined },
+    { icon: MapPin, title: "Adres", value: settings.address, href: getMapsLink(settings.address) },
   ];
 
   return (
@@ -95,7 +163,7 @@ export default function Contact() {
 
             <div className="aspect-video rounded-lg border border-border bg-surface-muted overflow-hidden">
               {settings.map_embed_url ? (
-                <iframe src={settings.map_embed_url} className="h-full w-full" loading="lazy" title="Harita" />
+                <iframe src={settings.map_embed_url} className="h-full w-full" loading="lazy" title="Harita" referrerPolicy="no-referrer-when-downgrade" />
               ) : (
                 <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">Harita alanı buraya eklenecek.</div>
               )}
@@ -130,8 +198,19 @@ export default function Contact() {
                 <Label htmlFor="message">Mesajınız *</Label>
                 <Textarea id="message" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={5} required maxLength={2000} />
               </div>
+              <div className="sm:col-span-2">
+                <Label>Güvenlik Doğrulaması *</Label>
+                <div className="mt-2 rounded-lg border border-border bg-background p-3">
+                  {TURNSTILE_SITE_KEY ? (
+                    <div ref={turnstileRef} className="min-h-[65px]" />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Ben robot değilim doğrulaması için site anahtarı tanımlanmalıdır.</p>
+                  )}
+                </div>
+                {captchaError && <p className="mt-2 text-sm text-destructive">{captchaError}</p>}
+              </div>
             </div>
-            <Button type="submit" disabled={submitting} aria-busy={submitting} className="mt-5 w-full bg-accent hover:bg-accent-glow text-accent-foreground font-semibold">
+            <Button type="submit" disabled={submitting || !captchaToken} aria-busy={submitting} className="mt-5 w-full bg-accent hover:bg-accent-glow text-accent-foreground font-semibold">
               {submitting ? "Gönderiliyor..." : "Gönder"}
             </Button>
           </form>

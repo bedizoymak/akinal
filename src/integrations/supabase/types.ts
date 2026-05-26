@@ -47,6 +47,36 @@ export type Database = {
         }
         Relationships: []
       }
+      cookie_consents: {
+        Row: {
+          analytics: boolean
+          consent_status: string
+          created_at: string
+          id: string
+          marketing: boolean
+          necessary: boolean
+          user_agent: string | null
+        }
+        Insert: {
+          analytics?: boolean
+          consent_status: string
+          created_at?: string
+          id?: string
+          marketing?: boolean
+          necessary?: boolean
+          user_agent?: string | null
+        }
+        Update: {
+          analytics?: boolean
+          consent_status?: string
+          created_at?: string
+          id?: string
+          marketing?: boolean
+          necessary?: boolean
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       customer_notes: {
         Row: {
           created_at: string

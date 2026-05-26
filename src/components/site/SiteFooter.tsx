@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Phone, Mail, MapPin, Instagram, Facebook, Linkedin } from "lucide-react";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { getMapsLink, getTelLink, useSiteSettings } from "@/hooks/useSiteSettings";
 import logoImg from "@/assets/logo.png";
 
 export default function SiteFooter() {
@@ -49,9 +49,9 @@ export default function SiteFooter() {
         <div>
           <h4 className="font-display text-sm uppercase tracking-widest text-accent mb-5">İletişim</h4>
           <ul className="space-y-3 text-sm text-white/75">
-            <li className="flex items-start gap-3"><Phone className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <span>{settings.phone}</span></li>
+            <li className="flex items-start gap-3"><Phone className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <a href={getTelLink(settings.phone)} className="hover:text-white">{settings.phone}</a></li>
             <li className="flex items-start gap-3"><Mail className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <span>{settings.email}</span></li>
-            <li className="flex items-start gap-3"><MapPin className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <span>{settings.address}</span></li>
+            <li className="flex items-start gap-3"><MapPin className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <a href={getMapsLink(settings.address)} target="_blank" rel="noreferrer" className="hover:text-white">{settings.address}</a></li>
           </ul>
         </div>
       </div>

@@ -2,7 +2,6 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import logoImg from "@/assets/logo.png";
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -37,7 +36,7 @@ export default function SiteHeader() {
           : "bg-background/80 backdrop-blur-sm"
       )}
     >
-      <div className="container-narrow flex h-20 md:h-24 items-center justify-between gap-4">
+      <div className="container-narrow flex h-20 md:h-24 items-center justify-between gap-6">
         <Link to="/" className="flex items-center shrink-0 group" aria-label="Akınal İnşaat - Ana Sayfa">
           <img
             src={logoImg}
@@ -48,7 +47,7 @@ export default function SiteHeader() {
           />
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-1">
+        <nav className="hidden lg:flex flex-1 items-center justify-end gap-1.5">
           {NAV.map((n) => (
             <NavLink
               key={n.to}
@@ -67,12 +66,6 @@ export default function SiteHeader() {
             </NavLink>
           ))}
         </nav>
-
-        <div className="hidden md:flex items-center">
-          <Button asChild variant="default" className="bg-accent hover:bg-accent-glow text-accent-foreground font-semibold shadow-accent-glow">
-            <Link to="/iletisim">Teklif Al</Link>
-          </Button>
-        </div>
 
         <button
           type="button"
@@ -104,9 +97,6 @@ export default function SiteHeader() {
                 {n.label}
               </NavLink>
             ))}
-            <Button asChild className="mt-3 bg-accent hover:bg-accent-glow text-accent-foreground font-semibold">
-              <Link to="/iletisim">Teklif Al</Link>
-            </Button>
           </nav>
         </div>
       )}
