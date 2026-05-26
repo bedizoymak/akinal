@@ -38,13 +38,21 @@ const metricToneClass = {
   accent: "text-accent bg-accent/10",
 };
 
+const metricValueToneClass = {
+  default: "text-foreground",
+  success: "text-emerald-700",
+  warning: "text-amber-700",
+  danger: "text-red-700",
+  accent: "text-accent",
+};
+
 export function AdminMetricCard({ label, value, description, icon: Icon, tone = "default" }: AdminMetricCardProps) {
   return (
-    <div className="rounded-md border border-border bg-card p-4 shadow-card-soft">
+    <div className="rounded-md border border-border bg-card p-4 shadow-card-soft transition-colors hover:border-accent/30">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
-          <div className="mt-2 text-xl font-bold leading-tight text-foreground">{value}</div>
+          <div className={cn("mt-2 break-words text-2xl font-extrabold leading-tight tabular-nums tracking-normal", metricValueToneClass[tone])}>{value}</div>
         </div>
         {Icon && (
           <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-md", metricToneClass[tone])}>
@@ -52,7 +60,7 @@ export function AdminMetricCard({ label, value, description, icon: Icon, tone = 
           </div>
         )}
       </div>
-      {description && <div className="mt-3 text-xs leading-relaxed text-muted-foreground">{description}</div>}
+      {description && <div className="mt-3 border-t border-border/60 pt-3 text-xs leading-relaxed text-muted-foreground">{description}</div>}
     </div>
   );
 }

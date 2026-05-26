@@ -71,7 +71,7 @@ export default function AdminCollections() {
     const ext = file.name.split(".").pop();
     const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const { error } = await supabase.storage.from("payment-documents").upload(path, file);
-    if (error) { toast({ title: "Yükleme hatası", description: error.message, variant: "destructive" }); setUploading(false); return; }
+    if (error) { toast({ title: "Belge yüklenemedi", description: "Belge yüklenirken bir problem oluştu. Lütfen dosyayı kontrol edip tekrar deneyin.", variant: "destructive" }); setUploading(false); return; }
     const { data } = await supabase.storage.from("payment-documents").createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
     setForm((f: any) => ({ ...f, document_url: data?.signedUrl || "" }));
     setUploading(false);

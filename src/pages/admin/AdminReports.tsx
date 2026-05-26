@@ -42,9 +42,9 @@ function entriesInDateRange(entries: any[], from: string, to: string) {
 
 function SummaryCard({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div className="bg-card border border-border rounded-md p-4">
-      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className={`text-lg font-bold mt-1 ${color || ""}`}>{value}</div>
+    <div className="rounded-md border border-border bg-card p-4 shadow-card-soft">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
+      <div className={`mt-2 break-words text-2xl font-extrabold leading-tight tabular-nums ${color || ""}`}>{value}</div>
     </div>
   );
 }
@@ -79,16 +79,16 @@ function ReportFooter() {
 }
 
 function Filters({ children }: any) {
-  return <Card className="mb-4 print:hidden"><CardContent className="p-4 grid md:grid-cols-4 gap-3">{children}</CardContent></Card>;
+  return <Card className="mb-4 print:hidden"><CardContent className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">{children}</CardContent></Card>;
 }
 
 function ExportBar({ onCSV, title }: { onCSV: () => void; title: string }) {
   return (
-    <div className="flex flex-wrap gap-2 mb-4 print:hidden">
+    <div className="mb-4 flex flex-col gap-2 print:hidden sm:flex-row sm:flex-wrap sm:items-center">
       <Button onClick={() => window.print()} variant="outline"><FileText className="h-4 w-4 mr-2" /> PDF Olarak İndir</Button>
       <Button onClick={onCSV} variant="outline"><Download className="h-4 w-4 mr-2" /> CSV Olarak İndir</Button>
       <Button onClick={() => window.print()} variant="outline"><Printer className="h-4 w-4 mr-2" /> Yazdır</Button>
-      <div className="ml-auto text-sm text-muted-foreground self-center">{title}</div>
+      <div className="text-sm text-muted-foreground sm:ml-auto sm:self-center">{title}</div>
     </div>
   );
 }
@@ -144,7 +144,7 @@ function ProjectFinanceReport({ data }: any) {
       })))} />
       <ReportHeader title="Proje Finans Raporu" dateRange={dateRange} />
       <Card><CardContent className="p-0">
-        <Table>
+        <Table className="min-w-[980px]">
           <TableHeader><TableRow>
             <TableHead>Proje Adı</TableHead><TableHead>Gerçekleşen Gelir</TableHead><TableHead>Planlanan Gelir</TableHead>
             <TableHead>Gerçekleşen Gider</TableHead><TableHead>Planlanan Gider</TableHead><TableHead>Net Durum</TableHead>
@@ -242,7 +242,7 @@ function CustomerPaymentReport({ data }: any) {
       })))} />
       <ReportHeader title="Müşteri Ödeme Raporu" dateRange={dateRange} />
       <Card><CardContent className="p-0">
-        <Table>
+        <Table className="min-w-[880px]">
           <TableHeader><TableRow>
             <TableHead>Müşteri</TableHead><TableHead>İlgili Proje</TableHead>
             <TableHead>Toplam Borç</TableHead><TableHead>Tahsil Edilen</TableHead><TableHead>Kalan Bakiye</TableHead>
@@ -332,7 +332,7 @@ function CollectionsReport({ data }: any) {
         <SummaryCard label="Kayıt Sayısı" value={String(rows.length)} />
       </div>
       <Card><CardContent className="p-0">
-        <Table>
+        <Table className="min-w-[760px]">
           <TableHeader><TableRow>
             <TableHead>Müşteri</TableHead><TableHead>Proje</TableHead><TableHead>Tutar</TableHead>
             <TableHead>Tarih</TableHead><TableHead>Yöntem</TableHead><TableHead>Açıklama</TableHead>
@@ -408,7 +408,7 @@ function ExpensesReport({ data }: any) {
         <SummaryCard label="Kayıt Sayısı" value={String(rows.length)} />
       </div>
       <Card><CardContent className="p-0">
-        <Table>
+        <Table className="min-w-[760px]">
           <TableHeader><TableRow>
             <TableHead>Proje</TableHead><TableHead>Başlık</TableHead><TableHead>Kategori</TableHead>
             <TableHead>Tutar</TableHead><TableHead>Tarih</TableHead><TableHead>Açıklama</TableHead>
@@ -459,6 +459,7 @@ function GeneralSummaryReport({ data }: any) {
     { name: "Gerçekleşen Gider", value: totalSpent, color: FINANCE_COLORS.expense },
     { name: "Planlanan Gider", value: totalPayable, color: FINANCE_COLORS.pending },
   ];
+  const hasDistribution = distData.some((item) => item.value > 0);
 
   // Monthly chart - last 6 months
   const monthly: any[] = [];
@@ -474,6 +475,7 @@ function GeneralSummaryReport({ data }: any) {
       "Gerçekleşen Gider": monthlySummary.totalExpense,
     });
   }
+  const hasMonthlyData = monthly.some((item) => item["Gerçekleşen Gelir"] > 0 || item["Gerçekleşen Gider"] > 0);
 
   return (
     <div>
@@ -483,7 +485,7 @@ function GeneralSummaryReport({ data }: any) {
         "Bu Ay Beklenen Tahsilat": monthExpected, "Bu Ay Gerçekleşen Gelir": monthCollected, "Bu Ay Gerçekleşen Gider": monthSpent,
       }])} />
       <ReportHeader title="Genel Finans Özeti" dateRange="Tüm Zamanlar" />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard label="Gerçekleşen Gelir" value={formatTRY(totalReceived)} color="text-emerald-700" />
         <SummaryCard label="Planlanan Gelir" value={formatTRY(totalReceivable)} />
         <SummaryCard label="Gerçekleşen Gider" value={formatTRY(totalSpent)} color="text-red-700" />
@@ -496,26 +498,38 @@ function GeneralSummaryReport({ data }: any) {
       <div className="grid md:grid-cols-2 gap-4 mb-4">
         <Card><CardHeader><CardTitle className="text-base">Genel Finans Dağılımı</CardTitle></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={distData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={95}>
-                  {distData.map((d, i) => <Cell key={i} fill={d.color} />)}
-                </Pie>
-                <Tooltip formatter={(v: any) => formatTRY(v)} /><Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            {hasDistribution ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie data={distData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={95}>
+                    {distData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                  </Pie>
+                  <Tooltip formatter={(v: any) => formatTRY(v)} /><Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[260px] items-center justify-center rounded-md bg-surface-light px-6 text-center text-sm text-muted-foreground">
+                Finansal hareket eklendiğinde dağılım grafiği burada görünecek.
+              </div>
+            )}
           </CardContent>
         </Card>
         <Card><CardHeader><CardTitle className="text-base">Aylık Gerçekleşen Gelir ve Gider Grafiği</CardTitle></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={monthly}>
-                <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="ay" /><YAxis />
-                <Tooltip formatter={(v: any) => formatTRY(v)} /><Legend />
-                <Bar dataKey="Gerçekleşen Gelir" fill={FINANCE_COLORS.received} />
-                <Bar dataKey="Gerçekleşen Gider" fill={FINANCE_COLORS.expense} />
-              </BarChart>
-            </ResponsiveContainer>
+            {hasMonthlyData ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={monthly}>
+                  <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="ay" /><YAxis />
+                  <Tooltip formatter={(v: any) => formatTRY(v)} /><Legend />
+                  <Bar dataKey="Gerçekleşen Gelir" fill={FINANCE_COLORS.received} />
+                  <Bar dataKey="Gerçekleşen Gider" fill={FINANCE_COLORS.expense} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[260px] items-center justify-center rounded-md bg-surface-light px-6 text-center text-sm text-muted-foreground">
+                Bu dönem için gerçekleşen gelir veya gider hareketi bulunmuyor.
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -599,7 +613,7 @@ function OverdueReport({ data }: any) {
         <SummaryCard label="Kayıt Sayısı" value={String(rows.length)} />
       </div>
       <Card><CardContent className="p-0">
-        <Table>
+        <Table className="min-w-[860px]">
           <TableHeader><TableRow>
             <TableHead>Müşteri</TableHead><TableHead>Proje</TableHead><TableHead>Vade Tarihi</TableHead>
             <TableHead>Geciken Gün</TableHead><TableHead>Tutar</TableHead><TableHead>Kalan</TableHead><TableHead>Durum</TableHead>
@@ -648,7 +662,7 @@ export default function AdminReports() {
       </div>
 
       {data.loading ? (
-        <div className="text-muted-foreground">Yükleniyor...</div>
+        <div className="rounded-md border border-border bg-card py-12 text-center text-sm text-muted-foreground shadow-card-soft">Rapor verileri hazırlanıyor...</div>
       ) : (
         <Tabs defaultValue="proje" className="w-full">
           <TabsList className="flex flex-wrap h-auto print:hidden">

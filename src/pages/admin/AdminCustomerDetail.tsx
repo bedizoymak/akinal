@@ -13,9 +13,9 @@ import { AdminPageHeader } from "@/components/admin/AdminPage";
 
 function Stat({ label, value, color }: any) {
   return (
-    <div className="bg-card border border-border rounded-md p-4">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className={cn("text-xl font-bold mt-1", color)}>{value}</div>
+    <div className="rounded-md border border-border bg-card p-4 shadow-card-soft">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
+      <div className={cn("mt-2 break-words text-2xl font-extrabold leading-tight tabular-nums", color || "text-foreground")}>{value}</div>
     </div>
   );
 }
@@ -89,7 +89,7 @@ export default function AdminCustomerDetail() {
     load();
   }
 
-  if (!customer) return <div className="text-muted-foreground">Yükleniyor...</div>;
+  if (!customer) return <div className="rounded-md border border-border bg-card py-12 text-center text-sm text-muted-foreground shadow-card-soft">Müşteri bilgileri hazırlanıyor...</div>;
 
   const name = customerDisplayName(customer);
 
@@ -108,7 +108,7 @@ export default function AdminCustomerDetail() {
         }
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-1 gap-3 mb-6 sm:grid-cols-2 xl:grid-cols-5">
         <Stat label="Planlanan Alacak" value={formatTRY(stats.totalDue)} />
         <Stat label="Tahsil Edilen" value={formatTRY(stats.totalPaid)} color="text-emerald-700" />
         <Stat label="Müşteri Bakiyesi" value={formatTRY(stats.balance)} color={stats.balance > 0 ? "text-red-600" : "text-emerald-700"} />
@@ -167,7 +167,7 @@ export default function AdminCustomerDetail() {
             <Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to={`/admin/odeme-planlari?musteri=${id}`}><Plus className="h-4 w-4 mr-1" /> Ödeme Ekle</Link></Button>
           </div>
           <div className="bg-card border border-border rounded-md overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="min-w-[760px] w-full text-sm">
               <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Başlık</th><th className="p-3 text-left">Vade</th><th className="p-3 text-right">Tutar</th><th className="p-3 text-right">Ödenen</th><th className="p-3 text-right">Kalan</th><th className="p-3">Durum</th></tr></thead>
               <tbody>
                 {plans.map((p) => {
@@ -195,7 +195,7 @@ export default function AdminCustomerDetail() {
             <Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to={`/admin/tahsilatlar?musteri=${id}`}><Plus className="h-4 w-4 mr-1" /> Yeni Tahsilat Ekle</Link></Button>
           </div>
           <div className="bg-card border border-border rounded-md overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="min-w-[680px] w-full text-sm">
               <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Tarih</th><th className="p-3 text-right">Tutar</th><th className="p-3">Yöntem</th><th className="p-3 text-left">Açıklama</th></tr></thead>
               <tbody>
                 {pays.map((p) => (
@@ -214,7 +214,7 @@ export default function AdminCustomerDetail() {
 
         <TabsContent value="gider" className="mt-4">
           <div className="bg-card border border-border rounded-md overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="min-w-[640px] w-full text-sm">
               <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Tarih</th><th className="p-3 text-left">Başlık</th><th className="p-3">Kategori</th><th className="p-3 text-right">Tutar</th></tr></thead>
               <tbody>
                 {expenses.map((e) => (
@@ -249,7 +249,7 @@ export default function AdminCustomerDetail() {
 
         <TabsContent value="belge" className="mt-4">
           <div className="bg-card border border-border rounded-md overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="min-w-[640px] w-full text-sm">
               <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Belge</th><th className="p-3">Tür</th><th className="p-3">Tarih</th><th className="p-3 text-right">İşlem</th></tr></thead>
               <tbody>
                 {docs.map((d) => (

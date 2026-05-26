@@ -51,11 +51,11 @@ export default function AdminCustomerEdit() {
     let customerId = id;
     if (isNew) {
       const { data, error } = await (supabase.from("customers" as any).insert(form).select("id").single()) as any;
-      if (error) { toast({ title: "Hata", description: error.message, variant: "destructive" }); setLoading(false); return; }
+      if (error) { toast({ title: "Müşteri kaydedilemedi", description: "Müşteri bilgileri kaydedilirken bir problem oluştu. Lütfen alanları kontrol edip tekrar deneyin.", variant: "destructive" }); setLoading(false); return; }
       customerId = data.id;
     } else {
       const { error } = await (supabase.from("customers" as any).update(form).eq("id", id)) as any;
-      if (error) { toast({ title: "Hata", description: error.message, variant: "destructive" }); setLoading(false); return; }
+      if (error) { toast({ title: "Müşteri kaydedilemedi", description: "Müşteri bilgileri kaydedilirken bir problem oluştu. Lütfen alanları kontrol edip tekrar deneyin.", variant: "destructive" }); setLoading(false); return; }
     }
     // Update project links
     await (supabase.from("customer_projects" as any).delete().eq("customer_id", customerId)) as any;

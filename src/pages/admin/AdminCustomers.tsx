@@ -135,7 +135,7 @@ export default function AdminCustomers() {
         />
       ) : (
         <div className="overflow-x-auto bg-card border border-border rounded-md">
-          <table className="w-full text-sm">
+          <table className="min-w-[980px] w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="p-3">Müşteri</th>

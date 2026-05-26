@@ -99,8 +99,8 @@ export default function AdminProjectEdit() {
           try {
             const url = await uploadBlob(f, f.name);
             await addImageRecord(url);
-          } catch (e: any) {
-            toast({ title: "Yükleme hatası", description: e.message, variant: "destructive" });
+          } catch {
+            toast({ title: "Görseller yüklenemedi", description: "Görsel yüklenirken bir problem oluştu. Lütfen dosyayı kontrol edip tekrar deneyin.", variant: "destructive" });
           }
         }
         toast({ title: "Görseller yüklendi" });
@@ -138,8 +138,8 @@ export default function AdminProjectEdit() {
         await addImageRecord(url);
       }
       toast({ title: "Görsel kaydedildi" });
-    } catch (e: any) {
-      toast({ title: "Hata", description: e.message, variant: "destructive" });
+    } catch {
+      toast({ title: "Görsel kaydedilemedi", description: "Görsel düzenlenirken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
     }
     setPendingFile(null);
     setCropSrc(null);
@@ -203,8 +203,8 @@ export default function AdminProjectEdit() {
         toast({ title: "Kaydedildi" });
         setData(payload);
       }
-    } catch (e: any) {
-      toast({ title: "Kaydedilemedi", description: e.message, variant: "destructive" });
+    } catch {
+      toast({ title: "Proje kaydedilemedi", description: "Proje bilgileri kaydedilirken bir problem oluştu. Lütfen alanları kontrol edip tekrar deneyin.", variant: "destructive" });
     } finally {
       setSaving(false);
     }

@@ -15,30 +15,31 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { downloadJsonFile, exportProjectsWithImages, importProjectsWithImages } from "@/features/admin/projects/projectImportExport";
 
-// GitHub push test comment.
 function Row({ p, onChange }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-3 p-3 bg-card border border-border rounded-md">
-      <button {...attributes} {...listeners} className="text-muted-foreground hover:text-foreground cursor-grab"><GripVertical className="h-5 w-5" /></button>
-      <div className="h-14 w-20 rounded bg-muted overflow-hidden shrink-0">
-        {p.cover_image_url && <img src={resolveImageUrl(p.cover_image_url)} alt="" className="h-full w-full object-cover" />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="font-semibold truncate">{p.title}</div>
-          {p.is_featured && <Star className="h-3.5 w-3.5 text-accent fill-accent" />}
+    <div ref={setNodeRef} style={style} className="flex flex-col gap-3 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-center">
+      <div className="flex min-w-0 items-center gap-3">
+        <button {...attributes} {...listeners} className="text-muted-foreground hover:text-foreground cursor-grab"><GripVertical className="h-5 w-5" /></button>
+        <div className="h-14 w-20 rounded bg-muted overflow-hidden shrink-0">
+          {p.cover_image_url && <img src={resolveImageUrl(p.cover_image_url)} alt="" className="h-full w-full object-cover" />}
         </div>
-        <div className="flex items-center gap-2 mt-1 flex-wrap text-[11px]">
-          <span className={cn("px-2 py-0.5 rounded-md border", statusBadgeVariant(p.project_status))}>{displayLabel(p.project_status)}</span>
-          <span className="text-muted-foreground">{p.project_type} · {p.location}</span>
-          <span className={cn("px-2 py-0.5 rounded-md", p.is_published ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground")}>
-            {p.is_published ? "Yayında" : "Taslak"}
-          </span>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="font-semibold truncate">{p.title}</div>
+            {p.is_featured && <Star className="h-3.5 w-3.5 text-accent fill-accent" />}
+          </div>
+          <div className="flex items-center gap-2 mt-1 flex-wrap text-[11px]">
+            <span className={cn("px-2 py-0.5 rounded-md border", statusBadgeVariant(p.project_status))}>{displayLabel(p.project_status)}</span>
+            <span className="text-muted-foreground">{p.project_type} · {p.location}</span>
+            <span className={cn("px-2 py-0.5 rounded-md", p.is_published ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground")}>
+              {p.is_published ? "Yayında" : "Taslak"}
+            </span>
+          </div>
         </div>
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1 sm:ml-auto sm:justify-end">
         <Button asChild size="sm" variant="ghost" title="Önizle"><Link to={`/projelerimiz/${p.slug}`} target="_blank"><ExternalLink className="h-4 w-4" /></Link></Button>
         <Button asChild size="sm" variant="outline" title="Ekstre"><Link to={`/admin/projeler/${p.id}/finans`}><BarChart3 className="h-4 w-4" /><span className="hidden xl:inline">Ekstre</span></Link></Button>
         <Button asChild size="sm" variant="ghost" title="Düzenle"><Link to={`/admin/projeler/${p.id}`}><Edit className="h-4 w-4" /></Link></Button>
@@ -108,9 +109,8 @@ export default function AdminProjects() {
       }
       downloadJsonFile(data);
       toast({ title: "Projeler başarıyla dışa aktarıldı." });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Beklenmeyen bir hata oluştu.";
-      toast({ title: "Projeler dışa aktarılamadı.", description: message, variant: "destructive" });
+    } catch {
+      toast({ title: "Projeler dışa aktarılamadı.", description: "Dışa aktarma sırasında bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
     } finally {
       setExporting(false);
     }
@@ -128,16 +128,15 @@ export default function AdminProjects() {
     setImporting(true);
     try {
       const result = await importProjectsWithImages(file);
-      const description = result.errors.length > 0 ? result.errors.slice(0, 4).join("\n") : undefined;
+      const description = result.errors.length > 0 ? `${result.errors.length} kayıt aktarılırken problem oluştu. Dosya içeriğini kontrol edin.` : undefined;
       toast({
         title: `${result.projectCount} proje ve ${result.imageCount} görsel içe aktarıldı.`,
         description,
         variant: result.errors.length > 0 ? "destructive" : "default",
       });
       await load();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Beklenmeyen bir hata oluştu.";
-      toast({ title: "Projeler içe aktarılamadı.", description: message, variant: "destructive" });
+    } catch {
+      toast({ title: "Projeler içe aktarılamadı.", description: "İçe aktarma sırasında bir problem oluştu. Lütfen dosyayı kontrol edip tekrar deneyin.", variant: "destructive" });
     } finally {
       setImporting(false);
     }
@@ -184,7 +183,7 @@ export default function AdminProjects() {
       <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <AdminMetricCard label="Toplam Proje" value={projectStats.total} description="Sistemdeki tüm projeler" icon={FolderKanban} tone="accent" />
         <AdminMetricCard label="Aktif Projeler" value={projectStats.active} description="Tamamlanmamış proje sayısı" icon={BarChart3} tone="success" />
-        <AdminMetricCard label="Yayındaki Projeler" value={projectStats.published} description="Public sitede görünür" icon={Eye} tone="success" />
+        <AdminMetricCard label="Yayındaki Projeler" value={projectStats.published} description="Web sitesinde görünür" icon={Eye} tone="success" />
         <AdminMetricCard label="Taslak Projeler" value={projectStats.draft} description="Yayına hazır olmayanlar" icon={EyeOff} tone="warning" />
       </div>
 

@@ -70,7 +70,7 @@ export default function AdminExpenseCards() {
     setLoading(true);
     const { data, error } = await financeSupabase.from("expense_cards").select("*").order("name", { ascending: true });
     if (error) {
-      toast({ title: "Bir hata oluştu.", description: error.message, variant: "destructive" });
+      toast({ title: "Gider kartları alınamadı.", description: "Veriler alınırken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
       setLoading(false);
       return;
     }
@@ -136,7 +136,7 @@ export default function AdminExpenseCards() {
     setSaving(false);
 
     if (result.error) {
-      toast({ title: "Bir hata oluştu.", description: result.error.message, variant: "destructive" });
+      toast({ title: "Gider kartı kaydedilemedi.", description: "Gider kartı kaydedilirken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
       return;
     }
 
@@ -150,7 +150,7 @@ export default function AdminExpenseCards() {
 
     const { error } = await financeSupabase.from("expense_cards").delete().eq("id", card.id);
     if (error) {
-      toast({ title: "Bir hata oluştu.", description: error.message, variant: "destructive" });
+      toast({ title: "Gider kartı silinemedi.", description: "Gider kartı silinirken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
       return;
     }
 

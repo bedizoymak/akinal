@@ -18,6 +18,7 @@ import {
   GROUP_TAGS,
   formatDate,
   formatMoney,
+  statusBadgeClass,
   type CardType,
   type CurrencyTag,
   type EntryDirection,
@@ -291,8 +292,8 @@ function ChartCard({ title, data, currency }: { title: string; data: ChartDatum[
           </PieChart>
         </ResponsiveContainer>
       ) : (
-        <div className="flex h-[260px] items-center justify-center rounded-md bg-surface-light text-center text-sm text-muted-foreground">
-          Grafik için veri bulunmuyor.
+        <div className="flex h-[260px] items-center justify-center rounded-md bg-surface-light px-6 text-center text-sm text-muted-foreground">
+          Bu grafik için finans kaydı bulunmuyor. Hareket eklendiğinde grafik otomatik oluşacak.
         </div>
       )}
     </div>
@@ -571,10 +572,10 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
       setCustomers((customersResult.data ?? []) as CustomerLookup[]);
       setEmployees(employeesResult.data ?? []);
       setExpenseCards(expenseCardsResult.data ?? []);
-    } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Veriler yüklenirken bir hata oluştu.";
+    } catch {
+      const message = "Veriler alınırken bir problem oluştu. Lütfen bağlantınızı kontrol edip tekrar deneyin.";
       setError(message);
-      toast({ title: "Bir hata oluştu.", description: message, variant: "destructive" });
+      toast({ title: "Veriler alınamadı.", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -667,20 +668,19 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
       }
       setDialogOpen(false);
       await load();
-    } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Bir hata oluştu.";
-      toast({ title: "Bir hata oluştu.", description: message, variant: "destructive" });
+    } catch {
+      toast({ title: "Kaydedilemedi.", description: "Finansal hareket kaydedilirken bir problem oluştu. Lütfen bilgileri kontrol edip tekrar deneyin.", variant: "destructive" });
     } finally {
       setSaving(false);
     }
   }
 
   async function deleteEntry(entry: FinancialEntryRow) {
-    if (!confirm(`"${entry.title}" hareketini silmek istediğinize emin misiniz?`)) return;
+    if (!confirm(`"${entry.title}" finansal hareketini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
 
     const { error: deleteError } = await financeSupabase.from("financial_entries").delete().eq("id", entry.id);
     if (deleteError) {
-      toast({ title: "Bir hata oluştu.", description: deleteError.message, variant: "destructive" });
+      toast({ title: "Silinemedi.", description: "Finansal hareket silinirken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
       return;
     }
 
@@ -794,7 +794,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
             </div>
 
             <div className="overflow-x-auto rounded-md border border-border">
-              <table className="w-full text-sm">
+              <table className="min-w-[1080px] w-full text-sm">
                 <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="p-3">Tarih</th>
@@ -833,8 +833,10 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
                         {entry.description && <div className="mt-1 max-w-xs truncate text-xs text-muted-foreground">{entry.description}</div>}
                       </td>
                       <td className="p-3">{entry.group_tag}</td>
-                      <td className={cn("p-3 font-medium", entry.direction === "Gelir" ? "text-emerald-700" : "text-red-600")}>{entry.direction}</td>
-                      <td className="p-3">{entry.status}</td>
+                      <td className="p-3">
+                        <span className={cn("rounded-md px-2 py-0.5 text-xs font-semibold", entry.direction === "Gelir" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>{entry.direction}</span>
+                      </td>
+                      <td className="p-3"><span className={cn("rounded-md border px-2 py-0.5 text-xs font-semibold", statusBadgeClass(entry.status))}>{entry.status}</span></td>
                       <td className="p-3 text-right font-semibold">{formatMoney(entry.amount, entry.currency_tag)}</td>
                       <td className="p-3">{entry.currency_tag}</td>
                       <td className="p-3">

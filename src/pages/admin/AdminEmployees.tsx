@@ -59,7 +59,7 @@ export default function AdminEmployees() {
     setLoading(true);
     const { data, error } = await financeSupabase.from("employees").select("*").order("full_name", { ascending: true });
     if (error) {
-      toast({ title: "Bir hata oluştu.", description: error.message, variant: "destructive" });
+      toast({ title: "Personel kayıtları alınamadı.", description: "Veriler alınırken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
       setLoading(false);
       return;
     }
@@ -126,7 +126,7 @@ export default function AdminEmployees() {
     setSaving(false);
 
     if (result.error) {
-      toast({ title: "Bir hata oluştu.", description: result.error.message, variant: "destructive" });
+      toast({ title: "Personel kaydedilemedi.", description: "Personel bilgileri kaydedilirken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
       return;
     }
 
@@ -140,7 +140,7 @@ export default function AdminEmployees() {
 
     const { error } = await financeSupabase.from("employees").delete().eq("id", employee.id);
     if (error) {
-      toast({ title: "Bir hata oluştu.", description: error.message, variant: "destructive" });
+      toast({ title: "Personel silinemedi.", description: "Personel kartı silinirken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
       return;
     }
 

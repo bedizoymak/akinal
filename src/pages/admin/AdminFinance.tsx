@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Download, MessageCircle } from "lucide-react";
+import { AlertTriangle, Download, MessageCircle } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import {
   FINANCE_COLORS,
@@ -21,14 +21,14 @@ import {
   summarizeLedgerFinance,
 } from "@/lib/finance";
 import { cn } from "@/lib/utils";
-import { AdminPageHeader } from "@/components/admin/AdminPage";
+import { AdminEmptyState, AdminPageHeader } from "@/components/admin/AdminPage";
 
 function Stat({ label, value, color, sub }: any) {
   return (
-    <div className="bg-card border border-border rounded-md p-4">
-      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className={cn("text-xl font-bold mt-1", color)}>{value}</div>
-      {sub && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
+    <div className="rounded-md border border-border bg-card p-4 shadow-card-soft">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
+      <div className={cn("mt-2 break-words text-2xl font-extrabold leading-tight tabular-nums", color || "text-foreground")}>{value}</div>
+      {sub && <div className="mt-3 border-t border-border/60 pt-3 text-xs text-muted-foreground">{sub}</div>}
     </div>
   );
 }
@@ -48,7 +48,7 @@ function PieCard({ title, data }: any) {
             <Legend />
           </PieChart>
         </ResponsiveContainer>
-      ) : <div className="text-sm text-muted-foreground py-12 text-center">Bu grafik için finans kaydı bulunmuyor.</div>}
+      ) : <div className="flex min-h-[260px] items-center justify-center rounded-md bg-surface-light px-6 text-center text-sm text-muted-foreground">Bu grafik için finans kaydı bulunmuyor. Finansal hareket eklendiğinde dağılım otomatik oluşacak.</div>}
     </div>
   );
 }
@@ -61,9 +61,11 @@ export default function AdminFinance() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   async function load() {
     setLoading(true);
+    setLoadError(false);
     const [pl, py, ex, fe, c, pr] = await Promise.all([
       (supabase.from("payment_plans" as any).select("*")) as any,
       (supabase.from("payments" as any).select("*")) as any,
@@ -72,6 +74,12 @@ export default function AdminFinance() {
       (supabase.from("customers" as any).select("*")) as any,
       supabase.from("projects").select("id,title,slug").order("sort_order"),
     ]);
+    const firstError = [pl.error, py.error, ex.error, fe.error, c.error, pr.error].find(Boolean);
+    if (firstError) {
+      setLoadError(true);
+      setLoading(false);
+      return;
+    }
     setPlans((pl.data as any[]) || []); setPays((py.data as any[]) || []);
     setExps((ex.data as any[]) || []); setFinancialEntries((fe.data as any[]) || []);
     setCustomers((c.data as any[]) || []); setProjects((pr.data as any[]) || []);
@@ -158,7 +166,8 @@ export default function AdminFinance() {
     ]);
   }
 
-  if (loading) return <div className="text-center text-muted-foreground py-12">Yükleniyor...</div>;
+  if (loading) return <div className="rounded-md border border-border bg-card py-12 text-center text-sm text-muted-foreground shadow-card-soft">Finans verileri hazırlanıyor...</div>;
+  if (loadError) return <AdminEmptyState title="Finans verileri alınamadı" description="Finans verileri alınırken bir problem oluştu. Lütfen bağlantınızı kontrol edip tekrar deneyin." icon={AlertTriangle} />;
 
   return (
     <div className="space-y-6">
@@ -169,7 +178,7 @@ export default function AdminFinance() {
         actions={<Button variant="outline" onClick={downloadSummary}><Download className="h-4 w-4 mr-1" /> Raporu İndir</Button>}
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Gerçekleşen Gelir" value={formatTRY(stats.totalReceived)} color="text-emerald-700" />
         <Stat label="Planlanan Gelir" value={formatTRY(stats.totalReceivable)} color="text-amber-600" />
         <Stat label="Gerçekleşen Gider" value={formatTRY(stats.totalExpense)} color="text-red-600" />
@@ -225,7 +234,7 @@ export default function AdminFinance() {
       <section>
         <h2 className="font-display text-2xl font-bold mb-3">Yaklaşan Ödemeler (30 Gün)</h2>
         <div className="bg-card border border-border rounded-md overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="min-w-[780px] w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Müşteri</th><th className="p-3 text-left">Proje</th><th className="p-3 text-right">Tutar</th><th className="p-3">Vade</th><th className="p-3">Kalan Gün</th><th className="p-3">Durum</th><th className="p-3 text-right">Hatırlat</th></tr></thead>
             <tbody>
               {upcoming30.slice(0, 15).map((p) => {
@@ -253,7 +262,7 @@ export default function AdminFinance() {
       <section>
         <h2 className="font-display text-2xl font-bold mb-3">Geciken Ödemeler</h2>
         <div className="bg-card border border-border rounded-md overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="min-w-[760px] w-full text-sm">
             <thead className="bg-red-50 text-xs uppercase text-red-700"><tr><th className="p-3 text-left">Müşteri</th><th className="p-3 text-left">Proje</th><th className="p-3">Vade</th><th className="p-3">Geciken Gün</th><th className="p-3 text-right">Tutar</th><th className="p-3">Durum</th><th className="p-3 text-right">İletişim</th></tr></thead>
             <tbody>
               {overdueList.slice(0, 15).map((p) => (

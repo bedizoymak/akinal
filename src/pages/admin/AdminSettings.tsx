@@ -292,7 +292,7 @@ export default function AdminSettings() {
     return (
       <AdminEmptyState
         title="Site ayarları yüklenemedi"
-        description={loadError || "Site ayar kaydı bulunamadı. Lütfen Supabase bağlantısını ve site_settings kaydını kontrol edin."}
+        description={loadError ? "Site ayarları alınırken bir problem oluştu. Lütfen bağlantınızı kontrol edip tekrar deneyin." : "Site ayar kaydı bulunamadı. Lütfen bağlantınızı kontrol edip tekrar deneyin."}
         icon={AlertCircle}
       />
     );
@@ -327,12 +327,12 @@ export default function AdminSettings() {
     setSaving(false);
 
     if (error) {
-      toast({ title: "Hata", description: error.message, variant: "destructive" });
+      toast({ title: "Site ayarları kaydedilemedi", description: "Ayarlar kaydedilirken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
       return;
     }
 
     setOriginalData(data);
-    toast({ title: "Site ayarları kaydedildi", description: "Public site ayarları güncellendi." });
+    toast({ title: "Site ayarları kaydedildi", description: "Web sitesi ayarları güncellendi." });
   }
 
   return (
@@ -407,7 +407,7 @@ export default function AdminSettings() {
             </div>
             <SettingField label="WhatsApp Hazır Mesajı" field="whatsapp_message" value={data.whatsapp_message || ""} onChange={(value) => up("whatsapp_message", value)} textarea count />
 
-            <PreviewPanel title="WhatsApp Link Önizleme" description="Public sitedeki WhatsApp butonları bu bağlantı mantığını kullanır.">
+            <PreviewPanel title="WhatsApp Link Önizleme" description="Web sitesindeki WhatsApp butonları bu bağlantı mantığını kullanır.">
               <div className="rounded-md border border-border bg-card p-3 text-xs text-muted-foreground break-all">{whatsappUrl}</div>
               <Button asChild className="mt-3 bg-[#25D366] text-white hover:bg-[#1fb856]">
                 <a href={whatsappUrl} target="_blank" rel="noreferrer">
@@ -496,7 +496,7 @@ export default function AdminSettings() {
 
           <section className="rounded-lg border border-border bg-card p-5 shadow-card-soft">
             <h2 className="font-display text-xl font-bold">Entegrasyon Durumu</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Bu ayarların public siteyle bağlantı durumu.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Bu ayarların web sitesiyle bağlantı durumu.</p>
             <div className="mt-5 space-y-3">
               {[
                 ["Ana sayfa hero başlığı", "Aktif", "success"],

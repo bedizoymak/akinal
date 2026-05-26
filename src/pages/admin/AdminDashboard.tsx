@@ -123,6 +123,9 @@ function chartCurrency(value: number) {
 function LoadingDashboard() {
   return (
     <div className="space-y-6">
+      <div className="rounded-md border border-border bg-card px-5 py-4 text-sm text-muted-foreground shadow-card-soft">
+        Veriler hazırlanıyor...
+      </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         {Array.from({ length: 6 }).map((_, index) => (
           <div key={index} className="rounded-md border border-border bg-card p-4 shadow-card-soft">
@@ -141,30 +144,40 @@ function LoadingDashboard() {
 export default function AdminDashboard() {
   const [data, setData] = useState<DashboardData>(initialData);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const [projects, customers, plans, payments, expenses, financialEntries, requests] = await Promise.all([
-        supabase.from("projects").select("id,title,project_status,location,is_published,slug,sort_order").order("sort_order"),
-        supabase.from("customers").select("id,customer_type,full_name,company_name,phone,email,status,created_at,updated_at,tax_or_identity_number,whatsapp,address,city,district,notes").order("created_at", { ascending: false }),
-        supabase.from("payment_plans").select("id,customer_id,project_id,title,amount,due_date,status,description,notes,created_at,updated_at").order("due_date"),
-        supabase.from("payments").select("id,customer_id,project_id,payment_plan_id,amount,payment_date,payment_method,description,document_url,created_at,updated_at").order("payment_date", { ascending: false }),
-        supabase.from("expenses").select("id,project_id,customer_id,title,category,amount,expense_date,description,document_url,created_at,updated_at").order("expense_date", { ascending: false }),
-        supabase.from("financial_entries").select("id,project_id,entry_date,card_type,customer_id,employee_id,expense_card_id,title,description,amount,currency_tag,group_tag,direction,status,document_url,created_at,updated_at").order("entry_date", { ascending: false }),
-        supabase.from("contact_requests").select("id,full_name,email,phone,service_type,message,status,created_at").order("created_at", { ascending: false }),
-      ]);
+      setLoadError(false);
+      try {
+        const [projects, customers, plans, payments, expenses, financialEntries, requests] = await Promise.all([
+          supabase.from("projects").select("id,title,project_status,location,is_published,slug,sort_order").order("sort_order"),
+          supabase.from("customers").select("id,customer_type,full_name,company_name,phone,email,status,created_at,updated_at,tax_or_identity_number,whatsapp,address,city,district,notes").order("created_at", { ascending: false }),
+          supabase.from("payment_plans").select("id,customer_id,project_id,title,amount,due_date,status,description,notes,created_at,updated_at").order("due_date"),
+          supabase.from("payments").select("id,customer_id,project_id,payment_plan_id,amount,payment_date,payment_method,description,document_url,created_at,updated_at").order("payment_date", { ascending: false }),
+          supabase.from("expenses").select("id,project_id,customer_id,title,category,amount,expense_date,description,document_url,created_at,updated_at").order("expense_date", { ascending: false }),
+          supabase.from("financial_entries").select("id,project_id,entry_date,card_type,customer_id,employee_id,expense_card_id,title,description,amount,currency_tag,group_tag,direction,status,document_url,created_at,updated_at").order("entry_date", { ascending: false }),
+          supabase.from("contact_requests").select("id,full_name,email,phone,service_type,message,status,created_at").order("created_at", { ascending: false }),
+        ]);
 
-      setData({
-        projects: projects.data || [],
-        customers: customers.data || [],
-        plans: plans.data || [],
-        payments: payments.data || [],
-        expenses: expenses.data || [],
-        financialEntries: financialEntries.data || [],
-        requests: requests.data || [],
-      });
-      setLoading(false);
+        const firstError = [projects.error, customers.error, plans.error, payments.error, expenses.error, financialEntries.error, requests.error].find(Boolean);
+        if (firstError) throw firstError;
+
+        setData({
+          projects: projects.data || [],
+          customers: customers.data || [],
+          plans: plans.data || [],
+          payments: payments.data || [],
+          expenses: expenses.data || [],
+          financialEntries: financialEntries.data || [],
+          requests: requests.data || [],
+        });
+      } catch {
+        setLoadError(true);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
@@ -297,6 +310,12 @@ export default function AdminDashboard() {
 
       {loading ? (
         <LoadingDashboard />
+      ) : loadError ? (
+        <AdminEmptyState
+          title="Veriler alınamadı"
+          description="Veriler alınırken bir problem oluştu. Lütfen bağlantınızı kontrol edip tekrar deneyin."
+          icon={Wallet}
+        />
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
@@ -339,17 +358,26 @@ export default function AdminDashboard() {
               {dashboard.recentMovements.length === 0 ? (
                 <AdminEmptyState title="Henüz finansal hareket yok" description="İlk finansal hareket eklendiğinde son kayıtlar burada görünecek." icon={Wallet} />
               ) : (
-                dashboard.recentMovements.map((movement) => (
-                  <div key={movement.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
-                    <div className="min-w-0">
-                      <div className="font-semibold">{movement.source}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {movement.label} · {movement.projectTitle || "Proje bağlantısı yok"} · {formatDate(movement.date)}
+                dashboard.recentMovements.map((movement) => {
+                  const isIncome = movement.direction === "Gelir";
+                  return (
+                    <div key={movement.id} className="flex flex-col gap-3 rounded-md border border-border p-3 hover:bg-muted/30 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={cn("rounded-md px-2 py-0.5 text-xs font-semibold", isIncome ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>{movement.source}</span>
+                          <span className="text-xs text-muted-foreground">{formatDate(movement.date)}</span>
+                        </div>
+                        <div className="mt-2 truncate font-semibold">{movement.label}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {movement.projectTitle || "Proje bağlantısı yok"} · {movement.group}
+                        </div>
+                      </div>
+                      <div className={cn("shrink-0 text-right text-lg font-extrabold tabular-nums", isIncome ? "text-emerald-700" : "text-red-600")}>
+                        {isIncome ? "+" : "-"}{formatTRY(movement.amount)}
                       </div>
                     </div>
-                    <div className={cn("font-bold", movement.direction === "Gelir" ? "text-emerald-700" : "text-red-600")}>{formatTRY(movement.amount)}</div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </AdminSection>
           </div>
