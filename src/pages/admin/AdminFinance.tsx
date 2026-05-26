@@ -174,9 +174,16 @@ export default function AdminFinance() {
       <AdminPageHeader
         eyebrow="Finans"
         title="Finans Özeti"
-        description="Finans kayıtlarına göre gerçekleşen, planlanan ve net durumu yönetsel bakışla izleyin."
+        description="Tahsilat, ödeme planı, gider ve finans hareketlerini sade bir özet halinde izleyin."
         actions={<Button variant="outline" onClick={downloadSummary}><Download className="h-4 w-4 mr-1" /> Raporu İndir</Button>}
       />
+
+      <div className="grid gap-3 rounded-md border border-border bg-card p-4 text-sm text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">
+        <div><span className="font-semibold text-foreground">Tahsilatlar:</span> gerçekleşen gelen ödemeler.</div>
+        <div><span className="font-semibold text-foreground">Ödeme Planları:</span> beklenen veya vadeli alacaklar.</div>
+        <div><span className="font-semibold text-foreground">Giderler:</span> yapılan masraflar.</div>
+        <div><span className="font-semibold text-foreground">Finans Hareketleri:</span> gelir/gider detayları.</div>
+      </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Gerçekleşen Gelir" value={formatTRY(stats.totalReceived)} color="text-emerald-700" />
@@ -219,7 +226,7 @@ export default function AdminFinance() {
                     <div className="flex justify-between"><span>Gerçekleşen Gelir</span><span className="text-emerald-700 font-medium">{formatTRY(p.received)}</span></div>
                     <div className="flex justify-between"><span>Planlanan Gelir</span><span className="text-amber-600 font-medium">{formatTRY(p.receivable)}</span></div>
                     <div className="flex justify-between"><span>Gerçekleşen Gider</span><span className="text-red-600 font-medium">{formatTRY(p.expense)}</span></div>
-                    <div className="flex justify-between"><span>Beklenen Ödeme</span><span className="text-slate-700 font-medium">{formatTRY(p.payable)}</span></div>
+                    <div className="flex justify-between"><span>Planlanan Gider</span><span className="text-slate-700 font-medium">{formatTRY(p.payable)}</span></div>
                     <div className="flex justify-between border-t border-border pt-1 mt-1"><span className="font-semibold">Net</span><span className={cn("font-bold", p.net >= 0 ? "text-emerald-700" : "text-red-600")}>{formatTRY(p.net)}</span></div>
                   </div>
                 </div>

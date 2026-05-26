@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { EXPENSE_CATEGORIES, formatTRY, formatDate, customerDisplayName, exportCSV } from "@/lib/finance";
-import { Plus, Edit, Trash2, Download, Receipt, FolderKanban, Tags, CalendarDays } from "lucide-react";
+import { Plus, Edit, Trash2, Download, Receipt, FolderKanban, Tags, CalendarDays, Loader2 } from "lucide-react";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 
 const empty = { project_id: "", customer_id: "", title: "", category: "Malzeme", amount: "", expense_date: new Date().toISOString().slice(0, 10), description: "", document_url: "" };
@@ -25,6 +25,7 @@ export default function AdminExpenses() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [from, setFrom] = useState(""); const [to, setTo] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   async function load() {
@@ -55,11 +56,16 @@ export default function AdminExpenses() {
 
   async function save() {
     if (!form.title || !form.amount || !form.expense_date) { toast({ title: "Başlık, tutar ve tarih zorunludur", variant: "destructive" }); return; }
+    setSaving(true);
     const payload: any = { ...form, amount: Number(form.amount), project_id: form.project_id || null, customer_id: form.customer_id || null };
-    if (editId) await (supabase.from("expenses" as any).update(payload).eq("id", editId)) as any;
-    else await (supabase.from("expenses" as any).insert(payload)) as any;
-    toast({ title: editId ? "Gider güncellendi" : "Gider eklendi" });
-    setOpen(false); load();
+    try {
+      if (editId) await (supabase.from("expenses" as any).update(payload).eq("id", editId)) as any;
+      else await (supabase.from("expenses" as any).insert(payload)) as any;
+      toast({ title: editId ? "Gider güncellendi" : "Gider eklendi" });
+      setOpen(false); load();
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function remove(id: string) {
@@ -123,7 +129,33 @@ export default function AdminExpenses() {
       </div>
 
       {loading ? <div className="text-center text-muted-foreground py-12">Yükleniyor...</div> : (
-        <div className="bg-card border border-border rounded-md overflow-x-auto">
+        <>
+        {filtered.length === 0 ? (
+          <div className="md:hidden">
+            <AdminEmptyState title={items.length === 0 ? "Henüz gider kaydı yok" : "Gider kaydı bulunamadı"} description={items.length === 0 ? "İlk gider kaydını oluşturarak proje maliyetlerini takip etmeye başlayın." : "Filtreleri temizleyebilir veya yeni gider kaydı oluşturabilirsiniz."} icon={Receipt} />
+          </div>
+        ) : (
+        <div className="space-y-3 md:hidden">
+          {filtered.map((it) => (
+            <div key={it.id} className="rounded-md border border-border bg-card p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-semibold">{it.title}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{it.category} · {it.project?.title || "Proje yok"}</div>
+                </div>
+                <div className="shrink-0 text-right font-bold text-red-600">{formatTRY(it.amount)}</div>
+              </div>
+              <div className="mt-3 text-xs text-muted-foreground">{formatDate(it.expense_date)} · {it.customer ? customerDisplayName(it.customer) : "Müşteri bağlantısı yok"}</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {it.document_url && <Button asChild size="sm" variant="outline"><a href={it.document_url} target="_blank" rel="noreferrer">Görüntüle</a></Button>}
+                <Button size="sm" variant="outline" onClick={() => openEdit(it)}><Edit className="h-4 w-4" /> Düzenle</Button>
+                <Button size="sm" variant="ghost" onClick={() => remove(it.id)}><Trash2 className="h-4 w-4 text-destructive" /> Sil</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+        )}
+        <div className="hidden bg-card border border-border rounded-md overflow-x-auto md:block">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Tarih</th><th className="p-3 text-left">Başlık</th><th className="p-3">Kategori</th><th className="p-3 text-left">Proje</th><th className="p-3 text-left">Müşteri</th><th className="p-3 text-right">Tutar</th><th className="p-3">Belge</th><th className="p-3 text-right">İşlem</th></tr></thead>
             <tbody>
@@ -136,13 +168,14 @@ export default function AdminExpenses() {
                   <td className="p-3 text-xs">{it.customer ? customerDisplayName(it.customer) : "-"}</td>
                   <td className="p-3 text-right text-red-600 font-medium">{formatTRY(it.amount)}</td>
                   <td className="p-3">{it.document_url ? <a href={it.document_url} target="_blank" rel="noreferrer" className="text-accent hover:underline">Görüntüle</a> : "-"}</td>
-                  <td className="p-3 text-right"><div className="flex justify-end gap-1"><Button size="sm" variant="ghost" onClick={() => openEdit(it)}><Edit className="h-4 w-4" /></Button><Button size="sm" variant="ghost" onClick={() => remove(it.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div></td>
+                  <td className="p-3 text-right"><div className="flex justify-end gap-1"><Button size="sm" variant="ghost" title="Düzenle" onClick={() => openEdit(it)}><Edit className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Düzenle</span></Button><Button size="sm" variant="ghost" title="Sil" onClick={() => remove(it.id)}><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only xl:not-sr-only xl:ml-1">Sil</span></Button></div></td>
                 </tr>
               ))}
               {filtered.length === 0 && <tr><td colSpan={8} className="p-8"><AdminEmptyState title={items.length === 0 ? "Henüz gider kaydı yok" : "Gider kaydı bulunamadı"} description={items.length === 0 ? "İlk gider kaydını oluşturarak proje maliyetlerini takip etmeye başlayın." : "Filtreleri temizleyebilir veya yeni gider kaydı oluşturabilirsiniz."} icon={Receipt} /></td></tr>}
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -176,8 +209,11 @@ export default function AdminExpenses() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>İptal</Button>
-            <Button onClick={save} className="bg-accent hover:bg-accent-glow text-accent-foreground">Kaydet</Button>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>İptal</Button>
+            <Button onClick={save} disabled={saving || uploading} className="bg-accent hover:bg-accent-glow text-accent-foreground">
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {saving ? "Kaydediliyor..." : "Kaydet"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

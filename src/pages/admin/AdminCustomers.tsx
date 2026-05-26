@@ -134,7 +134,32 @@ export default function AdminCustomers() {
           action={<Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to="/admin/musteriler/yeni">Yeni Müşteri Ekle</Link></Button>}
         />
       ) : (
-        <div className="overflow-x-auto bg-card border border-border rounded-md">
+        <>
+        <div className="space-y-3 md:hidden">
+          {filtered.map((c) => (
+            <div key={c.id} className="rounded-md border border-border bg-card p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-semibold">{customerDisplayName(c)}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{displayLabel(c.customer_type)} · {c.phone || "Telefon yok"}</div>
+                </div>
+                <span className={cn("shrink-0 rounded-md border px-2 py-0.5 text-xs", statusBadgeClass(c.status))}>{displayLabel(c.status)}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <div><div className="text-xs text-muted-foreground">Tahsil Edilen</div><div className="font-semibold text-emerald-700">{formatTRY(c.totalPaid)}</div></div>
+                <div><div className="text-xs text-muted-foreground">Kalan Bakiye</div><div className={cn("font-semibold", c.balance > 0 ? "text-red-600" : "text-emerald-700")}>{formatTRY(c.balance)}</div></div>
+              </div>
+              <div className="mt-3 text-xs text-muted-foreground">{c.projectNames.join(", ") || "Bağlı proje yok"}</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button asChild size="sm" variant="outline"><Link to={`/admin/musteriler/${c.id}`}><Eye className="h-4 w-4" /> Görüntüle</Link></Button>
+                <Button asChild size="sm" variant="outline"><Link to={`/admin/musteriler/${c.id}/duzenle`}><Edit className="h-4 w-4" /> Düzenle</Link></Button>
+                <Button asChild size="sm" variant="outline"><Link to={`/admin/musteriler/${c.id}/finans`}><FileText className="h-4 w-4" /> Finans</Link></Button>
+                <Button size="sm" variant="ghost" onClick={() => remove(c.id, customerDisplayName(c))}><Trash2 className="h-4 w-4 text-destructive" /> Sil</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden overflow-x-auto bg-card border border-border rounded-md md:block">
           <table className="min-w-[980px] w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -166,10 +191,10 @@ export default function AdminCustomers() {
                   <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(c.status))}>{displayLabel(c.status)}</span></td>
                   <td className="p-3">
                     <div className="flex justify-end gap-1">
-                      <Button asChild size="sm" variant="outline"><Link to={`/admin/musteriler/${c.id}/finans`}><FileText className="h-4 w-4" /> Ekstre</Link></Button>
-                      <Button asChild size="sm" variant="ghost"><Link to={`/admin/musteriler/${c.id}`}><Eye className="h-4 w-4" /></Link></Button>
-                      <Button asChild size="sm" variant="ghost"><Link to={`/admin/musteriler/${c.id}/duzenle`}><Edit className="h-4 w-4" /></Link></Button>
-                      <Button size="sm" variant="ghost" onClick={() => remove(c.id, customerDisplayName(c))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <Button asChild size="sm" variant="outline"><Link to={`/admin/musteriler/${c.id}/finans`}><FileText className="h-4 w-4" /> Finans</Link></Button>
+                      <Button asChild size="sm" variant="ghost" title="Görüntüle"><Link to={`/admin/musteriler/${c.id}`}><Eye className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Görüntüle</span></Link></Button>
+                      <Button asChild size="sm" variant="ghost" title="Düzenle"><Link to={`/admin/musteriler/${c.id}/duzenle`}><Edit className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Düzenle</span></Link></Button>
+                      <Button size="sm" variant="ghost" title="Sil" onClick={() => remove(c.id, customerDisplayName(c))}><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only xl:not-sr-only xl:ml-1">Sil</span></Button>
                     </div>
                   </td>
                 </tr>
@@ -177,6 +202,7 @@ export default function AdminCustomers() {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

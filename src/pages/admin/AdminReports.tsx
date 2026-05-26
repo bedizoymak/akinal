@@ -650,6 +650,11 @@ export default function AdminReports() {
     { id: "ozet", label: "Genel Finans Özeti", desc: "Tüm finansal özet ve grafikler.", Comp: GeneralSummaryReport },
     { id: "gecikme", label: "Vadesi Geçen Ödemeler", desc: "Vadesi geçmiş ve hâlâ tahsil edilmemiş ödemeler.", Comp: OverdueReport },
   ];
+  const presets = [
+    { id: "ozet", title: "Genel Finans Özeti", desc: "Şirketin tahsilat, gider ve net durumunu hızlıca görün." },
+    { id: "gecikme", title: "Vadesi Geçen Ödemeler", desc: "Takip edilmesi gereken alacakları öne çıkarır." },
+    { id: "proje", title: "Proje Finans Raporu", desc: "Projelerin gelir, gider ve net durumunu karşılaştırır." },
+  ];
 
   return (
     <div>
@@ -665,6 +670,26 @@ export default function AdminReports() {
         <div className="rounded-md border border-border bg-card py-12 text-center text-sm text-muted-foreground shadow-card-soft">Rapor verileri hazırlanıyor...</div>
       ) : (
         <Tabs defaultValue="proje" className="w-full">
+          <div className="mb-5 rounded-md border border-border bg-card p-4 print:hidden">
+            <div className="mb-3">
+              <h2 className="font-display text-lg font-semibold">Sık Kullanılan Raporlar</h2>
+              <p className="text-sm text-muted-foreground">En çok ihtiyaç duyulan yönetim raporlarına hızlıca geçin.</p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              {presets.map((preset) => (
+                <TabsTrigger
+                  key={preset.id}
+                  value={preset.id}
+                  className="h-auto justify-start rounded-md border border-border bg-background p-3 text-left data-[state=active]:border-accent data-[state=active]:bg-accent/10"
+                >
+                  <span>
+                    <span className="block font-semibold text-foreground">{preset.title}</span>
+                    <span className="mt-1 block text-xs font-normal text-muted-foreground">{preset.desc}</span>
+                  </span>
+                </TabsTrigger>
+              ))}
+            </div>
+          </div>
           <TabsList className="flex flex-wrap h-auto print:hidden">
             {tabs.map((t) => <TabsTrigger key={t.id} value={t.id}>{t.label}</TabsTrigger>)}
           </TabsList>

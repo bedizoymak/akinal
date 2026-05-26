@@ -320,17 +320,17 @@ export default function AdminDashboard() {
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
             <AdminMetricCard label="Aktif Projeler" value={dashboard.activeProjects.length} description={`${data.projects.length} toplam proje`} icon={FolderKanban} tone="accent" />
-            <AdminMetricCard label="Gerçekleşen Gelir" value={formatTRY(dashboard.totalIncome)} description="Finans kayıtlarında gerçekleşen gelir" icon={Wallet} tone="success" />
-            <AdminMetricCard label="Gerçekleşen Gider" value={formatTRY(dashboard.totalExpenses)} description="Finans kayıtlarında gerçekleşen gider" icon={Receipt} tone="danger" />
+            <AdminMetricCard label="Toplam Tahsilat" value={formatTRY(dashboard.totalIncome)} description="Gerçekleşen gelen ödemeler" icon={Wallet} tone="success" />
+            <AdminMetricCard label="Toplam Gider" value={formatTRY(dashboard.totalExpenses)} description="Yapılan masraflar" icon={Receipt} tone="danger" />
             <AdminMetricCard label="Net Durum" value={formatTRY(dashboard.netStatus)} description="Gerçekleşen gelir eksi gider" icon={dashboard.netStatus >= 0 ? TrendingUp : TrendingDown} tone={dashboard.netStatus >= 0 ? "success" : "danger"} />
             <AdminMetricCard label="Beklenen Tahsilat" value={formatTRY(dashboard.pendingCollections)} description="Planlanan gelir kayıtları" icon={CalendarClock} tone="warning" />
-            <AdminMetricCard label="Beklenen Ödeme" value={formatTRY(dashboard.expectedPayments)} description="Planlanan gider kayıtları" icon={Receipt} tone="danger" />
+            <AdminMetricCard label="Vadesi Geçen Alacak" value={formatTRY(dashboard.overdueCollections)} description={`${dashboard.overduePlans.length} ödeme planı takip bekliyor`} icon={Receipt} tone={dashboard.overdueCollections > 0 ? "danger" : "success"} />
           </div>
 
           <AdminSection title="Bu Ayın Özeti" description="İçinde bulunduğumuz ayın gerçekleşen gelir, gider ve net durumu.">
             <div className="grid gap-3 md:grid-cols-3">
-              <AdminMetricCard label="Bu Ay Gerçekleşen Gelir" value={formatTRY(dashboard.monthIncome)} icon={Wallet} tone="success" />
-              <AdminMetricCard label="Bu Ay Gerçekleşen Gider" value={formatTRY(dashboard.monthExpenses)} icon={Receipt} tone="danger" />
+              <AdminMetricCard label="Bu Ay Tahsilat" value={formatTRY(dashboard.monthIncome)} icon={Wallet} tone="success" />
+              <AdminMetricCard label="Bu Ay Gider" value={formatTRY(dashboard.monthExpenses)} icon={Receipt} tone="danger" />
               <AdminMetricCard label="Bu Ay Net Durum" value={formatTRY(dashboard.monthNet)} icon={dashboard.monthNet >= 0 ? TrendingUp : TrendingDown} tone={dashboard.monthNet >= 0 ? "success" : "danger"} />
             </div>
           </AdminSection>
@@ -416,8 +416,8 @@ export default function AdminDashboard() {
                     <YAxis tickLine={false} axisLine={false} tickFormatter={chartCurrency} tick={{ fontSize: 12 }} width={56} />
                     <Tooltip formatter={(value: number) => formatTRY(value)} />
                     <Legend />
-                    <Bar dataKey="income" name="Gerçekleşen Gelir" fill={chartColors.income} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expenses" name="Gerçekleşen Gider" fill={chartColors.expenses} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="income" name="Toplam Tahsilat" fill={chartColors.income} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="expenses" name="Toplam Gider" fill={chartColors.expenses} radius={[4, 4, 0, 0]} />
                     <Bar dataKey="net" name="Net Durum" fill={chartColors.net} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>

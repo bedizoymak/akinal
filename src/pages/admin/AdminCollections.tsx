@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { PAYMENT_METHODS, derivePlanStatus, formatTRY, formatDate, customerDisplayName, exportCSV, paidForPlan } from "@/lib/finance";
-import { Plus, Edit, Trash2, Download, Upload, Wallet, Users, FolderKanban, CalendarDays } from "lucide-react";
+import { Plus, Edit, Trash2, Download, Upload, Wallet, Users, FolderKanban, CalendarDays, Loader2 } from "lucide-react";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 
 const empty = { customer_id: "", project_id: "", payment_plan_id: "", amount: "", payment_date: new Date().toISOString().slice(0, 10), payment_method: "Nakit", description: "", document_url: "" };
@@ -30,6 +30,7 @@ export default function AdminCollections() {
   const [filterProject, setFilterProject] = useState("all");
   const [from, setFrom] = useState(""); const [to, setTo] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   async function load() {
@@ -80,6 +81,7 @@ export default function AdminCollections() {
 
   async function save() {
     if (!form.customer_id || !form.amount || !form.payment_date) { toast({ title: "Müşteri, tutar ve tarih zorunludur", variant: "destructive" }); return; }
+    setSaving(true);
     const selectedPlan = plans.find((p) => p.id === form.payment_plan_id);
     const payload: any = {
       ...form,
@@ -88,13 +90,17 @@ export default function AdminCollections() {
       payment_plan_id: form.payment_plan_id || null,
     };
     const previousPlanId = editId ? items.find((item) => item.id === editId)?.payment_plan_id : null;
-    if (editId) await (supabase.from("payments" as any).update(payload).eq("id", editId)) as any;
-    else await (supabase.from("payments" as any).insert(payload)) as any;
+    try {
+      if (editId) await (supabase.from("payments" as any).update(payload).eq("id", editId)) as any;
+      else await (supabase.from("payments" as any).insert(payload)) as any;
 
-    await syncPlanStatus(form.payment_plan_id);
-    if (previousPlanId && previousPlanId !== form.payment_plan_id) await syncPlanStatus(previousPlanId);
-    toast({ title: editId ? "Tahsilat güncellendi" : "Tahsilat eklendi" });
-    setOpen(false); load();
+      await syncPlanStatus(form.payment_plan_id);
+      if (previousPlanId && previousPlanId !== form.payment_plan_id) await syncPlanStatus(previousPlanId);
+      toast({ title: editId ? "Tahsilat güncellendi" : "Tahsilat eklendi" });
+      setOpen(false); load();
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function remove(id: string, planId?: string) {
@@ -164,7 +170,33 @@ export default function AdminCollections() {
       </div>
 
       {loading ? <div className="text-center text-muted-foreground py-12">Yükleniyor...</div> : (
-        <div className="bg-card border border-border rounded-md overflow-x-auto">
+        <>
+        {filtered.length === 0 ? (
+          <div className="md:hidden">
+            <AdminEmptyState title={items.length === 0 ? "Henüz tahsilat kaydı yok" : "Tahsilat kaydı bulunamadı"} description={items.length === 0 ? "İlk tahsilatı ekleyerek gerçekleşen ödemeleri takip etmeye başlayın." : "Filtreleri temizleyebilir veya yeni tahsilat kaydı oluşturabilirsiniz."} icon={Wallet} />
+          </div>
+        ) : (
+        <div className="space-y-3 md:hidden">
+          {filtered.map((it) => (
+            <div key={it.id} className="rounded-md border border-border bg-card p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-semibold">{it.customer ? customerDisplayName(it.customer) : "Müşteri yok"}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{it.project?.title || "Proje yok"} · {it.plan?.title || "Plan bağlantısı yok"}</div>
+                </div>
+                <div className="shrink-0 text-right font-bold text-emerald-700">{formatTRY(it.amount)}</div>
+              </div>
+              <div className="mt-3 text-xs text-muted-foreground">{formatDate(it.payment_date)} · {it.payment_method}</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {it.document_url && <Button asChild size="sm" variant="outline"><a href={it.document_url} target="_blank" rel="noreferrer">Görüntüle</a></Button>}
+                <Button size="sm" variant="outline" onClick={() => openEdit(it)}><Edit className="h-4 w-4" /> Düzenle</Button>
+                <Button size="sm" variant="ghost" onClick={() => remove(it.id, it.payment_plan_id)}><Trash2 className="h-4 w-4 text-destructive" /> Sil</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+        )}
+        <div className="hidden bg-card border border-border rounded-md overflow-x-auto md:block">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Tarih</th><th className="p-3 text-left">Müşteri</th><th className="p-3 text-left">Proje</th><th className="p-3 text-left">Plan</th><th className="p-3 text-right">Tutar</th><th className="p-3">Yöntem</th><th className="p-3">Belge</th><th className="p-3 text-right">İşlem</th></tr></thead>
             <tbody>
@@ -177,13 +209,14 @@ export default function AdminCollections() {
                   <td className="p-3 text-right text-emerald-700 font-medium">{formatTRY(it.amount)}</td>
                   <td className="p-3">{it.payment_method}</td>
                   <td className="p-3">{it.document_url ? <a href={it.document_url} target="_blank" rel="noreferrer" className="text-accent hover:underline">Görüntüle</a> : "-"}</td>
-                  <td className="p-3 text-right"><div className="flex justify-end gap-1"><Button size="sm" variant="ghost" onClick={() => openEdit(it)}><Edit className="h-4 w-4" /></Button><Button size="sm" variant="ghost" onClick={() => remove(it.id, it.payment_plan_id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div></td>
+                  <td className="p-3 text-right"><div className="flex justify-end gap-1"><Button size="sm" variant="ghost" title="Düzenle" onClick={() => openEdit(it)}><Edit className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Düzenle</span></Button><Button size="sm" variant="ghost" title="Sil" onClick={() => remove(it.id, it.payment_plan_id)}><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only xl:not-sr-only xl:ml-1">Sil</span></Button></div></td>
                 </tr>
               ))}
               {filtered.length === 0 && <tr><td colSpan={8} className="p-8"><AdminEmptyState title={items.length === 0 ? "Henüz tahsilat kaydı yok" : "Tahsilat kaydı bulunamadı"} description={items.length === 0 ? "İlk tahsilatı ekleyerek gerçekleşen ödemeleri takip etmeye başlayın." : "Filtreleri temizleyebilir veya yeni tahsilat kaydı oluşturabilirsiniz."} icon={Wallet} /></td></tr>}
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -230,8 +263,11 @@ export default function AdminCollections() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>İptal</Button>
-            <Button onClick={save} className="bg-accent hover:bg-accent-glow text-accent-foreground">Kaydet</Button>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>İptal</Button>
+            <Button onClick={save} disabled={saving || uploading} className="bg-accent hover:bg-accent-glow text-accent-foreground">
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {saving ? "Kaydediliyor..." : "Kaydet"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { PAYMENT_PLAN_STATUSES, formatTRY, formatDate, statusBadgeClass, customerDisplayName, daysUntil, exportCSV, whatsappLink, derivePlanStatus } from "@/lib/finance";
 import { cn } from "@/lib/utils";
-import { Plus, Edit, Trash2, Download, MessageCircle, CalendarClock, AlertTriangle, Wallet, CheckCircle2 } from "lucide-react";
+import { Plus, Edit, Trash2, Download, MessageCircle, CalendarClock, AlertTriangle, Wallet, CheckCircle2, Loader2 } from "lucide-react";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 
 const empty = { customer_id: "", project_id: "", title: "", description: "", amount: "", due_date: "", status: "Bekliyor", notes: "" };
@@ -30,6 +30,7 @@ export default function AdminPaymentPlans() {
   const [filterProject, setFilterProject] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterPeriod, setFilterPeriod] = useState("all");
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   async function load() {
@@ -56,15 +57,20 @@ export default function AdminPaymentPlans() {
     if (!form.customer_id || !form.title || !form.amount || !form.due_date) {
       toast({ title: "Müşteri, başlık, tutar ve vade tarihi zorunludur", variant: "destructive" }); return;
     }
+    setSaving(true);
     const payload: any = { ...form, amount: Number(form.amount), project_id: form.project_id || null };
-    if (editId) {
-      await (supabase.from("payment_plans" as any).update(payload).eq("id", editId)) as any;
-      toast({ title: "Ödeme planı güncellendi" });
-    } else {
-      await (supabase.from("payment_plans" as any).insert(payload)) as any;
-      toast({ title: "Ödeme planı eklendi" });
+    try {
+      if (editId) {
+        await (supabase.from("payment_plans" as any).update(payload).eq("id", editId)) as any;
+        toast({ title: "Ödeme planı güncellendi" });
+      } else {
+        await (supabase.from("payment_plans" as any).insert(payload)) as any;
+        toast({ title: "Ödeme planı eklendi" });
+      }
+      setOpen(false); load();
+    } finally {
+      setSaving(false);
     }
-    setOpen(false); load();
   }
 
   async function remove(id: string) {
@@ -136,7 +142,38 @@ export default function AdminPaymentPlans() {
       </div>
 
       {loading ? <div className="text-center text-muted-foreground py-12">Yükleniyor...</div> : (
-        <div className="bg-card border border-border rounded-md overflow-x-auto">
+        <>
+        {filtered.length === 0 ? (
+          <div className="md:hidden">
+            <AdminEmptyState title={plans.length === 0 ? "Henüz ödeme planı yok" : "Ödeme planı bulunamadı"} description={plans.length === 0 ? "İlk ödeme planını oluşturarak beklenen tahsilatları takip etmeye başlayın." : "Filtreleri temizleyebilir veya yeni ödeme planı oluşturabilirsiniz."} icon={CalendarClock} />
+          </div>
+        ) : (
+        <div className="space-y-3 md:hidden">
+          {filtered.map((p) => (
+            <div key={p.id} className="rounded-md border border-border bg-card p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-semibold">{p.title}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{p.customer ? customerDisplayName(p.customer) : "Müşteri yok"} · {p.project?.title || "Proje yok"}</div>
+                </div>
+                <span className={cn("shrink-0 rounded-md border px-2 py-0.5 text-xs", statusBadgeClass(p.computed))}>{p.computed}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
+                <div><div className="text-xs text-muted-foreground">Tutar</div><div className="font-semibold">{formatTRY(p.amount)}</div></div>
+                <div><div className="text-xs text-muted-foreground">Ödenen</div><div className="font-semibold text-emerald-700">{formatTRY(p.paid)}</div></div>
+                <div><div className="text-xs text-muted-foreground">Kalan</div><div className="font-semibold">{formatTRY(p.remain)}</div></div>
+              </div>
+              <div className="mt-3 text-xs text-muted-foreground">Vade: {formatDate(p.due_date)} · {daysUntil(p.due_date) < 0 ? `${Math.abs(daysUntil(p.due_date))} gün geçti` : `${daysUntil(p.due_date)} gün kaldı`}</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {p.customer?.whatsapp && <Button asChild size="sm" variant="outline"><a href={whatsappLink(p.customer.whatsapp, `Merhaba, Akınal İnşaat ödeme planınıza göre ${formatDate(p.due_date)} tarihli ${formatTRY(p.remain)} ödemeniz bulunmaktadır. Bilginize sunarız.`)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 text-emerald-700" /> Hatırlat</a></Button>}
+                <Button size="sm" variant="outline" onClick={() => openEdit(p)}><Edit className="h-4 w-4" /> Düzenle</Button>
+                <Button size="sm" variant="ghost" onClick={() => remove(p.id)}><Trash2 className="h-4 w-4 text-destructive" /> Sil</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+        )}
+        <div className="hidden bg-card border border-border rounded-md overflow-x-auto md:block">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
@@ -159,8 +196,8 @@ export default function AdminPaymentPlans() {
                   <td className="p-3 text-right">
                     <div className="flex justify-end gap-1">
                       {p.customer?.whatsapp && <Button asChild size="sm" variant="ghost" title="WhatsApp ile Hatırlat"><a href={whatsappLink(p.customer.whatsapp, `Merhaba, Akınal İnşaat ödeme planınıza göre ${formatDate(p.due_date)} tarihli ${formatTRY(p.remain)} ödemeniz bulunmaktadır. Bilginize sunarız.`)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 text-emerald-700" /></a></Button>}
-                      <Button size="sm" variant="ghost" onClick={() => openEdit(p)}><Edit className="h-4 w-4" /></Button>
-                      <Button size="sm" variant="ghost" onClick={() => remove(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <Button size="sm" variant="ghost" title="Düzenle" onClick={() => openEdit(p)}><Edit className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Düzenle</span></Button>
+                      <Button size="sm" variant="ghost" title="Sil" onClick={() => remove(p.id)}><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only xl:not-sr-only xl:ml-1">Sil</span></Button>
                     </div>
                   </td>
                 </tr>
@@ -169,6 +206,7 @@ export default function AdminPaymentPlans() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -191,6 +229,7 @@ export default function AdminPaymentPlans() {
             <div><Label>Tutar *</Label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm((f: any) => ({ ...f, amount: e.target.value }))} /></div>
             <div><Label>Vade Tarihi *</Label><Input type="date" value={form.due_date} onChange={(e) => setForm((f: any) => ({ ...f, due_date: e.target.value }))} /></div>
             <div><Label>Durum</Label>
+              <p className="mb-1 text-xs text-muted-foreground">Tahsilat girildikçe plan durumu otomatik yeniden hesaplanır.</p>
               <Select value={form.status} onValueChange={(v) => setForm((f: any) => ({ ...f, status: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{PAYMENT_PLAN_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
@@ -200,8 +239,11 @@ export default function AdminPaymentPlans() {
             <div className="md:col-span-2"><Label>Not</Label><Textarea value={form.notes} onChange={(e) => setForm((f: any) => ({ ...f, notes: e.target.value }))} rows={2} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>İptal</Button>
-            <Button onClick={save} className="bg-accent hover:bg-accent-glow text-accent-foreground">Kaydet</Button>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>İptal</Button>
+            <Button onClick={save} disabled={saving} className="bg-accent hover:bg-accent-glow text-accent-foreground">
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {saving ? "Kaydediliyor..." : "Kaydet"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

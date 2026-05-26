@@ -748,7 +748,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
 
           <AdminSection
             title={entity.tableTitle}
-            description="Finansal hareketleri tarih, kart, kayıt grubu, hareket tipi, durum ve para birimine göre filtreleyin."
+            description="Gelir ve gider detaylarını tarih, ilgili kart, kategori, durum ve para birimine göre filtreleyin."
             actions={<Button onClick={openCreate} className="bg-accent text-accent-foreground hover:bg-accent-glow"><Plus className="h-4 w-4" /> Yeni Hareket Ekle</Button>}
           >
             <div className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -776,12 +776,12 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
               <Input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} aria-label="Başlangıç Tarihi" />
               <Input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} aria-label="Bitiş Tarihi" />
               <Select value={groupFilter} onValueChange={setGroupFilter}>
-                <SelectTrigger><SelectValue placeholder="Kayıt Grubu" /></SelectTrigger>
-                <SelectContent><SelectItem value="all">Tüm Kayıt Grupları</SelectItem>{GROUP_TAGS.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
+                <SelectTrigger><SelectValue placeholder="Kategori" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">Tüm Kategoriler</SelectItem>{GROUP_TAGS.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={directionFilter} onValueChange={setDirectionFilter}>
-                <SelectTrigger><SelectValue placeholder="Hareket Tipi" /></SelectTrigger>
-                <SelectContent><SelectItem value="all">Tüm Hareket Tipleri</SelectItem>{ENTRY_DIRECTIONS.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
+                <SelectTrigger><SelectValue placeholder="Gelir / Gider" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">Tüm Gelir ve Giderler</SelectItem>{ENTRY_DIRECTIONS.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger><SelectValue placeholder="Durum" /></SelectTrigger>
@@ -807,8 +807,8 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
                       <th className="p-3">Proje</th>
                     )}
                     <th className="p-3">Başlık</th>
-                    <th className="p-3">Kayıt Grubu</th>
-                    <th className="p-3">Hareket Tipi</th>
+                    <th className="p-3">Kategori</th>
+                    <th className="p-3">Gelir / Gider</th>
                     <th className="p-3">Durum</th>
                     <th className="p-3 text-right">Tutar</th>
                     <th className="p-3">Para Birimi</th>
@@ -848,8 +848,8 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
                       </td>
                       <td className="p-3">
                         <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => openEdit(entry)} title="Düzenle"><Edit className="h-4 w-4" /></Button>
-                          <Button size="sm" variant="ghost" onClick={() => deleteEntry(entry)} title="Sil"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                          <Button size="sm" variant="ghost" onClick={() => openEdit(entry)} title="Düzenle"><Edit className="h-4 w-4" /><span className="sr-only sm:not-sr-only sm:ml-1">Düzenle</span></Button>
+                          <Button size="sm" variant="ghost" onClick={() => deleteEntry(entry)} title="Sil"><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only sm:not-sr-only sm:ml-1">Sil</span></Button>
                         </div>
                       </td>
                     </tr>
@@ -965,14 +965,14 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
               </Select>
             </div>
             <div>
-              <Label>Kayıt Grubu *</Label>
+              <Label>Kategori *</Label>
               <Select value={form.group_tag} onValueChange={(value) => updateForm("group_tag", value as GroupTag)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{GROUP_TAGS.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Hareket Tipi *</Label>
+              <Label>Gelir / Gider *</Label>
               <Select value={form.direction} onValueChange={(value) => updateForm("direction", value as EntryDirection)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{ENTRY_DIRECTIONS.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
