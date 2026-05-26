@@ -20,10 +20,8 @@ import {
   isCanceledStatus,
   isPaidStatus,
   paymentPlanRemainingFromPayments,
-  plannedFinancialIncome,
-  realizedFinancialExpense,
-  realizedFinancialIncome,
   safeNumber,
+  summarizeLedgerFinance,
   sumBy,
 } from "@/lib/finance";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
@@ -96,28 +94,27 @@ function ExportBar({ onCSV, title }: { onCSV: () => void; title: string }) {
 
 // ========== Report 1: Project Finance ==========
 function ProjectFinanceReport({ data }: any) {
-  const { projects, plans, payments, expenses, financialEntries } = data;
+  const { projects, financialEntries } = data;
   const [from, setFrom] = useState(""); const [to, setTo] = useState(""); const [projectId, setProjectId] = useState("all");
 
   const rows = useMemo(() => {
     const list = projectId === "all" ? projects.data : projects.data.filter((p: any) => p.id === projectId);
     return list.map((p: any) => {
-      const pl = plans.data.filter((x: any) => x.project_id === p.id && inDateRange(x.due_date, from, to));
-      const py = payments.data.filter((x: any) => x.project_id === p.id && inDateRange(x.payment_date, from, to));
-      const ex = expenses.data.filter((x: any) => x.project_id === p.id && inDateRange(x.expense_date, from, to));
       const fe = entriesInDateRange(financialEntries.data, from, to).filter((x: any) => x.project_id === p.id);
-      const totalReceivable = pl.reduce((s: number, x: any) => s + paymentPlanRemainingFromPayments(x, payments.data), 0) + plannedFinancialIncome(fe);
-      const totalReceived = sumBy(py, (x: any) => x.amount) + realizedFinancialIncome(fe);
-      const totalSpent = sumBy(ex, (x: any) => x.amount) + realizedFinancialExpense(fe);
+      const summary = summarizeLedgerFinance({ financialEntries: fe });
+      const totalReceivable = summary.receivable;
+      const totalReceived = summary.totalIncome;
+      const totalSpent = summary.totalExpense;
+      const totalPayable = summary.payable;
       return {
         id: p.id, title: p.title,
-        totalReceived, totalReceivable, totalSpent,
-        net: totalReceived - totalSpent,
+        totalReceived, totalReceivable, totalSpent, totalPayable,
+        net: summary.netBalance,
         collectionRate: totalReceivable > 0 ? (totalReceived / totalReceivable) * 100 : 0,
         expenseRate: totalReceived > 0 ? (totalSpent / totalReceived) * 100 : 0,
       };
     });
-  }, [projects.data, plans.data, payments.data, expenses.data, financialEntries.data, from, to, projectId]);
+  }, [projects.data, financialEntries.data, from, to, projectId]);
 
   const dateRange = `${from || "Başlangıç"} - ${to || "Bugün"}`;
 
@@ -136,9 +133,10 @@ function ProjectFinanceReport({ data }: any) {
       </Filters>
       <ExportBar title="Proje Finans Raporu" onCSV={() => exportCSV("proje-finans-raporu.csv", rows.map((r: any) => ({
         "Proje Adı": r.title,
-        "Toplam Alınan": r.totalReceived,
-        "Toplam Alınacak": r.totalReceivable,
-        "Toplam Harcanan": r.totalSpent,
+        "Gerçekleşen Gelir": r.totalReceived,
+        "Planlanan Gelir": r.totalReceivable,
+        "Gerçekleşen Gider": r.totalSpent,
+        "Planlanan Gider": r.totalPayable,
         "Net Durum": r.net,
         "Tahsilat Oranı (%)": r.collectionRate.toFixed(2),
         "Gider Oranı (%)": r.expenseRate.toFixed(2),
@@ -147,8 +145,8 @@ function ProjectFinanceReport({ data }: any) {
       <Card><CardContent className="p-0">
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Proje Adı</TableHead><TableHead>Toplam Alınan</TableHead><TableHead>Toplam Alınacak</TableHead>
-            <TableHead>Toplam Harcanan</TableHead><TableHead>Net Durum</TableHead>
+            <TableHead>Proje Adı</TableHead><TableHead>Gerçekleşen Gelir</TableHead><TableHead>Planlanan Gelir</TableHead>
+            <TableHead>Gerçekleşen Gider</TableHead><TableHead>Planlanan Gider</TableHead><TableHead>Net Durum</TableHead>
             <TableHead>Tahsilat Oranı</TableHead><TableHead>Gider Oranı</TableHead>
           </TableRow></TableHeader>
           <TableBody>
@@ -158,12 +156,13 @@ function ProjectFinanceReport({ data }: any) {
                 <TableCell>{formatTRY(r.totalReceived)}</TableCell>
                 <TableCell>{formatTRY(r.totalReceivable)}</TableCell>
                 <TableCell>{formatTRY(r.totalSpent)}</TableCell>
+                <TableCell>{formatTRY(r.totalPayable)}</TableCell>
                 <TableCell className={r.net >= 0 ? "text-emerald-700" : "text-red-700"}>{formatTRY(r.net)}</TableCell>
                 <TableCell>%{r.collectionRate.toFixed(1)}</TableCell>
                 <TableCell>%{r.expenseRate.toFixed(1)}</TableCell>
               </TableRow>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Veri bulunamadı.</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-6">Veri bulunamadı.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </CardContent></Card>
@@ -433,30 +432,31 @@ function ExpensesReport({ data }: any) {
 
 // ========== Report 5: General Summary ==========
 function GeneralSummaryReport({ data }: any) {
-  const { plans, payments, expenses, financialEntries } = data;
+  const { financialEntries } = data;
   const today = new Date();
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
   const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
-  const todayStr = today.toISOString().slice(0, 10);
 
-  const totalReceived = sumBy(payments.data, (x: any) => x.amount) + realizedFinancialIncome(financialEntries.data);
-  const totalReceivable = plans.data.reduce((s: number, x: any) => s + paymentPlanRemainingFromPayments(x, payments.data), 0) + plannedFinancialIncome(financialEntries.data);
-  const totalSpent = sumBy(expenses.data, (x: any) => x.amount) + realizedFinancialExpense(financialEntries.data);
-  const overdue = plans.data.filter((x: any) => x.due_date < todayStr && !isPaidStatus(x.status) && !isCanceledStatus(x.status))
-    .reduce((s: number, x: any) => s + paymentPlanRemainingFromPayments(x, payments.data), 0);
-  const monthEntries = financialEntries.data.filter((x: any) => x.entry_date >= monthStart && x.entry_date <= monthEnd);
-  const monthExpected = plans.data.filter((x: any) => x.due_date >= monthStart && x.due_date <= monthEnd && !isPaidStatus(x.status) && !isCanceledStatus(x.status))
-    .reduce((s: number, x: any) => s + paymentPlanRemainingFromPayments(x, payments.data), 0) + plannedFinancialIncome(monthEntries);
-  const monthCollected = sumBy(payments.data.filter((x: any) => x.payment_date >= monthStart && x.payment_date <= monthEnd), (x: any) => x.amount)
-    + realizedFinancialIncome(monthEntries);
-  const monthSpent = sumBy(expenses.data.filter((x: any) => x.expense_date >= monthStart && x.expense_date <= monthEnd), (x: any) => x.amount)
-    + realizedFinancialExpense(monthEntries);
-  const net = totalReceived - totalSpent;
+  const summary = summarizeLedgerFinance({ financialEntries: financialEntries.data });
+  const monthSummary = summarizeLedgerFinance({
+    financialEntries: financialEntries.data,
+    from: monthStart,
+    to: monthEnd,
+  });
+  const totalReceived = summary.totalIncome;
+  const totalReceivable = summary.receivable;
+  const totalSpent = summary.totalExpense;
+  const totalPayable = summary.payable;
+  const monthExpected = monthSummary.receivable;
+  const monthCollected = monthSummary.totalIncome;
+  const monthSpent = monthSummary.totalExpense;
+  const net = summary.netBalance;
 
   const distData = [
-    { name: "Toplam Alınan", value: totalReceived, color: FINANCE_COLORS.received },
-    { name: "Toplam Alınacak", value: totalReceivable, color: FINANCE_COLORS.receivable },
-    { name: "Toplam Harcanan", value: totalSpent, color: FINANCE_COLORS.expense },
+    { name: "Gerçekleşen Gelir", value: totalReceived, color: FINANCE_COLORS.received },
+    { name: "Planlanan Gelir", value: totalReceivable, color: FINANCE_COLORS.receivable },
+    { name: "Gerçekleşen Gider", value: totalSpent, color: FINANCE_COLORS.expense },
+    { name: "Planlanan Gider", value: totalPayable, color: FINANCE_COLORS.pending },
   ];
 
   // Monthly chart - last 6 months
@@ -466,32 +466,31 @@ function GeneralSummaryReport({ data }: any) {
     const ms = d.toISOString().slice(0, 10);
     const me = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
     const label = d.toLocaleDateString("tr-TR", { month: "short", year: "2-digit" });
+    const monthlySummary = summarizeLedgerFinance({ financialEntries: financialEntries.data, from: ms, to: me });
     monthly.push({
       ay: label,
-      Tahsilat: sumBy(payments.data.filter((x: any) => x.payment_date >= ms && x.payment_date <= me), (x: any) => x.amount)
-        + realizedFinancialIncome(financialEntries.data.filter((x: any) => x.entry_date >= ms && x.entry_date <= me)),
-      Gider: sumBy(expenses.data.filter((x: any) => x.expense_date >= ms && x.expense_date <= me), (x: any) => x.amount)
-        + realizedFinancialExpense(financialEntries.data.filter((x: any) => x.entry_date >= ms && x.entry_date <= me)),
+      "Gerçekleşen Gelir": monthlySummary.totalIncome,
+      "Gerçekleşen Gider": monthlySummary.totalExpense,
     });
   }
 
   return (
     <div>
       <ExportBar title="Genel Finans Özeti" onCSV={() => exportCSV("genel-finans-ozeti.csv", [{
-        "Toplam Alınan": totalReceived, "Toplam Alınacak": totalReceivable,
-        "Toplam Harcanan": totalSpent, "Net Durum": net, "Vadesi Geçen Alacak": overdue,
-        "Bu Ay Beklenen Tahsilat": monthExpected, "Bu Ay Yapılan Tahsilat": monthCollected, "Bu Ay Yapılan Harcama": monthSpent,
+        "Gerçekleşen Gelir": totalReceived, "Planlanan Gelir": totalReceivable,
+        "Gerçekleşen Gider": totalSpent, "Planlanan Gider": totalPayable, "Net Durum": net,
+        "Bu Ay Beklenen Tahsilat": monthExpected, "Bu Ay Gerçekleşen Gelir": monthCollected, "Bu Ay Gerçekleşen Gider": monthSpent,
       }])} />
       <ReportHeader title="Genel Finans Özeti" dateRange="Tüm Zamanlar" />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <SummaryCard label="Toplam Alınan" value={formatTRY(totalReceived)} color="text-emerald-700" />
-        <SummaryCard label="Toplam Alınacak" value={formatTRY(totalReceivable)} />
-        <SummaryCard label="Toplam Harcanan" value={formatTRY(totalSpent)} color="text-red-700" />
+        <SummaryCard label="Gerçekleşen Gelir" value={formatTRY(totalReceived)} color="text-emerald-700" />
+        <SummaryCard label="Planlanan Gelir" value={formatTRY(totalReceivable)} />
+        <SummaryCard label="Gerçekleşen Gider" value={formatTRY(totalSpent)} color="text-red-700" />
+        <SummaryCard label="Planlanan Gider" value={formatTRY(totalPayable)} />
         <SummaryCard label="Net Durum" value={formatTRY(net)} color={net >= 0 ? "text-emerald-700" : "text-red-700"} />
-        <SummaryCard label="Vadesi Geçen Alacak" value={formatTRY(overdue)} color="text-red-700" />
         <SummaryCard label="Bu Ay Beklenen Tahsilat" value={formatTRY(monthExpected)} />
-        <SummaryCard label="Bu Ay Yapılan Tahsilat" value={formatTRY(monthCollected)} color="text-emerald-700" />
-        <SummaryCard label="Bu Ay Yapılan Harcama" value={formatTRY(monthSpent)} color="text-red-700" />
+        <SummaryCard label="Bu Ay Gerçekleşen Gelir" value={formatTRY(monthCollected)} color="text-emerald-700" />
+        <SummaryCard label="Bu Ay Gerçekleşen Gider" value={formatTRY(monthSpent)} color="text-red-700" />
       </div>
       <div className="grid md:grid-cols-2 gap-4 mb-4">
         <Card><CardHeader><CardTitle className="text-base">Genel Finans Dağılımı</CardTitle></CardHeader>
@@ -506,14 +505,14 @@ function GeneralSummaryReport({ data }: any) {
             </ResponsiveContainer>
           </CardContent>
         </Card>
-        <Card><CardHeader><CardTitle className="text-base">Aylık Tahsilat ve Gider Grafiği</CardTitle></CardHeader>
+        <Card><CardHeader><CardTitle className="text-base">Aylık Gerçekleşen Gelir ve Gider Grafiği</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={monthly}>
                 <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="ay" /><YAxis />
                 <Tooltip formatter={(v: any) => formatTRY(v)} /><Legend />
-                <Bar dataKey="Tahsilat" fill={FINANCE_COLORS.received} />
-                <Bar dataKey="Gider" fill={FINANCE_COLORS.expense} />
+                <Bar dataKey="Gerçekleşen Gelir" fill={FINANCE_COLORS.received} />
+                <Bar dataKey="Gerçekleşen Gider" fill={FINANCE_COLORS.expense} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

@@ -37,7 +37,48 @@ export type FinancialEntryLike = {
   direction?: string | null;
   status?: string | null;
   currency_tag?: string | null;
+  group_tag?: string | null;
   project_id?: string | null;
+};
+
+export type LegacyExpenseLike = {
+  amount?: number | string | null;
+  expense_date?: string | null;
+  project_id?: string | null;
+};
+
+export type FinanceSummaryInput = {
+  paymentPlans: PaymentPlanLike[];
+  payments: LegacyPaymentLike[];
+  expenses: LegacyExpenseLike[];
+  financialEntries: FinancialEntryLike[];
+  currency?: CurrencyTag;
+  group?: GroupTag | "all";
+  from?: string;
+  to?: string;
+};
+
+export type FinanceSummary = {
+  realizedIncome: number;
+  plannedIncome: number;
+  realizedExpense: number;
+  plannedExpense: number;
+  legacyIncome: number;
+  legacyExpense: number;
+  receivable: number;
+  payable: number;
+  totalIncome: number;
+  totalExpense: number;
+  netBalance: number;
+  overdueReceivable: number;
+};
+
+export type LedgerFinanceSummaryInput = {
+  financialEntries: FinancialEntryLike[];
+  currency?: CurrencyTag;
+  group?: GroupTag | "all";
+  from?: string;
+  to?: string;
 };
 
 export const FINANCE_COLORS = {
@@ -106,10 +147,10 @@ export function statusBadgeClass(status: string): string {
   }
 }
 
-export function exportCSV(filename: string, rows: Record<string, any>[]) {
+export function exportCSV(filename: string, rows: Record<string, unknown>[]) {
   if (!rows.length) return;
   const headers = Object.keys(rows[0]);
-  const escape = (v: any) => {
+  const escape = (v: unknown) => {
     const s = v == null ? "" : String(v);
     return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
@@ -156,25 +197,159 @@ export function isPlannedStatus(status: string | null | undefined): boolean {
   return status === "Planlandı";
 }
 
-export function realizedFinancialIncome(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
+export function realizedIncomeFromLedger(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
   return sumBy(
     entries.filter((entry) => entry.currency_tag === currency && isRealizedStatus(entry.status) && entry.direction === "Gelir"),
     (entry) => entry.amount,
   );
 }
 
-export function realizedFinancialExpense(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
+export function realizedExpenseFromLedger(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
   return sumBy(
     entries.filter((entry) => entry.currency_tag === currency && isRealizedStatus(entry.status) && entry.direction === "Gider"),
     (entry) => entry.amount,
   );
 }
 
-export function plannedFinancialIncome(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
+export function plannedIncomeFromLedger(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
   return sumBy(
     entries.filter((entry) => entry.currency_tag === currency && isPlannedStatus(entry.status) && entry.direction === "Gelir"),
     (entry) => entry.amount,
   );
+}
+
+export function plannedExpenseFromLedger(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
+  return sumBy(
+    entries.filter((entry) => entry.currency_tag === currency && isPlannedStatus(entry.status) && entry.direction === "Gider"),
+    (entry) => entry.amount,
+  );
+}
+
+export function netFromLedger(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
+  return realizedIncomeFromLedger(entries, currency) - realizedExpenseFromLedger(entries, currency);
+}
+
+export function receivableFromLedger(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
+  return plannedIncomeFromLedger(entries, currency);
+}
+
+export function payableFromLedger(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
+  return plannedExpenseFromLedger(entries, currency);
+}
+
+export function realizedFinancialIncome(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
+  return realizedIncomeFromLedger(entries, currency);
+}
+
+export function realizedFinancialExpense(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
+  return realizedExpenseFromLedger(entries, currency);
+}
+
+export function plannedFinancialIncome(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
+  return plannedIncomeFromLedger(entries, currency);
+}
+
+export function plannedFinancialExpense(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
+  return plannedExpenseFromLedger(entries, currency);
+}
+
+function isInDateRange(date: string | null | undefined, from?: string, to?: string): boolean {
+  if (!from && !to) return true;
+  if (!date) return false;
+  if (from && date < from) return false;
+  if (to && date > to) return false;
+  return true;
+}
+
+function filterFinancialEntries(input: LedgerFinanceSummaryInput): FinancialEntryLike[] {
+  const currency = input.currency ?? "TRY";
+  const group = input.group ?? "all";
+  return input.financialEntries.filter((entry) => {
+    if (entry.currency_tag !== currency) return false;
+    if (group !== "all" && entry.group_tag !== group) return false;
+    return isInDateRange(entry.entry_date, input.from, input.to);
+  });
+}
+
+function filterPayments(input: FinanceSummaryInput): LegacyPaymentLike[] {
+  return input.payments.filter((payment) => {
+    const datedPayment = payment as LegacyPaymentLike & { payment_date?: string | null };
+    return isInDateRange(datedPayment.payment_date, input.from, input.to);
+  });
+}
+
+function filterExpenses(input: FinanceSummaryInput): LegacyExpenseLike[] {
+  return input.expenses.filter((expense) => isInDateRange(expense.expense_date, input.from, input.to));
+}
+
+function filterPaymentPlans(input: FinanceSummaryInput): PaymentPlanLike[] {
+  return input.paymentPlans.filter((plan) => isInDateRange(plan.due_date, input.from, input.to));
+}
+
+export function summarizeLedgerFinance(input: LedgerFinanceSummaryInput): FinanceSummary {
+  const currency = input.currency ?? "TRY";
+  const entries = filterFinancialEntries(input);
+  const today = new Date().toISOString().slice(0, 10);
+
+  const realizedIncome = realizedIncomeFromLedger(entries, currency);
+  const plannedIncome = plannedIncomeFromLedger(entries, currency);
+  const realizedExpense = realizedExpenseFromLedger(entries, currency);
+  const plannedExpense = plannedExpenseFromLedger(entries, currency);
+  const overdueReceivable = entries
+    .filter((entry) => entry.entry_date && entry.entry_date < today && isPlannedStatus(entry.status) && entry.direction === "Gelir")
+    .reduce((sum, entry) => sum + safeNumber(entry.amount), 0);
+
+  return {
+    realizedIncome,
+    plannedIncome,
+    realizedExpense,
+    plannedExpense,
+    legacyIncome: 0,
+    legacyExpense: 0,
+    receivable: plannedIncome,
+    payable: plannedExpense,
+    totalIncome: realizedIncome,
+    totalExpense: realizedExpense,
+    netBalance: realizedIncome - realizedExpense,
+    overdueReceivable,
+  };
+}
+
+export function summarizeFinance(input: FinanceSummaryInput): FinanceSummary {
+  const currency = input.currency ?? "TRY";
+  const entries = filterFinancialEntries(input);
+  const payments = filterPayments(input);
+  const expenses = filterExpenses(input);
+  const plans = filterPaymentPlans(input);
+  const today = new Date().toISOString().slice(0, 10);
+
+  const realizedIncome = realizedFinancialIncome(entries, currency);
+  const plannedIncome = plannedFinancialIncome(entries, currency);
+  const realizedExpense = realizedFinancialExpense(entries, currency);
+  const plannedExpense = plannedFinancialExpense(entries, currency);
+  const legacyIncome = sumBy(payments, (payment) => payment.amount);
+  const legacyExpense = sumBy(expenses, (expense) => expense.amount);
+  const legacyReceivable = plans
+    .filter((plan) => !isPaidStatus(plan.status) && !isCanceledStatus(plan.status))
+    .reduce((sum, plan) => sum + paymentPlanRemainingFromPayments(plan, input.payments), 0);
+  const overdueReceivable = plans
+    .filter((plan) => !!plan.due_date && plan.due_date < today && !isPaidStatus(plan.status) && !isCanceledStatus(plan.status))
+    .reduce((sum, plan) => sum + paymentPlanRemainingFromPayments(plan, input.payments), 0);
+
+  return {
+    realizedIncome,
+    plannedIncome,
+    realizedExpense,
+    plannedExpense,
+    legacyIncome,
+    legacyExpense,
+    receivable: legacyReceivable + plannedIncome,
+    payable: plannedExpense,
+    totalIncome: legacyIncome + realizedIncome,
+    totalExpense: legacyExpense + realizedExpense,
+    netBalance: legacyIncome + realizedIncome - legacyExpense - realizedExpense,
+    overdueReceivable,
+  };
 }
 
 export function derivePlanStatus(plan: { amount: number | string; due_date: string; status: string }, paid: number): string {

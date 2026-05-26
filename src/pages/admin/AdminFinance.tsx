@@ -18,9 +18,7 @@ import {
   isPaidStatus,
   paymentPlanRemainingFromPayments,
   paidForPlan,
-  realizedFinancialExpense,
-  realizedFinancialIncome,
-  sumBy,
+  summarizeLedgerFinance,
 } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { AdminPageHeader } from "@/components/admin/AdminPage";
@@ -82,32 +80,29 @@ export default function AdminFinance() {
   useEffect(() => { load(); }, []);
 
   const stats = useMemo(() => {
-    const totalReceived = sumBy(pays, (payment) => payment.amount) + realizedFinancialIncome(financialEntries);
-    const totalReceivable = plans.reduce((sum, plan) => sum + paymentPlanRemainingFromPayments(plan, pays), 0);
-    const totalExpense = sumBy(exps, (expense) => expense.amount) + realizedFinancialExpense(financialEntries);
-    const net = totalReceived - totalExpense;
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    const overdue = plans.reduce((s, p) => {
-      if (isPaidStatus(p.status) || isCanceledStatus(p.status)) return s;
-      if (daysUntil(p.due_date) >= 0) return s;
-      return s + paymentPlanRemainingFromPayments(p, pays);
-    }, 0);
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
     const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
-    const expectedThisMonth = plans.filter((p) => p.due_date >= monthStart && p.due_date <= monthEnd && !isPaidStatus(p.status) && !isCanceledStatus(p.status))
-      .reduce((s, p) => s + paymentPlanRemainingFromPayments(p, pays), 0);
-    const monthEntries = financialEntries.filter((entry) => entry.entry_date >= monthStart && entry.entry_date <= monthEnd);
-    const receivedThisMonth = sumBy(pays.filter((p) => p.payment_date >= monthStart && p.payment_date <= monthEnd), (payment) => payment.amount)
-      + realizedFinancialIncome(monthEntries);
-    const expenseThisMonth = sumBy(exps.filter((e) => e.expense_date >= monthStart && e.expense_date <= monthEnd), (expense) => expense.amount)
-      + realizedFinancialExpense(monthEntries);
-    return { totalReceived, totalReceivable, totalExpense, net, overdue, expectedThisMonth, receivedThisMonth, expenseThisMonth };
-  }, [plans, pays, exps, financialEntries]);
+    const overall = summarizeLedgerFinance({ financialEntries });
+    const month = summarizeLedgerFinance({ financialEntries, from: monthStart, to: monthEnd });
+
+    return {
+      totalReceived: overall.totalIncome,
+      totalReceivable: overall.receivable,
+      totalExpense: overall.totalExpense,
+      totalPayable: overall.payable,
+      net: overall.netBalance,
+      expectedThisMonth: month.receivable,
+      receivedThisMonth: month.totalIncome,
+      expenseThisMonth: month.totalExpense,
+    };
+  }, [financialEntries]);
 
   const overallPie = [
-    { name: "Alınan", value: stats.totalReceived, color: FINANCE_COLORS.received },
-    { name: "Alınacak", value: stats.totalReceivable, color: FINANCE_COLORS.receivable },
-    { name: "Harcanan", value: stats.totalExpense, color: FINANCE_COLORS.expense },
+    { name: "Gerçekleşen Gelir", value: stats.totalReceived, color: FINANCE_COLORS.received },
+    { name: "Planlanan Gelir", value: stats.totalReceivable, color: FINANCE_COLORS.receivable },
+    { name: "Gerçekleşen Gider", value: stats.totalExpense, color: FINANCE_COLORS.expense },
+    { name: "Planlanan Gider", value: stats.totalPayable, color: FINANCE_COLORS.pending },
   ];
 
   const statusPie = useMemo(() => {
@@ -126,15 +121,14 @@ export default function AdminFinance() {
   }, [plans, pays]);
 
   const projectStats = useMemo(() => projects.map((pr) => {
-    const projPlans = plans.filter((p) => p.project_id === pr.id);
-    const projPays = pays.filter((p) => p.project_id === pr.id);
-    const projExps = exps.filter((e) => e.project_id === pr.id);
     const projEntries = financialEntries.filter((entry) => entry.project_id === pr.id);
-    const received = sumBy(projPays, (payment) => payment.amount) + realizedFinancialIncome(projEntries);
-    const receivable = projPlans.reduce((sum, plan) => sum + paymentPlanRemainingFromPayments(plan, pays), 0);
-    const expense = sumBy(projExps, (expense) => expense.amount) + realizedFinancialExpense(projEntries);
-    return { ...pr, received, receivable, expense, net: received - expense };
-  }), [projects, plans, pays, exps, financialEntries]);
+    const summary = summarizeLedgerFinance({ financialEntries: projEntries });
+    const received = summary.totalIncome;
+    const receivable = summary.receivable;
+    const expense = summary.totalExpense;
+    const payable = summary.payable;
+    return { ...pr, received, receivable, expense, payable, net: summary.netBalance };
+  }), [projects, financialEntries]);
 
   const upcoming = useMemo(() => {
     return plans.map((p) => {
@@ -153,14 +147,14 @@ export default function AdminFinance() {
 
   function downloadSummary() {
     exportCSV("finans-ozeti.csv", [
-      { "Kalem": "Toplam Alınan", "Tutar": stats.totalReceived },
-      { "Kalem": "Toplam Alınacak", "Tutar": stats.totalReceivable },
-      { "Kalem": "Toplam Harcanan", "Tutar": stats.totalExpense },
+      { "Kalem": "Gerçekleşen Gelir", "Tutar": stats.totalReceived },
+      { "Kalem": "Planlanan Gelir", "Tutar": stats.totalReceivable },
+      { "Kalem": "Gerçekleşen Gider", "Tutar": stats.totalExpense },
+      { "Kalem": "Planlanan Gider", "Tutar": stats.totalPayable },
       { "Kalem": "Net Durum", "Tutar": stats.net },
-      { "Kalem": "Vadesi Geçen Alacak", "Tutar": stats.overdue },
       { "Kalem": "Bu Ay Beklenen Tahsilat", "Tutar": stats.expectedThisMonth },
-      { "Kalem": "Bu Ay Yapılan Tahsilat", "Tutar": stats.receivedThisMonth },
-      { "Kalem": "Bu Ay Yapılan Harcama", "Tutar": stats.expenseThisMonth },
+      { "Kalem": "Bu Ay Gerçekleşen Gelir", "Tutar": stats.receivedThisMonth },
+      { "Kalem": "Bu Ay Gerçekleşen Gider", "Tutar": stats.expenseThisMonth },
     ]);
   }
 
@@ -171,19 +165,19 @@ export default function AdminFinance() {
       <AdminPageHeader
         eyebrow="Finans"
         title="Finans Özeti"
-        description="Şirketin tahsilat, alacak, gider, net kâr ve proje bazlı finans durumunu yönetsel bakışla izleyin."
+        description="Finans kayıtlarına göre gerçekleşen, planlanan ve net durumu yönetsel bakışla izleyin."
         actions={<Button variant="outline" onClick={downloadSummary}><Download className="h-4 w-4 mr-1" /> Raporu İndir</Button>}
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label="Toplam Alınan" value={formatTRY(stats.totalReceived)} color="text-emerald-700" />
-        <Stat label="Toplam Alınacak" value={formatTRY(stats.totalReceivable)} color="text-amber-600" />
-        <Stat label="Toplam Harcanan" value={formatTRY(stats.totalExpense)} color="text-red-600" />
+        <Stat label="Gerçekleşen Gelir" value={formatTRY(stats.totalReceived)} color="text-emerald-700" />
+        <Stat label="Planlanan Gelir" value={formatTRY(stats.totalReceivable)} color="text-amber-600" />
+        <Stat label="Gerçekleşen Gider" value={formatTRY(stats.totalExpense)} color="text-red-600" />
+        <Stat label="Planlanan Gider" value={formatTRY(stats.totalPayable)} color="text-slate-700" />
         <Stat label="Net Durum" value={formatTRY(stats.net)} color={stats.net >= 0 ? "text-emerald-700" : "text-red-600"} />
-        <Stat label="Vadesi Geçen Alacak" value={formatTRY(stats.overdue)} color="text-red-600" />
         <Stat label="Bu Ay Beklenen Tahsilat" value={formatTRY(stats.expectedThisMonth)} />
-        <Stat label="Bu Ay Yapılan Tahsilat" value={formatTRY(stats.receivedThisMonth)} color="text-emerald-700" />
-        <Stat label="Bu Ay Yapılan Harcama" value={formatTRY(stats.expenseThisMonth)} color="text-red-600" />
+        <Stat label="Bu Ay Gerçekleşen Gelir" value={formatTRY(stats.receivedThisMonth)} color="text-emerald-700" />
+        <Stat label="Bu Ay Gerçekleşen Gider" value={formatTRY(stats.expenseThisMonth)} color="text-red-600" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -196,9 +190,10 @@ export default function AdminFinance() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {projectStats.map((p) => {
             const data = [
-              { name: "Alınan", value: p.received, color: FINANCE_COLORS.received },
-              { name: "Alınacak", value: p.receivable, color: FINANCE_COLORS.receivable },
-              { name: "Harcanan", value: p.expense, color: FINANCE_COLORS.expense },
+              { name: "Gerçekleşen Gelir", value: p.received, color: FINANCE_COLORS.received },
+              { name: "Planlanan Gelir", value: p.receivable, color: FINANCE_COLORS.receivable },
+              { name: "Gerçekleşen Gider", value: p.expense, color: FINANCE_COLORS.expense },
+              { name: "Planlanan Gider", value: p.payable, color: FINANCE_COLORS.pending },
             ].filter((d) => d.value > 0);
             return (
               <div key={p.id} className="bg-card border border-border rounded-md p-4">
@@ -212,9 +207,10 @@ export default function AdminFinance() {
                     ) : <div className="h-full flex items-center justify-center text-xs text-muted-foreground">Veri yok</div>}
                   </div>
                   <div className="flex-1 text-xs space-y-1">
-                    <div className="flex justify-between"><span>Alınan</span><span className="text-emerald-700 font-medium">{formatTRY(p.received)}</span></div>
-                    <div className="flex justify-between"><span>Alınacak</span><span className="text-amber-600 font-medium">{formatTRY(p.receivable)}</span></div>
-                    <div className="flex justify-between"><span>Harcanan</span><span className="text-red-600 font-medium">{formatTRY(p.expense)}</span></div>
+                    <div className="flex justify-between"><span>Gerçekleşen Gelir</span><span className="text-emerald-700 font-medium">{formatTRY(p.received)}</span></div>
+                    <div className="flex justify-between"><span>Planlanan Gelir</span><span className="text-amber-600 font-medium">{formatTRY(p.receivable)}</span></div>
+                    <div className="flex justify-between"><span>Gerçekleşen Gider</span><span className="text-red-600 font-medium">{formatTRY(p.expense)}</span></div>
+                    <div className="flex justify-between"><span>Beklenen Ödeme</span><span className="text-slate-700 font-medium">{formatTRY(p.payable)}</span></div>
                     <div className="flex justify-between border-t border-border pt-1 mt-1"><span className="font-semibold">Net</span><span className={cn("font-bold", p.net >= 0 ? "text-emerald-700" : "text-red-600")}>{formatTRY(p.net)}</span></div>
                   </div>
                 </div>
