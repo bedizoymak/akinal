@@ -641,6 +641,7 @@ function OverdueReport({ data }: any) {
 // ========== Main ==========
 export default function AdminReports() {
   const data = useFinanceAll();
+  const [activeTab, setActiveTab] = useState("proje");
 
   const tabs = [
     { id: "proje", label: "Proje Finans Raporu", desc: "Proje bazlı tahsilat, alacak, gider ve net durum.", Comp: ProjectFinanceReport },
@@ -669,7 +670,7 @@ export default function AdminReports() {
       {data.loading ? (
         <div className="rounded-md border border-border bg-card py-12 text-center text-sm text-muted-foreground shadow-card-soft">Rapor verileri hazırlanıyor...</div>
       ) : (
-        <Tabs defaultValue="proje" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="mb-5 rounded-md border border-border bg-card p-4 print:hidden">
             <div className="mb-3">
               <h2 className="font-display text-lg font-semibold">Sık Kullanılan Raporlar</h2>
@@ -677,16 +678,17 @@ export default function AdminReports() {
             </div>
             <div className="grid gap-3 md:grid-cols-3">
               {presets.map((preset) => (
-                <TabsTrigger
+                <button
                   key={preset.id}
-                  value={preset.id}
-                  className="h-auto justify-start rounded-md border border-border bg-background p-3 text-left data-[state=active]:border-accent data-[state=active]:bg-accent/10"
+                  type="button"
+                  onClick={() => setActiveTab(preset.id)}
+                  className={`h-auto rounded-md border p-3 text-left transition-colors hover:border-accent/60 hover:bg-accent/5 ${activeTab === preset.id ? "border-accent bg-accent/10" : "border-border bg-background"}`}
                 >
                   <span>
                     <span className="block font-semibold text-foreground">{preset.title}</span>
                     <span className="mt-1 block text-xs font-normal text-muted-foreground">{preset.desc}</span>
                   </span>
-                </TabsTrigger>
+                </button>
               ))}
             </div>
           </div>

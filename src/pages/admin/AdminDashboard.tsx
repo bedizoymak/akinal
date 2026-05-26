@@ -93,6 +93,16 @@ const chartColors = {
   net: "hsl(38 92% 50%)",
 };
 
+const dashboardCurrencyFormatter = new Intl.NumberFormat("tr-TR", {
+  style: "currency",
+  currency: "TRY",
+  maximumFractionDigits: 0,
+});
+
+function formatDashboardTRY(value: number) {
+  return dashboardCurrencyFormatter.format(value);
+}
+
 function isThisMonth(date: string | null | undefined, monthStart: string, monthEnd: string) {
   if (!date) return false;
   return date >= monthStart && date <= monthEnd;
@@ -122,11 +132,11 @@ function chartCurrency(value: number) {
 
 function LoadingDashboard() {
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-full space-y-7 overflow-x-hidden">
       <div className="rounded-md border border-border bg-card px-5 py-4 text-sm text-muted-foreground shadow-card-soft">
         Veriler hazırlanıyor...
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+      <div className="grid w-full max-w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
         {Array.from({ length: 6 }).map((_, index) => (
           <div key={index} className="rounded-md border border-border bg-card p-4 shadow-card-soft">
             <Skeleton className="h-3 w-24" />
@@ -288,7 +298,7 @@ export default function AdminDashboard() {
   }, [data]);
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-full space-y-6 overflow-x-hidden">
       <AdminPageHeader
         eyebrow="Yönetim Özeti"
         title="Genel Bakış"
@@ -318,24 +328,24 @@ export default function AdminDashboard() {
         />
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <div className="grid w-full max-w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <AdminMetricCard label="Aktif Projeler" value={dashboard.activeProjects.length} description={`${data.projects.length} toplam proje`} icon={FolderKanban} tone="accent" />
-            <AdminMetricCard label="Toplam Tahsilat" value={formatTRY(dashboard.totalIncome)} description="Gerçekleşen gelen ödemeler" icon={Wallet} tone="success" />
-            <AdminMetricCard label="Toplam Gider" value={formatTRY(dashboard.totalExpenses)} description="Yapılan masraflar" icon={Receipt} tone="danger" />
-            <AdminMetricCard label="Net Durum" value={formatTRY(dashboard.netStatus)} description="Gerçekleşen gelir eksi gider" icon={dashboard.netStatus >= 0 ? TrendingUp : TrendingDown} tone={dashboard.netStatus >= 0 ? "success" : "danger"} />
-            <AdminMetricCard label="Beklenen Tahsilat" value={formatTRY(dashboard.pendingCollections)} description="Planlanan gelir kayıtları" icon={CalendarClock} tone="warning" />
-            <AdminMetricCard label="Vadesi Geçen Alacak" value={formatTRY(dashboard.overdueCollections)} description={`${dashboard.overduePlans.length} ödeme planı takip bekliyor`} icon={Receipt} tone={dashboard.overdueCollections > 0 ? "danger" : "success"} />
+            <AdminMetricCard label="Toplam Tahsilat" value={formatDashboardTRY(dashboard.totalIncome)} description="Gerçekleşen gelen ödemeler" icon={Wallet} tone="success" />
+            <AdminMetricCard label="Toplam Gider" value={formatDashboardTRY(dashboard.totalExpenses)} description="Yapılan masraflar" icon={Receipt} tone="danger" />
+            <AdminMetricCard label="Net Durum" value={formatDashboardTRY(dashboard.netStatus)} description="Gerçekleşen gelir eksi gider" icon={dashboard.netStatus >= 0 ? TrendingUp : TrendingDown} tone={dashboard.netStatus >= 0 ? "success" : "danger"} />
+            <AdminMetricCard label="Beklenen Tahsilat" value={formatDashboardTRY(dashboard.pendingCollections)} description="Planlanan gelir kayıtları" icon={CalendarClock} tone="warning" />
+            <AdminMetricCard label="Vadesi Geçen Alacak" value={formatDashboardTRY(dashboard.overdueCollections)} description={`${dashboard.overduePlans.length} ödeme planı takip bekliyor`} icon={Receipt} tone={dashboard.overdueCollections > 0 ? "danger" : "success"} />
           </div>
 
           <AdminSection title="Bu Ayın Özeti" description="İçinde bulunduğumuz ayın gerçekleşen gelir, gider ve net durumu.">
-            <div className="grid gap-3 md:grid-cols-3">
-              <AdminMetricCard label="Bu Ay Tahsilat" value={formatTRY(dashboard.monthIncome)} icon={Wallet} tone="success" />
-              <AdminMetricCard label="Bu Ay Gider" value={formatTRY(dashboard.monthExpenses)} icon={Receipt} tone="danger" />
-              <AdminMetricCard label="Bu Ay Net Durum" value={formatTRY(dashboard.monthNet)} icon={dashboard.monthNet >= 0 ? TrendingUp : TrendingDown} tone={dashboard.monthNet >= 0 ? "success" : "danger"} />
+            <div className="grid w-full max-w-full grid-cols-1 gap-4 md:grid-cols-3">
+              <AdminMetricCard label="Bu Ay Tahsilat" value={formatDashboardTRY(dashboard.monthIncome)} icon={Wallet} tone="success" />
+              <AdminMetricCard label="Bu Ay Gider" value={formatDashboardTRY(dashboard.monthExpenses)} icon={Receipt} tone="danger" />
+              <AdminMetricCard label="Bu Ay Net Durum" value={formatDashboardTRY(dashboard.monthNet)} icon={dashboard.monthNet >= 0 ? TrendingUp : TrendingDown} tone={dashboard.monthNet >= 0 ? "success" : "danger"} />
             </div>
           </AdminSection>
 
-          <div className="grid gap-6 xl:grid-cols-3">
+          <div className="grid w-full max-w-full grid-cols-1 gap-6 xl:grid-cols-3">
             <AdminSection title="Takip Gerektirenler" description="Bugün bakılması faydalı olan kısa liste." className="xl:col-span-1" contentClassName="space-y-3">
               <Link to="/admin/odeme-planlari" className="block rounded-md border border-border p-3 hover:border-accent/50 hover:bg-accent/5">
                 <div className="text-sm font-semibold">Vadesi Geçen Alacak</div>
@@ -361,18 +371,18 @@ export default function AdminDashboard() {
                 dashboard.recentMovements.map((movement) => {
                   const isIncome = movement.direction === "Gelir";
                   return (
-                    <div key={movement.id} className="flex flex-col gap-3 rounded-md border border-border p-3 hover:bg-muted/30 sm:flex-row sm:items-center sm:justify-between">
+                    <div key={movement.id} className="flex min-w-0 max-w-full flex-col gap-3 rounded-md border border-border p-3 hover:bg-muted/30 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className={cn("rounded-md px-2 py-0.5 text-xs font-semibold", isIncome ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>{movement.source}</span>
                           <span className="text-xs text-muted-foreground">{formatDate(movement.date)}</span>
                         </div>
-                        <div className="mt-2 truncate font-semibold">{movement.label}</div>
-                        <div className="mt-1 text-xs text-muted-foreground">
+                        <div className="mt-2 whitespace-normal break-words font-semibold">{movement.label}</div>
+                        <div className="mt-1 whitespace-normal break-words text-xs text-muted-foreground">
                           {movement.projectTitle || "Proje bağlantısı yok"} · {movement.group}
                         </div>
                       </div>
-                      <div className={cn("shrink-0 text-right text-lg font-extrabold tabular-nums", isIncome ? "text-emerald-700" : "text-red-600")}>
+                      <div className={cn("max-w-full shrink-0 self-end whitespace-nowrap text-right text-lg font-extrabold tabular-nums sm:self-auto", isIncome ? "text-emerald-700" : "text-red-600")}>
                         {isIncome ? "+" : "-"}{formatTRY(movement.amount)}
                       </div>
                     </div>
@@ -382,7 +392,7 @@ export default function AdminDashboard() {
             </AdminSection>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-2">
+          <div className="grid w-full max-w-full grid-cols-1 gap-6 xl:grid-cols-2">
             <AdminSection title="Proje Durumu" description="Devam eden projeler ve hızlı erişim." contentClassName="space-y-2">
               {dashboard.activeProjects.length === 0 ? (
                 <AdminEmptyState
@@ -393,12 +403,12 @@ export default function AdminDashboard() {
                 />
               ) : (
                 dashboard.activeProjects.slice(0, 6).map((project) => (
-                  <Link key={project.id} to={`/admin/projeler/${project.id}/finans`} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 hover:border-accent/50 hover:bg-accent/5">
+                  <Link key={project.id} to={`/admin/projeler/${project.id}/finans`} className="flex min-w-0 max-w-full flex-col gap-3 rounded-md border border-border p-3 hover:border-accent/50 hover:bg-accent/5 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
-                      <div className="font-semibold">{project.title}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">{project.location || "Konum girilmemiş"}</div>
+                      <div className="whitespace-normal break-words font-semibold">{project.title}</div>
+                      <div className="mt-1 whitespace-normal break-words text-xs text-muted-foreground">{project.location || "Konum girilmemiş"}</div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex max-w-full shrink-0 items-center gap-2 self-start sm:self-auto">
                       <span className={cn("rounded-md border px-2 py-1 text-xs font-medium", statusBadgeVariant(project.project_status))}>{displayLabel(project.project_status)}</span>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
                     </div>
@@ -409,6 +419,7 @@ export default function AdminDashboard() {
 
             <AdminSection title="Aylık Finans Özeti" description="Son 6 ayın tahsilat, gider ve net durumu.">
               {dashboard.hasFinancialData ? (
+                <div className="min-w-0 max-w-full overflow-hidden">
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={dashboard.monthlyFinancials} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -421,6 +432,7 @@ export default function AdminDashboard() {
                     <Bar dataKey="net" name="Net Durum" fill={chartColors.net} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
+                </div>
               ) : (
                 <AdminEmptyState title="Henüz finansal hareket yok" description="Finansal hareket eklendikçe aylık grafik otomatik oluşacak." icon={BarChart3} />
               )}

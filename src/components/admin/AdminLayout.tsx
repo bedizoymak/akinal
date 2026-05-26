@@ -152,7 +152,7 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-surface-light">
+    <div className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-surface-light">
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-sidebar text-sidebar-foreground shadow-2xl transition-transform duration-200 print:hidden lg:static lg:shadow-none",
@@ -218,8 +218,8 @@ export default function AdminLayout() {
 
       {open && <button className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setOpen(false)} aria-label="Menüyü kapat" />}
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 border-b border-border bg-card/95 px-4 backdrop-blur print:hidden md:px-6">
+      <div className="flex min-w-0 max-w-full flex-1 flex-col overflow-x-hidden">
+        <header className="sticky top-0 z-20 w-full max-w-full overflow-x-hidden border-b border-border bg-card/95 px-4 backdrop-blur print:hidden md:px-6">
           <div className="flex h-16 items-center gap-3">
             <button
               onClick={() => setOpen(true)}
@@ -242,7 +242,7 @@ export default function AdminLayout() {
             </div>
           </div>
         </header>
-        <main className="min-w-0 flex-1 p-4 md:p-6 xl:p-8">
+        <main className="min-w-0 w-full max-w-full flex-1 overflow-x-hidden p-4 md:p-6 xl:p-8">
           <Outlet />
         </main>
       </div>
