@@ -118,9 +118,9 @@ export default function Contact() {
                 <Input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={255} />
               </div>
               <div className="sm:col-span-2">
-                <Label>Hizmet Seçiniz *</Label>
+                <Label htmlFor="service_type">Hizmet Seçiniz *</Label>
                 <Select value={form.service_type} onValueChange={(v) => setForm({ ...form, service_type: v })}>
-                  <SelectTrigger><SelectValue placeholder="Bir hizmet seçin" /></SelectTrigger>
+                  <SelectTrigger id="service_type" aria-required="true"><SelectValue placeholder="Bir hizmet seçin" /></SelectTrigger>
                   <SelectContent>
                     {SERVICE_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                   </SelectContent>
@@ -131,7 +131,7 @@ export default function Contact() {
                 <Textarea id="message" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={5} required maxLength={2000} />
               </div>
             </div>
-            <Button type="submit" disabled={submitting} className="mt-5 w-full bg-accent hover:bg-accent-glow text-accent-foreground font-semibold">
+            <Button type="submit" disabled={submitting} aria-busy={submitting} className="mt-5 w-full bg-accent hover:bg-accent-glow text-accent-foreground font-semibold">
               {submitting ? "Gönderiliyor..." : "Gönder"}
             </Button>
           </form>

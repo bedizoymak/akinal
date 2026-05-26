@@ -7,10 +7,10 @@ export interface ProjectCardData {
   id: string;
   title: string;
   slug: string;
-  short_description: string;
-  project_type: string;
-  project_status: string;
-  location: string;
+  short_description: string | null;
+  project_type: string | null;
+  project_status: string | null;
+  location: string | null;
   cover_image_url: string | null;
 }
 
@@ -33,19 +33,19 @@ export default function ProjectCard({ project }: { project: ProjectCardData }) {
         )}
         <div className="absolute top-3 left-3 flex gap-2">
           <span className={cn("px-2.5 py-1 text-[11px] font-semibold rounded-md border backdrop-blur-sm bg-background/90", statusBadgeVariant(project.project_status))}>
-            {project.project_status}
+            {project.project_status || "Proje"}
           </span>
         </div>
       </div>
       <div className="p-5 flex-1 flex flex-col">
-        <div className="text-xs uppercase tracking-wider text-accent font-semibold mb-2">{project.project_type}</div>
+        <div className="text-xs uppercase tracking-wider text-accent font-semibold mb-2">{project.project_type || "İnşaat Projesi"}</div>
         <h3 className="font-display text-xl font-bold text-foreground leading-snug mb-2 group-hover:text-accent transition-colors">
           {project.title}
         </h3>
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
-          <MapPin className="h-3.5 w-3.5" /> {project.location}
+          <MapPin className="h-3.5 w-3.5 shrink-0" /> <span className="min-w-0 truncate">{project.location || "Konum bilgisi yakında"}</span>
         </div>
-        <p className="text-sm text-muted-foreground line-clamp-2 mb-5">{project.short_description}</p>
+        <p className="text-sm text-muted-foreground line-clamp-2 mb-5">{project.short_description || "Proje detayları yakında paylaşılacaktır."}</p>
         <div className="mt-auto flex items-center text-sm font-semibold text-foreground group-hover:text-accent transition-colors">
           Detayları İncele
           <ArrowRight className="ml-1.5 h-4 w-4 transition-transform group-hover:translate-x-1" />

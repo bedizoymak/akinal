@@ -75,7 +75,10 @@ export default function SiteHeader() {
         </div>
 
         <button
+          type="button"
           aria-label="Menü"
+          aria-controls="site-mobile-menu"
+          aria-expanded={open}
           className="lg:hidden p-2 -mr-2 text-foreground"
           onClick={() => setOpen((o) => !o)}
         >
@@ -84,7 +87,7 @@ export default function SiteHeader() {
       </div>
 
       {open && (
-        <div className="lg:hidden border-t border-border bg-background">
+        <div id="site-mobile-menu" className="lg:hidden border-t border-border bg-background">
           <nav className="container-narrow py-4 flex flex-col">
             {NAV.map((n) => (
               <NavLink

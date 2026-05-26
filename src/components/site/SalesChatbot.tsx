@@ -200,7 +200,7 @@ export default function SalesChatbot() {
       {isOpen && (
         <section
           aria-label="AKINAL Yapay Zeka Asistanı"
-          className="fixed inset-0 z-40 flex h-[100dvh] w-screen flex-col overflow-hidden bg-background text-foreground shadow-elegant animate-in fade-in slide-in-from-bottom-3 duration-200 sm:inset-auto sm:bottom-28 sm:right-6 sm:h-[min(620px,calc(100dvh-8rem))] sm:w-[420px] sm:rounded-2xl sm:border sm:border-border sm:bg-card"
+          className="fixed inset-0 z-40 flex h-[100dvh] w-full max-w-full flex-col overflow-hidden bg-background text-foreground shadow-elegant animate-in fade-in slide-in-from-bottom-3 duration-200 sm:inset-auto sm:bottom-28 sm:right-6 sm:h-[min(620px,calc(100dvh-8rem))] sm:w-[min(420px,calc(100vw-3rem))] sm:rounded-2xl sm:border sm:border-border sm:bg-card"
         >
           <header className="flex shrink-0 items-center gap-3 border-b border-border/70 bg-card/95 px-4 py-4 backdrop-blur">
             <AssistantAvatar />

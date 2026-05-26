@@ -6,9 +6,9 @@ import SalesChatbot from "./SalesChatbot";
 
 export default function PublicLayout() {
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-background">
       <SiteHeader />
-      <main className="flex-1">
+      <main className="flex-1 w-full max-w-full overflow-x-hidden">
         <Outlet />
       </main>
       <SiteFooter />

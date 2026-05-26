@@ -160,10 +160,10 @@ export default function ProjectDetail() {
                   </div>
                   {sliderImages.length > 1 && (
                     <>
-                      <button onClick={() => embla?.scrollPrev()} aria-label="Önceki" className="absolute left-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/95 border border-border shadow-card-soft flex items-center justify-center hover:bg-accent hover:text-accent-foreground transition-colors">
+                      <button type="button" onClick={() => embla?.scrollPrev()} aria-label="Önceki görsel" className="absolute left-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/95 border border-border shadow-card-soft flex items-center justify-center hover:bg-accent hover:text-accent-foreground transition-colors">
                         <ChevronLeft className="h-5 w-5" />
                       </button>
-                      <button onClick={() => embla?.scrollNext()} aria-label="Sonraki" className="absolute right-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/95 border border-border shadow-card-soft flex items-center justify-center hover:bg-accent hover:text-accent-foreground transition-colors">
+                      <button type="button" onClick={() => embla?.scrollNext()} aria-label="Sonraki görsel" className="absolute right-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/95 border border-border shadow-card-soft flex items-center justify-center hover:bg-accent hover:text-accent-foreground transition-colors">
                         <ChevronRight className="h-5 w-5" />
                       </button>
                     </>
@@ -172,7 +172,7 @@ export default function ProjectDetail() {
                 {sliderImages.length > 1 && (
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 mt-4">
                     {sliderImages.map((img, i) => (
-                      <button key={img.id} onClick={() => setLbIndex(i)} className="aspect-square overflow-hidden rounded-md border border-border hover:border-accent transition-colors">
+                      <button key={img.id} type="button" onClick={() => setLbIndex(i)} aria-label={`${i + 1}. görseli aç`} className="aspect-square overflow-hidden rounded-md border border-border hover:border-accent transition-colors">
                         <img src={resolveImageUrl(img.image_url)} alt="" className="h-full w-full object-cover" loading="lazy" />
                       </button>
                     ))}

@@ -16,9 +16,9 @@ export default function SiteFooter() {
           </Link>
           <p className="mt-5 text-sm text-white/70 leading-relaxed">{settings.footer_description}</p>
           <div className="flex gap-3 mt-5">
-            {settings.instagram_url && <a href={settings.instagram_url} target="_blank" rel="noreferrer" className="p-2 rounded-md bg-white/10 hover:bg-accent transition-colors"><Instagram className="h-4 w-4" /></a>}
-            {settings.facebook_url && <a href={settings.facebook_url} target="_blank" rel="noreferrer" className="p-2 rounded-md bg-white/10 hover:bg-accent transition-colors"><Facebook className="h-4 w-4" /></a>}
-            {settings.linkedin_url && <a href={settings.linkedin_url} target="_blank" rel="noreferrer" className="p-2 rounded-md bg-white/10 hover:bg-accent transition-colors"><Linkedin className="h-4 w-4" /></a>}
+            {settings.instagram_url && <a href={settings.instagram_url} target="_blank" rel="noreferrer" aria-label="Instagram" className="p-2 rounded-md bg-white/10 hover:bg-accent transition-colors"><Instagram className="h-4 w-4" /></a>}
+            {settings.facebook_url && <a href={settings.facebook_url} target="_blank" rel="noreferrer" aria-label="Facebook" className="p-2 rounded-md bg-white/10 hover:bg-accent transition-colors"><Facebook className="h-4 w-4" /></a>}
+            {settings.linkedin_url && <a href={settings.linkedin_url} target="_blank" rel="noreferrer" aria-label="LinkedIn" className="p-2 rounded-md bg-white/10 hover:bg-accent transition-colors"><Linkedin className="h-4 w-4" /></a>}
           </div>
         </div>
 

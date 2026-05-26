@@ -295,7 +295,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="text-center text-muted-foreground py-12 border border-dashed border-border rounded-lg">
-              Henüz yayınlanmış proje bulunmuyor. Yöneticiler admin panelinden proje ekleyebilir.
+              Henüz yayınlanmış proje bulunmuyor. Güncel projelerimiz yakında burada paylaşılacaktır.
             </div>
           )}
         </div>

@@ -60,7 +60,7 @@ export const SERVICE_OPTIONS = [
   "Diğer",
 ] as const;
 
-export function statusBadgeVariant(status: string) {
+export function statusBadgeVariant(status: string | null | undefined) {
   switch (displayLabel(status)) {
     case "Tamamlandı":
       return "bg-emerald-600/15 text-emerald-700 border-emerald-600/30";

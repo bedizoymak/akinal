@@ -35,8 +35,12 @@ export default function Projects() {
   const filtered = useMemo(() => {
     let list = [...items];
     if (q.trim()) {
-      const s = q.toLowerCase();
-      list = list.filter((p) => p.title.toLowerCase().includes(s) || p.location.toLowerCase().includes(s));
+      const s = q.toLocaleLowerCase("tr-TR");
+      list = list.filter((p) =>
+        [p.title, p.location, p.short_description]
+          .filter(Boolean)
+          .some((value) => String(value).toLocaleLowerCase("tr-TR").includes(s))
+      );
     }
     if (type !== "all") list = list.filter((p) => p.project_type === type);
     if (status !== "all") list = list.filter((p) => p.project_status === status);
