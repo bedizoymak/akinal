@@ -1,43 +1,44 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-import PublicLayout from "./components/site/PublicLayout";
-import Home from "./pages/site/Home";
-import About from "./pages/site/About";
-import Services from "./pages/site/Services";
-import Projects from "./pages/site/Projects";
-import ProjectDetail from "./pages/site/ProjectDetail";
-import UrbanTransformation from "./pages/site/UrbanTransformation";
-import Contact from "./pages/site/Contact";
-import NotFound from "./pages/NotFound";
+const PublicLayout = lazy(() => import("./components/site/PublicLayout"));
+const Home = lazy(() => import("./pages/site/Home"));
+const About = lazy(() => import("./pages/site/About"));
+const Services = lazy(() => import("./pages/site/Services"));
+const Projects = lazy(() => import("./pages/site/Projects"));
+const ProjectDetail = lazy(() => import("./pages/site/ProjectDetail"));
+const UrbanTransformation = lazy(() => import("./pages/site/UrbanTransformation"));
+const Contact = lazy(() => import("./pages/site/Contact"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
-import AdminAuth from "./pages/admin/AdminAuth";
-import AdminLayout from "./components/admin/AdminLayout";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminProjects from "./pages/admin/AdminProjects";
-import AdminProjectEdit from "./pages/admin/AdminProjectEdit";
-import AdminMedia from "./pages/admin/AdminMedia";
-import AdminContacts from "./pages/admin/AdminContacts";
-import AdminSettings from "./pages/admin/AdminSettings";
-import AdminCustomers from "./pages/admin/AdminCustomers";
-import AdminCustomerEdit from "./pages/admin/AdminCustomerEdit";
-import AdminCustomerDetail from "./pages/admin/AdminCustomerDetail";
-import AdminCustomerFinance from "./pages/admin/AdminCustomerFinance";
-import AdminEmployees from "./pages/admin/AdminEmployees";
-import AdminEmployeeFinance from "./pages/admin/AdminEmployeeFinance";
-import AdminPaymentPlans from "./pages/admin/AdminPaymentPlans";
-import AdminCollections from "./pages/admin/AdminCollections";
-import AdminExpenses from "./pages/admin/AdminExpenses";
-import AdminExpenseCards from "./pages/admin/AdminExpenseCards";
-import AdminExpenseCardFinance from "./pages/admin/AdminExpenseCardFinance";
-import AdminFinance from "./pages/admin/AdminFinance";
-import AdminProjectFinance from "./pages/admin/AdminProjectFinance";
-import AdminNotifications from "./pages/admin/AdminNotifications";
-import AdminReports from "./pages/admin/AdminReports";
+const AdminAuth = lazy(() => import("./pages/admin/AdminAuth"));
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminProjects = lazy(() => import("./pages/admin/AdminProjects"));
+const AdminProjectEdit = lazy(() => import("./pages/admin/AdminProjectEdit"));
+const AdminMedia = lazy(() => import("./pages/admin/AdminMedia"));
+const AdminContacts = lazy(() => import("./pages/admin/AdminContacts"));
+const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const AdminCustomers = lazy(() => import("./pages/admin/AdminCustomers"));
+const AdminCustomerEdit = lazy(() => import("./pages/admin/AdminCustomerEdit"));
+const AdminCustomerDetail = lazy(() => import("./pages/admin/AdminCustomerDetail"));
+const AdminCustomerFinance = lazy(() => import("./pages/admin/AdminCustomerFinance"));
+const AdminEmployees = lazy(() => import("./pages/admin/AdminEmployees"));
+const AdminEmployeeFinance = lazy(() => import("./pages/admin/AdminEmployeeFinance"));
+const AdminPaymentPlans = lazy(() => import("./pages/admin/AdminPaymentPlans"));
+const AdminCollections = lazy(() => import("./pages/admin/AdminCollections"));
+const AdminExpenses = lazy(() => import("./pages/admin/AdminExpenses"));
+const AdminExpenseCards = lazy(() => import("./pages/admin/AdminExpenseCards"));
+const AdminExpenseCardFinance = lazy(() => import("./pages/admin/AdminExpenseCardFinance"));
+const AdminFinance = lazy(() => import("./pages/admin/AdminFinance"));
+const AdminProjectFinance = lazy(() => import("./pages/admin/AdminProjectFinance"));
+const AdminNotifications = lazy(() => import("./pages/admin/AdminNotifications"));
+const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
 
 const queryClient = new QueryClient();
 
@@ -48,45 +49,47 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/admin/giris" element={<AdminAuth />} />
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="projeler" element={<AdminProjects />} />
-              <Route path="projeler/yeni" element={<AdminProjectEdit />} />
-              <Route path="projeler/:id" element={<AdminProjectEdit />} />
-              <Route path="projeler/:id/finans" element={<AdminProjectFinance />} />
-              <Route path="musteriler" element={<AdminCustomers />} />
-              <Route path="musteriler/yeni" element={<AdminCustomerEdit />} />
-              <Route path="musteriler/:id" element={<AdminCustomerDetail />} />
-              <Route path="musteriler/:id/duzenle" element={<AdminCustomerEdit />} />
-              <Route path="musteriler/:id/finans" element={<AdminCustomerFinance />} />
-              <Route path="personeller" element={<AdminEmployees />} />
-              <Route path="personeller/:id/finans" element={<AdminEmployeeFinance />} />
-              <Route path="odeme-planlari" element={<AdminPaymentPlans />} />
-              <Route path="tahsilatlar" element={<AdminCollections />} />
-              <Route path="giderler" element={<AdminExpenses />} />
-              <Route path="gider-kartlari" element={<AdminExpenseCards />} />
-              <Route path="gider-kartlari/:id/finans" element={<AdminExpenseCardFinance />} />
-              <Route path="finans-dashboard" element={<AdminFinance />} />
-              <Route path="medya" element={<AdminMedia />} />
-              <Route path="talepler" element={<AdminContacts />} />
-              <Route path="bildirimler" element={<AdminNotifications />} />
-              <Route path="raporlar" element={<AdminReports />} />
-              <Route path="ayarlar" element={<AdminSettings />} />
-            </Route>
+          <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Yükleniyor...</div>}>
+            <Routes>
+              <Route path="/admin/giris" element={<AdminAuth />} />
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="projeler" element={<AdminProjects />} />
+                <Route path="projeler/yeni" element={<AdminProjectEdit />} />
+                <Route path="projeler/:id" element={<AdminProjectEdit />} />
+                <Route path="projeler/:id/finans" element={<AdminProjectFinance />} />
+                <Route path="musteriler" element={<AdminCustomers />} />
+                <Route path="musteriler/yeni" element={<AdminCustomerEdit />} />
+                <Route path="musteriler/:id" element={<AdminCustomerDetail />} />
+                <Route path="musteriler/:id/duzenle" element={<AdminCustomerEdit />} />
+                <Route path="musteriler/:id/finans" element={<AdminCustomerFinance />} />
+                <Route path="personeller" element={<AdminEmployees />} />
+                <Route path="personeller/:id/finans" element={<AdminEmployeeFinance />} />
+                <Route path="odeme-planlari" element={<AdminPaymentPlans />} />
+                <Route path="tahsilatlar" element={<AdminCollections />} />
+                <Route path="giderler" element={<AdminExpenses />} />
+                <Route path="gider-kartlari" element={<AdminExpenseCards />} />
+                <Route path="gider-kartlari/:id/finans" element={<AdminExpenseCardFinance />} />
+                <Route path="finans-dashboard" element={<AdminFinance />} />
+                <Route path="medya" element={<AdminMedia />} />
+                <Route path="talepler" element={<AdminContacts />} />
+                <Route path="bildirimler" element={<AdminNotifications />} />
+                <Route path="raporlar" element={<AdminReports />} />
+                <Route path="ayarlar" element={<AdminSettings />} />
+              </Route>
 
-            <Route element={<PublicLayout />}>
-              <Route path="/" element={<Home />} />
-              <Route path="/hakkimizda" element={<About />} />
-              <Route path="/hizmetlerimiz" element={<Services />} />
-              <Route path="/projelerimiz" element={<Projects />} />
-              <Route path="/projelerimiz/:slug" element={<ProjectDetail />} />
-              <Route path="/kentsel-donusum" element={<UrbanTransformation />} />
-              <Route path="/iletisim" element={<Contact />} />
-              <Route path="*" element={<NotFound />} />
-            </Route>
-          </Routes>
+              <Route element={<PublicLayout />}>
+                <Route path="/" element={<Home />} />
+                <Route path="/hakkimizda" element={<About />} />
+                <Route path="/hizmetlerimiz" element={<Services />} />
+                <Route path="/projelerimiz" element={<Projects />} />
+                <Route path="/projelerimiz/:slug" element={<ProjectDetail />} />
+                <Route path="/kentsel-donusum" element={<UrbanTransformation />} />
+                <Route path="/iletisim" element={<Contact />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </TooltipProvider>
     </HelmetProvider>

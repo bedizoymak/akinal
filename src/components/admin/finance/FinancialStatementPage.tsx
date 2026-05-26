@@ -235,7 +235,7 @@ function emptyForm(kind: FinancialStatementKind, entityId: string): EntryFormSta
 function formFromEntry(entry: FinancialEntryRow): EntryFormState {
   return {
     id: entry.id,
-    project_id: entry.project_id,
+    project_id: entry.project_id ?? "",
     entry_date: entry.entry_date,
     card_type: entry.card_type,
     customer_id: entry.customer_id ?? "",
@@ -387,10 +387,11 @@ function getCardChartData(kind: FinancialStatementKind, entries: FinancialEntryR
 
 function getDistributionData(entries: FinancialEntryRow[], currency: CurrencyTag, lookups: FinanceLookups): DistributionDatum[] {
   const totals = entries
-    .filter((entry) => entry.currency_tag === currency && entry.status !== "İptal")
+    .filter((entry) => entry.currency_tag === currency && entry.status !== "İptal" && entry.project_id)
     .reduce<Map<string, number>>((map, entry) => {
-      const current = map.get(entry.project_id) ?? 0;
-      map.set(entry.project_id, current + Math.abs(signedEntryAmount(entry)));
+      const projectId = entry.project_id ?? "";
+      const current = map.get(projectId) ?? 0;
+      map.set(projectId, current + Math.abs(signedEntryAmount(entry)));
       return map;
     }, new Map());
 

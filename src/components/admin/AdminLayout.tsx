@@ -119,7 +119,7 @@ function findPageMeta(pathname: string) {
 }
 
 export default function AdminLayout() {
-  const { session, isAdmin, loading } = useAuth();
+  const { session, isAdmin, loading, authError } = useAuth();
   const nav = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -133,6 +133,17 @@ export default function AdminLayout() {
     );
   }
   if (!session) return <Navigate to="/admin/giris" replace />;
+  if (authError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-light p-6">
+        <div className="max-w-md rounded-md border border-border bg-card p-6 text-center shadow-card-soft">
+          <h1 className="font-display text-xl font-bold">Admin yetkisi doğrulanamadı</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{authError}</p>
+          <Button onClick={logout} className="mt-5">Tekrar Giriş Yap</Button>
+        </div>
+      </div>
+    );
+  }
   if (!isAdmin) return <Navigate to="/admin/giris" replace />;
 
   async function logout() {

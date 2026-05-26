@@ -10,6 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
+    "seed:smoke": "node scripts/seed-smoke-test.mjs",
+    "cleanup:smoke": "node scripts/cleanup-smoke-test.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {

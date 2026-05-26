@@ -58,7 +58,7 @@ export type ExpenseCardUpdate = Partial<ExpenseCardInsert>;
 
 export type FinancialEntryRow = {
   id: string;
-  project_id: string;
+  project_id: string | null;
   entry_date: string;
   card_type: CardType;
   customer_id: string | null;

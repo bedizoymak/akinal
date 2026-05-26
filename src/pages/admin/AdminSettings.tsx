@@ -153,13 +153,19 @@ export default function AdminSettings() {
   const { toast } = useToast();
 
   useEffect(() => {
-    setLoading(true);
-    supabase
-      .from("site_settings")
-      .select("*")
-      .limit(1)
-      .maybeSingle()
-      .then(({ data, error }) => {
+    let active = true;
+
+    async function loadSettings() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+
+      if (!active) return;
+
+      try {
         if (error) {
           setLoadError(error.message);
           return;
@@ -167,8 +173,16 @@ export default function AdminSettings() {
         const settings = data as EditableSiteSettings | null;
         setData(settings);
         setOriginalData(settings);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadSettings();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const dirty = useMemo(() => JSON.stringify(data) !== JSON.stringify(originalData), [data, originalData]);

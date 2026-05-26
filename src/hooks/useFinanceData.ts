@@ -1,19 +1,23 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
-export type Customer = any;
-export type PaymentPlan = any;
-export type Payment = any;
-export type Expense = any;
-export type Project = any;
-export type FinancialEntry = any;
+type Tables = Database["public"]["Tables"];
+export type Customer = Tables["customers"]["Row"];
+export type PaymentPlan = Tables["payment_plans"]["Row"];
+export type Payment = Tables["payments"]["Row"];
+export type Expense = Tables["expenses"]["Row"];
+export type Project = Tables["projects"]["Row"];
+export type FinancialEntry = Tables["financial_entries"]["Row"];
+export type CustomerProject = Tables["customer_projects"]["Row"];
+type FinanceTableName = "customers" | "payment_plans" | "payments" | "expenses" | "financial_entries" | "projects" | "customer_projects";
 
-export function useTable<T = any>(table: string, orderBy = "created_at", asc = false) {
+export function useTable<T>(table: FinanceTableName, orderBy = "created_at", asc = false) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const reload = useCallback(async () => {
     setLoading(true);
-    const { data } = await (supabase.from(table as any).select("*").order(orderBy, { ascending: asc }) as any);
+    const { data } = await supabase.from(table).select("*").order(orderBy, { ascending: asc });
     setData((data as T[]) || []);
     setLoading(false);
   }, [table, orderBy, asc]);
@@ -28,7 +32,7 @@ export function useFinanceAll() {
   const expenses = useTable<Expense>("expenses", "expense_date", false);
   const financialEntries = useTable<FinancialEntry>("financial_entries", "entry_date", false);
   const projects = useTable<Project>("projects", "sort_order", true);
-  const links = useTable<any>("customer_projects", "created_at", true);
+  const links = useTable<CustomerProject>("customer_projects", "created_at", true);
   const loading = customers.loading || plans.loading || payments.loading || expenses.loading || financialEntries.loading || projects.loading;
   const reloadAll = async () => {
     await Promise.all([customers.reload(), plans.reload(), payments.reload(), expenses.reload(), financialEntries.reload(), projects.reload(), links.reload()]);

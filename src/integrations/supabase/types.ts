@@ -50,7 +50,7 @@ export type Database = {
       customer_notes: {
         Row: {
           created_at: string
-          customer_id: string
+          customer_id: string | null
           id: string
           note: string
         }
@@ -62,7 +62,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          customer_id?: string
+          customer_id?: string | null
           id?: string
           note?: string
         }
@@ -79,9 +79,9 @@ export type Database = {
       customer_projects: {
         Row: {
           created_at: string
-          customer_id: string
+          customer_id: string | null
           id: string
-          project_id: string
+          project_id: string | null
         }
         Insert: {
           created_at?: string
@@ -91,9 +91,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          customer_id?: string
+          customer_id?: string | null
           id?: string
-          project_id?: string
+          project_id?: string | null
         }
         Relationships: [
           {
