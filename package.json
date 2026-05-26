@@ -12,6 +12,8 @@
     "test": "vitest run",
     "seed:smoke": "node scripts/seed-smoke-test.mjs",
     "cleanup:smoke": "node scripts/cleanup-smoke-test.mjs",
+    "seed:demo": "node scripts/seed-demo-bulk.mjs",
+    "cleanup:demo": "node scripts/cleanup-demo-bulk.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {
