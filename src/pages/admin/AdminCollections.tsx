@@ -98,7 +98,7 @@ export default function AdminCollections() {
   }
 
   async function remove(id: string, planId?: string) {
-    if (!confirm("Tahsilat silinsin mi?")) return;
+    if (!confirm("Bu tahsilat kaydını silmek istediğinize emin misiniz? İlgili ödeme planı durumu yeniden hesaplanacak.")) return;
     await (supabase.from("payments" as any).delete().eq("id", id)) as any;
     if (planId) {
       await syncPlanStatus(planId);
@@ -180,7 +180,7 @@ export default function AdminCollections() {
                   <td className="p-3 text-right"><div className="flex justify-end gap-1"><Button size="sm" variant="ghost" onClick={() => openEdit(it)}><Edit className="h-4 w-4" /></Button><Button size="sm" variant="ghost" onClick={() => remove(it.id, it.payment_plan_id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div></td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={8} className="p-8"><AdminEmptyState title="Tahsilat kaydı bulunamadı" description="Filtreleri temizleyebilir veya yeni tahsilat kaydı oluşturabilirsiniz." icon={Wallet} /></td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={8} className="p-8"><AdminEmptyState title={items.length === 0 ? "Henüz tahsilat kaydı yok" : "Tahsilat kaydı bulunamadı"} description={items.length === 0 ? "İlk tahsilatı ekleyerek gerçekleşen ödemeleri takip etmeye başlayın." : "Filtreleri temizleyebilir veya yeni tahsilat kaydı oluşturabilirsiniz."} icon={Wallet} /></td></tr>}
             </tbody>
           </table>
         </div>

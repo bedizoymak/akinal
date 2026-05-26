@@ -3,6 +3,7 @@
 import sample1 from "@/assets/sample-project-1.jpg";
 import sample2 from "@/assets/sample-project-2.jpg";
 import sample3 from "@/assets/sample-project-3.jpg";
+import { displayLabel } from "@/lib/finance";
 
 const sampleMap: Record<string, string> = {
   "/src/assets/sample-project-1.jpg": sample1,
@@ -60,7 +61,7 @@ export const SERVICE_OPTIONS = [
 ] as const;
 
 export function statusBadgeVariant(status: string) {
-  switch (status) {
+  switch (displayLabel(status)) {
     case "Tamamlandı":
       return "bg-emerald-600/15 text-emerald-700 border-emerald-600/30";
     case "Devam Ediyor":

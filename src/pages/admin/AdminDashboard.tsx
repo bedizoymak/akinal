@@ -30,6 +30,7 @@ import {
   formatTRY,
   formatDate,
   customerDisplayName,
+  displayLabel,
   daysUntil,
   derivePlanStatus,
   isCanceledStatus,
@@ -181,7 +182,7 @@ export default function AdminDashboard() {
       from: monthStart,
       to: monthEnd,
     });
-    const activeProjects = data.projects.filter((project) => project.project_status !== "Tamamlandı");
+    const activeProjects = data.projects.filter((project) => displayLabel(project.project_status) !== "Tamamlandı");
 
     const planRows = data.plans.map((plan) => {
       const paid = paidForPlan(plan.id, data.payments);
@@ -336,14 +337,14 @@ export default function AdminDashboard() {
 
             <AdminSection title="Son Hareketler" description="Son tahsilat, gider ve finans kayıtları." className="xl:col-span-2" contentClassName="space-y-2">
               {dashboard.recentMovements.length === 0 ? (
-                <AdminEmptyState title="Henüz finansal hareket yok" description="Kayıt eklendikçe bu alan otomatik güncellenecek." icon={Wallet} />
+                <AdminEmptyState title="Henüz finansal hareket yok" description="İlk finansal hareket eklendiğinde son kayıtlar burada görünecek." icon={Wallet} />
               ) : (
                 dashboard.recentMovements.map((movement) => (
                   <div key={movement.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
                     <div className="min-w-0">
                       <div className="font-semibold">{movement.source}</div>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        {movement.label} · {movement.projectTitle || "Proje yok"} · {formatDate(movement.date)}
+                        {movement.label} · {movement.projectTitle || "Proje bağlantısı yok"} · {formatDate(movement.date)}
                       </div>
                     </div>
                     <div className={cn("font-bold", movement.direction === "Gelir" ? "text-emerald-700" : "text-red-600")}>{formatTRY(movement.amount)}</div>
@@ -370,7 +371,7 @@ export default function AdminDashboard() {
                       <div className="mt-1 text-xs text-muted-foreground">{project.location || "Konum girilmemiş"}</div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <span className={cn("rounded-md border px-2 py-1 text-xs font-medium", statusBadgeVariant(project.project_status))}>{project.project_status}</span>
+                      <span className={cn("rounded-md border px-2 py-1 text-xs font-medium", statusBadgeVariant(project.project_status))}>{displayLabel(project.project_status)}</span>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </Link>
@@ -393,7 +394,7 @@ export default function AdminDashboard() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <AdminEmptyState title="Henüz finansal hareket yok" description="Tahsilat veya gider kaydı eklendikçe grafik otomatik oluşacak." icon={BarChart3} />
+                <AdminEmptyState title="Henüz finansal hareket yok" description="Finansal hareket eklendikçe aylık grafik otomatik oluşacak." icon={BarChart3} />
               )}
             </AdminSection>
           </div>

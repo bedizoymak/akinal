@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Plus, Edit, Trash2, Eye, Download, Phone, MessageCircle, Users, Wallet, AlertTriangle, CheckCircle2, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { CUSTOMER_TYPES, CUSTOMER_STATUSES, customerDisplayName, formatTRY, statusBadgeClass, exportCSV, whatsappLink } from "@/lib/finance";
+import { CUSTOMER_TYPES, CUSTOMER_STATUSES, customerDisplayName, displayLabel, formatTRY, statusBadgeClass, exportCSV, whatsappLink } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 
@@ -71,7 +71,7 @@ export default function AdminCustomers() {
   };
 
   async function remove(id: string, name: string) {
-    if (!confirm(`"${name}" müşterisini silmek istediğinize emin misiniz? Bağlı ödeme planları ve tahsilatlar da silinecek.`)) return;
+    if (!confirm(`"${name}" müşteri kaydını silmek istediğinize emin misiniz? Bu işlem bağlı ödeme planlarını ve tahsilatları da etkileyebilir.`)) return;
     await (supabase.from("customers" as any).delete().eq("id", id) as any);
     toast({ title: "Müşteri silindi" });
     load();
@@ -80,7 +80,7 @@ export default function AdminCustomers() {
   function downloadCSV() {
     exportCSV("musteriler.csv", filtered.map((c) => ({
       "Müşteri": customerDisplayName(c),
-      "Tür": c.customer_type,
+      "Tür": displayLabel(c.customer_type),
       "Telefon": c.phone,
       "E-posta": c.email || "",
       "Şehir": c.city || "",
@@ -88,7 +88,7 @@ export default function AdminCustomers() {
       "Planlanan Alacak": c.totalDue,
       "Tahsil Edilen": c.totalPaid,
       "Kalan Bakiye": c.balance,
-      "Durum": c.status,
+      "Durum": displayLabel(c.status),
     })));
   }
 
@@ -128,8 +128,8 @@ export default function AdminCustomers() {
         <div className="text-center text-muted-foreground py-12">Yükleniyor...</div>
       ) : filtered.length === 0 ? (
         <AdminEmptyState
-          title="Müşteri bulunamadı"
-          description="Arama veya filtreleri temizleyebilir, yeni müşteri kaydı oluşturarak cari takibe başlayabilirsiniz."
+          title={customers.length === 0 ? "Henüz müşteri kaydı yok" : "Müşteri bulunamadı"}
+          description={customers.length === 0 ? "İlk müşteri kartını oluşturarak cari takibe başlayın." : "Arama veya filtreleri temizleyebilir, yeni müşteri kaydı oluşturabilirsiniz."}
           icon={Users}
           action={<Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to="/admin/musteriler/yeni">Yeni Müşteri Ekle</Link></Button>}
         />
@@ -153,7 +153,7 @@ export default function AdminCustomers() {
                 <tr key={c.id} className="border-t border-border hover:bg-muted/30">
                   <td className="p-3">
                     <div className="font-semibold">{customerDisplayName(c)}</div>
-                    <div className="text-xs text-muted-foreground">{c.customer_type}</div>
+                    <div className="text-xs text-muted-foreground">{displayLabel(c.customer_type)}</div>
                   </td>
                   <td className="p-3">
                     <div className="flex items-center gap-1 text-xs"><Phone className="h-3 w-3" /> {c.phone || "-"}</div>
@@ -163,7 +163,7 @@ export default function AdminCustomers() {
                   <td className="p-3 text-right font-medium">{formatTRY(c.totalDue)}</td>
                   <td className="p-3 text-right text-emerald-700">{formatTRY(c.totalPaid)}</td>
                   <td className={cn("p-3 text-right font-bold", c.balance > 0 ? "text-red-600" : "text-emerald-700")}>{formatTRY(c.balance)}</td>
-                  <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(c.status))}>{c.status}</span></td>
+                  <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(c.status))}>{displayLabel(c.status)}</span></td>
                   <td className="p-3">
                     <div className="flex justify-end gap-1">
                       <Button asChild size="sm" variant="outline"><Link to={`/admin/musteriler/${c.id}/finans`}><FileText className="h-4 w-4" /> Ekstre</Link></Button>

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { displayLabel } from "@/lib/finance";
 import { financeSupabase, type EmployeeInsert, type EmployeeRow, type EmployeeUpdate } from "@/lib/financialTypes";
 import { cn } from "@/lib/utils";
 
@@ -71,7 +72,7 @@ export default function AdminEmployees() {
   }, [load]);
 
   const filtered = useMemo(() => items.filter((employee) => {
-    if (statusFilter !== "all" && employee.status !== statusFilter) return false;
+    if (statusFilter !== "all" && employee.status !== statusFilter && displayLabel(employee.status) !== statusFilter) return false;
     if (search) {
       const haystack = `${employee.full_name} ${employee.phone ?? ""} ${employee.role ?? ""}`.toLocaleLowerCase("tr-TR");
       if (!haystack.includes(search.toLocaleLowerCase("tr-TR"))) return false;
@@ -81,8 +82,8 @@ export default function AdminEmployees() {
 
   const summary = useMemo(() => ({
     total: items.length,
-    active: items.filter((item) => item.status === "Aktif").length,
-    passive: items.filter((item) => item.status === "Pasif").length,
+    active: items.filter((item) => displayLabel(item.status) === "Aktif").length,
+    passive: items.filter((item) => displayLabel(item.status) === "Pasif").length,
   }), [items]);
 
   function openCreate() {
@@ -135,7 +136,7 @@ export default function AdminEmployees() {
   }
 
   async function deleteEmployee(employee: EmployeeRow) {
-    if (!confirm(`"${employee.full_name}" personel kartını silmek istediğinize emin misiniz?`)) return;
+    if (!confirm(`"${employee.full_name}" personel kartını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
 
     const { error } = await financeSupabase.from("employees").delete().eq("id", employee.id);
     if (error) {
@@ -205,8 +206,8 @@ export default function AdminEmployees() {
                   <td className="p-3">{employee.phone || <span className="text-muted-foreground">—</span>}</td>
                   <td className="p-3">{employee.role || <span className="text-muted-foreground">—</span>}</td>
                   <td className="p-3">
-                    <span className={cn("rounded-md border px-2 py-0.5 text-xs", employee.status === "Aktif" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-zinc-200 bg-zinc-50 text-zinc-600")}>
-                      {employee.status}
+                    <span className={cn("rounded-md border px-2 py-0.5 text-xs", displayLabel(employee.status) === "Aktif" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-zinc-200 bg-zinc-50 text-zinc-600")}>
+                      {displayLabel(employee.status)}
                     </span>
                   </td>
                   <td className="max-w-xs truncate p-3 text-muted-foreground">{employee.notes || "—"}</td>

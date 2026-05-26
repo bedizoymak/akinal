@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart3, Edit, Eye, EyeOff, Copy, Trash2, ExternalLink, GripVertical, Star, Search, Plus, FolderKanban, Download, Upload, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { displayLabel } from "@/lib/finance";
 import { resolveImageUrl, statusBadgeVariant, PROJECT_STATUSES, PROJECT_TYPES, turkishSlugify } from "@/lib/projects";
 import { cn } from "@/lib/utils";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
@@ -30,7 +31,7 @@ function Row({ p, onChange }: any) {
           {p.is_featured && <Star className="h-3.5 w-3.5 text-accent fill-accent" />}
         </div>
         <div className="flex items-center gap-2 mt-1 flex-wrap text-[11px]">
-          <span className={cn("px-2 py-0.5 rounded-md border", statusBadgeVariant(p.project_status))}>{p.project_status}</span>
+          <span className={cn("px-2 py-0.5 rounded-md border", statusBadgeVariant(p.project_status))}>{displayLabel(p.project_status)}</span>
           <span className="text-muted-foreground">{p.project_type} · {p.location}</span>
           <span className={cn("px-2 py-0.5 rounded-md", p.is_published ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground")}>
             {p.is_published ? "Yayında" : "Taslak"}
@@ -80,7 +81,7 @@ export default function AdminProjects() {
       await supabase.from("projects").insert({ ...rest, title: `${p.title} (Kopya)`, slug: newSlug, is_published: false });
       toast({ title: "Proje çoğaltıldı" });
     } else if (action === "delete") {
-      if (!confirm(`"${p.title}" projesini silmek istediğinize emin misiniz?`)) return;
+      if (!confirm(`"${p.title}" projesini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
       await supabase.from("projects").delete().eq("id", p.id);
       toast({ title: "Proje silindi" });
     }
@@ -145,7 +146,7 @@ export default function AdminProjects() {
   const filtered = items.filter((p) => {
     if (q && !`${p.title} ${p.location} ${p.project_type}`.toLowerCase().includes(q.toLowerCase())) return false;
     if (type !== "all" && p.project_type !== type) return false;
-    if (status !== "all" && p.project_status !== status) return false;
+    if (status !== "all" && p.project_status !== status && displayLabel(p.project_status) !== status) return false;
     if (pub === "published" && !p.is_published) return false;
     if (pub === "draft" && p.is_published) return false;
     return true;
@@ -153,7 +154,7 @@ export default function AdminProjects() {
 
   const projectStats = {
     total: items.length,
-    active: items.filter((p) => p.project_status !== "Tamamlandı").length,
+    active: items.filter((p) => displayLabel(p.project_status) !== "Tamamlandı").length,
     published: items.filter((p) => p.is_published).length,
     draft: items.filter((p) => !p.is_published).length,
   };
@@ -193,7 +194,7 @@ export default function AdminProjects() {
           <Input placeholder="Ara..." className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <Select value={type} onValueChange={setType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tüm Türler</SelectItem>{PROJECT_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select>
-        <Select value={status} onValueChange={setStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tüm Durumlar</SelectItem>{PROJECT_STATUSES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select>
+        <Select value={status} onValueChange={setStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tüm Durumlar</SelectItem>{PROJECT_STATUSES.map((t) => <SelectItem key={t} value={t}>{displayLabel(t)}</SelectItem>)}</SelectContent></Select>
         <Select value={pub} onValueChange={setPub}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Hepsi</SelectItem><SelectItem value="published">Yayında</SelectItem><SelectItem value="draft">Taslak</SelectItem></SelectContent></Select>
       </div>
 
@@ -201,8 +202,8 @@ export default function AdminProjects() {
         <div className="text-center text-muted-foreground py-12">Yükleniyor...</div>
       ) : filtered.length === 0 ? (
         <AdminEmptyState
-          title="Proje bulunamadı"
-          description="Filtreleri temizleyerek tekrar deneyebilir veya yeni proje kaydı oluşturabilirsiniz."
+          title={items.length === 0 ? "Henüz proje kaydı yok" : "Proje bulunamadı"}
+          description={items.length === 0 ? "İlk proje kaydını oluşturarak portföy yönetimine başlayın." : "Filtreleri temizleyerek tekrar deneyebilir veya yeni proje kaydı oluşturabilirsiniz."}
           icon={FolderKanban}
           action={<Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to="/admin/projeler/yeni">Yeni Proje Ekle</Link></Button>}
         />

@@ -68,7 +68,7 @@ export default function AdminPaymentPlans() {
   }
 
   async function remove(id: string) {
-    if (!confirm("Ödeme planı silinsin mi?")) return;
+    if (!confirm("Bu ödeme planını silmek istediğinize emin misiniz? Bağlı tahsilat takibi etkilenebilir.")) return;
     await (supabase.from("payment_plans" as any).delete().eq("id", id)) as any;
     toast({ title: "Silindi" }); load();
   }
@@ -165,7 +165,7 @@ export default function AdminPaymentPlans() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={9} className="p-8"><AdminEmptyState title="Ödeme planı bulunamadı" description="Filtreleri temizleyebilir veya yeni ödeme planı oluşturabilirsiniz." icon={CalendarClock} /></td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={9} className="p-8"><AdminEmptyState title={plans.length === 0 ? "Henüz ödeme planı yok" : "Ödeme planı bulunamadı"} description={plans.length === 0 ? "İlk ödeme planını oluşturarak beklenen tahsilatları takip etmeye başlayın." : "Filtreleri temizleyebilir veya yeni ödeme planı oluşturabilirsiniz."} icon={CalendarClock} /></td></tr>}
             </tbody>
           </table>
         </div>

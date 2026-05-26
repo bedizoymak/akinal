@@ -11,6 +11,7 @@ import {
   formatTRY,
   formatDate,
   customerDisplayName,
+  displayLabel,
   exportCSV,
   statusBadgeClass,
   daysUntil,
@@ -162,7 +163,7 @@ function ProjectFinanceReport({ data }: any) {
                 <TableCell>%{r.expenseRate.toFixed(1)}</TableCell>
               </TableRow>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-6">Veri bulunamadı.</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-6">Seçilen filtrelere uygun proje finans kaydı bulunmuyor.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </CardContent></Card>
@@ -259,7 +260,7 @@ function CustomerPaymentReport({ data }: any) {
                 <TableCell>{formatDate(r.lastPaymentDate)}</TableCell>
               </TableRow>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Veri bulunamadı.</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Seçilen filtrelere uygun müşteri ödeme kaydı bulunmuyor.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </CardContent></Card>
@@ -344,7 +345,7 @@ function CollectionsReport({ data }: any) {
                 <TableCell>{formatDate(r.date)}</TableCell><TableCell>{r.method}</TableCell><TableCell>{r.description}</TableCell>
               </TableRow>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Veri bulunamadı.</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Henüz tahsilat kaydı yok veya seçilen filtrelerde sonuç bulunmuyor.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </CardContent></Card>
@@ -421,7 +422,7 @@ function ExpensesReport({ data }: any) {
                 <TableCell>{formatDate(r.date)}</TableCell><TableCell>{r.description}</TableCell>
               </TableRow>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Veri bulunamadı.</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Henüz gider kaydı yok veya seçilen filtrelerde sonuç bulunmuyor.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </CardContent></Card>
@@ -611,7 +612,7 @@ function OverdueReport({ data }: any) {
                 <TableCell className="text-red-700 font-medium">{r.days} gün</TableCell>
                 <TableCell>{formatTRY(r.amount)}</TableCell>
                 <TableCell className="text-red-700">{formatTRY(r.remaining)}</TableCell>
-                <TableCell><span className={`text-xs px-2 py-0.5 rounded border ${statusBadgeClass(r.status)}`}>{r.status}</span></TableCell>
+                <TableCell><span className={`text-xs px-2 py-0.5 rounded border ${statusBadgeClass(r.status)}`}>{displayLabel(r.status)}</span></TableCell>
               </TableRow>
             ))}
             {rows.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Vadesi geçen ödeme bulunmuyor.</TableCell></TableRow>}

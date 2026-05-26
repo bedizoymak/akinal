@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Edit, Mail, MapPin, MessageCircle, Phone, Plus, Trash2 } from "lucide-react";
-import { customerDisplayName, formatTRY, formatDate, statusBadgeClass, daysUntil, whatsappLink, FINANCE_COLORS } from "@/lib/finance";
+import { customerDisplayName, displayLabel, formatTRY, formatDate, statusBadgeClass, daysUntil, whatsappLink, FINANCE_COLORS } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
@@ -84,7 +84,7 @@ export default function AdminCustomerDetail() {
     setNewNote(""); toast({ title: "Not eklendi" }); load();
   }
   async function deleteNote(nid: string) {
-    if (!confirm("Notu silmek istiyor musunuz?")) return;
+    if (!confirm("Bu müşteri notunu silmek istediğinize emin misiniz?")) return;
     await (supabase.from("customer_notes" as any).delete().eq("id", nid)) as any;
     load();
   }
@@ -98,7 +98,7 @@ export default function AdminCustomerDetail() {
       <AdminPageHeader
         eyebrow="Cari ve Tahsilat"
         title={name}
-        description={`${customer.customer_type} · ${customer.status} · müşteri bakiyesi, tahsilat planı, notlar ve belgeler.`}
+        description={`${displayLabel(customer.customer_type)} · ${displayLabel(customer.status)} · müşteri bakiyesi, tahsilat planı, notlar ve belgeler.`}
         actions={
           <>
           <Button asChild variant="outline"><Link to="/admin/musteriler"><ArrowLeft className="h-4 w-4" /> Müşterilere Dön</Link></Button>
@@ -142,7 +142,7 @@ export default function AdminCustomerDetail() {
                 <div className="flex flex-wrap gap-2">
                   {projects.map((p) => <Link key={p.id} to={`/admin/projeler/${p.id}/finans`} className="text-xs px-2 py-1 rounded-md border border-border bg-muted/50 hover:bg-muted">{p.title}</Link>)}
                 </div>
-              ) : <div className="text-xs text-muted-foreground">Bağlı proje yok.</div>}
+              ) : <div className="text-xs text-muted-foreground">Bu müşteriye bağlı proje bulunmuyor.</div>}
             </div>
             {customer.notes && <div><h4 className="font-semibold mt-4 mb-1">Genel Notlar</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{customer.notes}</p></div>}
           </div>
@@ -158,7 +158,7 @@ export default function AdminCustomerDetail() {
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
-            ) : <div className="text-sm text-muted-foreground py-12 text-center">Veri yok.</div>}
+            ) : <div className="text-sm text-muted-foreground py-12 text-center">Bu müşteri için ödeme verisi bulunmuyor.</div>}
           </div>
         </TabsContent>
 
@@ -180,11 +180,11 @@ export default function AdminCustomerDetail() {
                       <td className="p-3 text-right">{formatTRY(p.amount)}</td>
                       <td className="p-3 text-right text-emerald-700">{formatTRY(paid)}</td>
                       <td className="p-3 text-right font-bold">{formatTRY(remain)}</td>
-                      <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(p.status))}>{p.status}</span></td>
+                      <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(p.status))}>{displayLabel(p.status)}</span></td>
                     </tr>
                   );
                 })}
-                {plans.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Ödeme planı yok.</td></tr>}
+                {plans.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Bu müşteri için ödeme planı bulunmuyor.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -206,7 +206,7 @@ export default function AdminCustomerDetail() {
                     <td className="p-3 text-muted-foreground">{p.description || "-"}</td>
                   </tr>
                 ))}
-                {pays.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">Tahsilat yok.</td></tr>}
+                {pays.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">Henüz tahsilat kaydı yok.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -225,7 +225,7 @@ export default function AdminCustomerDetail() {
                     <td className="p-3 text-right">{formatTRY(e.amount)}</td>
                   </tr>
                 ))}
-                {expenses.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">Gider yok.</td></tr>}
+                {expenses.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">Bu müşteriye bağlı gider kaydı bulunmuyor.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -243,7 +243,7 @@ export default function AdminCustomerDetail() {
                 <Button size="sm" variant="ghost" onClick={() => deleteNote(n.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
               </div>
             ))}
-            {notes.length === 0 && <div className="text-sm text-muted-foreground text-center py-6">Not yok.</div>}
+            {notes.length === 0 && <div className="text-sm text-muted-foreground text-center py-6">Henüz müşteri notu eklenmemiş.</div>}
           </div>
         </TabsContent>
 
@@ -260,7 +260,7 @@ export default function AdminCustomerDetail() {
                     <td className="p-3 text-right"><a href={d.file_url} target="_blank" rel="noreferrer" className="text-accent hover:underline">Görüntüle</a></td>
                   </tr>
                 ))}
-                {docs.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">Belge yok.</td></tr>}
+                {docs.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">Bu müşteri için belge kaydı bulunmuyor.</td></tr>}
               </tbody>
             </table>
           </div>

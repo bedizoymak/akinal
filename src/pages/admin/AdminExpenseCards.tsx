@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { displayLabel } from "@/lib/finance";
 import { financeSupabase, type ExpenseCardInsert, type ExpenseCardRow, type ExpenseCardUpdate } from "@/lib/financialTypes";
 import { cn } from "@/lib/utils";
 
@@ -82,7 +83,7 @@ export default function AdminExpenseCards() {
   }, [load]);
 
   const filtered = useMemo(() => items.filter((card) => {
-    if (statusFilter !== "all" && card.status !== statusFilter) return false;
+    if (statusFilter !== "all" && card.status !== statusFilter && displayLabel(card.status) !== statusFilter) return false;
     if (search) {
       const haystack = `${card.name} ${card.category ?? ""}`.toLocaleLowerCase("tr-TR");
       if (!haystack.includes(search.toLocaleLowerCase("tr-TR"))) return false;
@@ -92,7 +93,7 @@ export default function AdminExpenseCards() {
 
   const summary = useMemo(() => ({
     total: items.length,
-    active: items.filter((item) => item.status === "Aktif").length,
+    active: items.filter((item) => displayLabel(item.status) === "Aktif").length,
     categories: new Set(items.map((item) => item.category).filter(Boolean)).size,
   }), [items]);
 
@@ -145,7 +146,7 @@ export default function AdminExpenseCards() {
   }
 
   async function deleteCard(card: ExpenseCardRow) {
-    if (!confirm(`"${card.name}" gider kartını silmek istediğinize emin misiniz?`)) return;
+    if (!confirm(`"${card.name}" gider kartını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
 
     const { error } = await financeSupabase.from("expense_cards").delete().eq("id", card.id);
     if (error) {
@@ -214,8 +215,8 @@ export default function AdminExpenseCards() {
                   <td className="p-3">{card.category || <span className="text-muted-foreground">—</span>}</td>
                   <td className="max-w-md truncate p-3 text-muted-foreground">{card.description || "—"}</td>
                   <td className="p-3">
-                    <span className={cn("rounded-md border px-2 py-0.5 text-xs", card.status === "Aktif" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-zinc-200 bg-zinc-50 text-zinc-600")}>
-                      {card.status}
+                    <span className={cn("rounded-md border px-2 py-0.5 text-xs", displayLabel(card.status) === "Aktif" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-zinc-200 bg-zinc-50 text-zinc-600")}>
+                      {displayLabel(card.status)}
                     </span>
                   </td>
                   <td className="p-3">

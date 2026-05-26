@@ -48,7 +48,7 @@ function PieCard({ title, data }: any) {
             <Legend />
           </PieChart>
         </ResponsiveContainer>
-      ) : <div className="text-sm text-muted-foreground py-12 text-center">Veri yok.</div>}
+      ) : <div className="text-sm text-muted-foreground py-12 text-center">Bu grafik için finans kaydı bulunmuyor.</div>}
     </div>
   );
 }
@@ -204,7 +204,7 @@ export default function AdminFinance() {
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart><Pie data={data} dataKey="value" nameKey="name" innerRadius={28} outerRadius={50} paddingAngle={2}>{data.map((d, i) => <Cell key={i} fill={d.color} />)}</Pie><Tooltip formatter={(v: any) => formatTRY(v)} /></PieChart>
                       </ResponsiveContainer>
-                    ) : <div className="h-full flex items-center justify-center text-xs text-muted-foreground">Veri yok</div>}
+                    ) : <div className="h-full flex items-center justify-center text-xs text-muted-foreground">Finans kaydı yok</div>}
                   </div>
                   <div className="flex-1 text-xs space-y-1">
                     <div className="flex justify-between"><span>Gerçekleşen Gelir</span><span className="text-emerald-700 font-medium">{formatTRY(p.received)}</span></div>
@@ -218,7 +218,7 @@ export default function AdminFinance() {
               </div>
             );
           })}
-          {projectStats.length === 0 && <div className="text-muted-foreground">Proje yok.</div>}
+          {projectStats.length === 0 && <div className="text-muted-foreground">Henüz proje kaydı yok. Proje eklendiğinde finans özeti burada görünecek.</div>}
         </div>
       </section>
 
@@ -244,7 +244,7 @@ export default function AdminFinance() {
                   </tr>
                 );
               })}
-              {upcoming30.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Yaklaşan ödeme yok.</td></tr>}
+              {upcoming30.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Önümüzdeki 30 gün için yaklaşan ödeme bulunmuyor.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -269,7 +269,7 @@ export default function AdminFinance() {
                   </td>
                 </tr>
               ))}
-              {overdueList.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Geciken ödeme yok.</td></tr>}
+              {overdueList.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Geciken ödeme bulunmuyor.</td></tr>}
             </tbody>
           </table>
         </div>

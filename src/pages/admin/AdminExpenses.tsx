@@ -63,7 +63,7 @@ export default function AdminExpenses() {
   }
 
   async function remove(id: string) {
-    if (!confirm("Gider silinsin mi?")) return;
+    if (!confirm("Bu gider kaydını silmek istediğinize emin misiniz?")) return;
     await (supabase.from("expenses" as any).delete().eq("id", id)) as any;
     toast({ title: "Silindi" }); load();
   }
@@ -139,7 +139,7 @@ export default function AdminExpenses() {
                   <td className="p-3 text-right"><div className="flex justify-end gap-1"><Button size="sm" variant="ghost" onClick={() => openEdit(it)}><Edit className="h-4 w-4" /></Button><Button size="sm" variant="ghost" onClick={() => remove(it.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div></td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={8} className="p-8"><AdminEmptyState title="Gider kaydı bulunamadı" description="Filtreleri temizleyebilir veya yeni gider kaydı oluşturabilirsiniz." icon={Receipt} /></td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={8} className="p-8"><AdminEmptyState title={items.length === 0 ? "Henüz gider kaydı yok" : "Gider kaydı bulunamadı"} description={items.length === 0 ? "İlk gider kaydını oluşturarak proje maliyetlerini takip etmeye başlayın." : "Filtreleri temizleyebilir veya yeni gider kaydı oluşturabilirsiniz."} icon={Receipt} /></td></tr>}
             </tbody>
           </table>
         </div>

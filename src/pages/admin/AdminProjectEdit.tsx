@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { displayLabel } from "@/lib/finance";
 import { PROJECT_STATUSES, PROJECT_TYPES, turkishSlugify, resolveImageUrl } from "@/lib/projects";
 import { ArrowLeft, Upload, Trash2, Star, Crop, GripVertical, ExternalLink } from "lucide-react";
 import ImageCropDialog from "@/components/admin/ImageCropDialog";
@@ -211,6 +212,10 @@ export default function AdminProjectEdit() {
 
   if (loading) return <div className="text-center text-muted-foreground py-12">Yükleniyor...</div>;
 
+  const projectStatusOptions = data.project_status && !PROJECT_STATUSES.includes(data.project_status)
+    ? [data.project_status, ...PROJECT_STATUSES]
+    : PROJECT_STATUSES;
+
   return (
     <div className="max-w-5xl">
       <AdminPageHeader
@@ -285,7 +290,7 @@ export default function AdminProjectEdit() {
               <Select value={data.project_type} onValueChange={(v) => update("project_type", v)}><SelectTrigger><SelectValue placeholder="Seçin" /></SelectTrigger><SelectContent>{PROJECT_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select>
             </div>
             <div><Label>Proje Durumu *</Label>
-              <Select value={data.project_status} onValueChange={(v) => update("project_status", v)}><SelectTrigger><SelectValue placeholder="Seçin" /></SelectTrigger><SelectContent>{PROJECT_STATUSES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select>
+              <Select value={data.project_status} onValueChange={(v) => update("project_status", v)}><SelectTrigger><SelectValue placeholder="Seçin" /></SelectTrigger><SelectContent>{projectStatusOptions.map((t) => <SelectItem key={t} value={t}>{displayLabel(t)}</SelectItem>)}</SelectContent></Select>
             </div>
             <div><Label>Konum *</Label><Input value={data.location} onChange={(e) => update("location", e.target.value)} placeholder="Örn: Kadıköy, İstanbul" /></div>
             <div className="grid grid-cols-2 gap-2">

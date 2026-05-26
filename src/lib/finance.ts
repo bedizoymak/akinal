@@ -13,6 +13,19 @@ export const EXPENSE_CATEGORIES = [
 ] as const;
 export const DOCUMENT_TYPES = ["Sözleşme", "Dekont", "Fatura", "Makbuz", "Ruhsat", "Tapu", "Kimlik", "Diğer"] as const;
 
+export const RAW_DISPLAY_LABELS: Record<string, string> = {
+  corporate: "Kurumsal",
+  individual: "Bireysel",
+  active: "Aktif",
+  inactive: "Pasif",
+  completed: "Tamamlandı",
+  ongoing: "Devam Ediyor",
+  planned: "Planlandı",
+  draft: "Taslak",
+  published: "Yayında",
+  archived: "Arşivlendi",
+};
+
 export type CurrencyTag = typeof CURRENCIES[number];
 export type GroupTag = typeof GROUP_TAGS[number];
 export type EntryDirection = typeof ENTRY_DIRECTIONS[number];
@@ -119,8 +132,15 @@ export function formatDate(d: string | Date | null | undefined): string {
   return new Date(d).toLocaleDateString("tr-TR");
 }
 
+export function displayLabel(value: string | null | undefined): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  return RAW_DISPLAY_LABELS[raw] ?? RAW_DISPLAY_LABELS[raw.toLowerCase()] ?? raw;
+}
+
 export function customerDisplayName(c: { customer_type?: string; full_name?: string | null; company_name?: string | null }): string {
-  if (c.customer_type === "Firma" && c.company_name) return c.company_name;
+  const type = displayLabel(c.customer_type);
+  if ((type === "Firma" || type === "Kurumsal") && c.company_name) return c.company_name;
   return c.full_name || c.company_name || "İsimsiz";
 }
 
@@ -133,7 +153,7 @@ export function daysUntil(date: string): number {
 }
 
 export function statusBadgeClass(status: string): string {
-  switch (status) {
+  switch (displayLabel(status)) {
     case "Ödendi": return "bg-emerald-100 text-emerald-700 border-emerald-200";
     case "Bekliyor": return "bg-slate-100 text-slate-700 border-slate-200";
     case "Kısmi Ödendi": return "bg-amber-100 text-amber-700 border-amber-200";
@@ -143,6 +163,11 @@ export function statusBadgeClass(status: string): string {
     case "Beklemede": return "bg-amber-100 text-amber-700 border-amber-200";
     case "Tamamlandı": return "bg-blue-100 text-blue-700 border-blue-200";
     case "Pasif": return "bg-zinc-100 text-zinc-600 border-zinc-200";
+    case "Devam Ediyor": return "bg-accent/15 text-accent border-accent/30";
+    case "Planlandı": return "bg-amber-100 text-amber-700 border-amber-200";
+    case "Taslak": return "bg-muted text-muted-foreground border-border";
+    case "Yayında": return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    case "Arşivlendi": return "bg-zinc-100 text-zinc-600 border-zinc-200";
     default: return "bg-muted text-foreground border-border";
   }
 }
