@@ -14,16 +14,16 @@ function WhatsAppIcon({ className = "" }: { className?: string }) {
 export default function FloatingContact() {
   const { settings } = useSiteSettings();
   return (
-    <div className="fixed bottom-5 right-5 md:bottom-6 md:right-6 z-50 flex flex-col items-end gap-3">
+    <div className="fixed bottom-8 right-4 z-50 flex flex-col items-end gap-3 md:bottom-10 md:right-6">
       <a
         href={getWhatsAppLink(settings.whatsapp_number, settings.whatsapp_message)}
         target="_blank"
         rel="noreferrer"
         aria-label="WhatsApp ile Görüş"
-        className="group relative h-16 w-16 md:h-[68px] md:w-[68px] rounded-full bg-[#25D366] text-white flex items-center justify-center transition-transform hover:scale-110"
+        className="group relative flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-white transition-transform hover:scale-110 md:h-14 md:w-14"
         style={{ boxShadow: "0 10px 30px -6px rgba(37,211,102,0.55), 0 4px 12px rgba(0,0,0,0.18)" }}
       >
-        <WhatsAppIcon className="h-9 w-9 md:h-10 md:w-10" />
+        <WhatsAppIcon className="h-7 w-7 md:h-8 md:w-8" />
         <span className="hidden md:block absolute right-full mr-3 whitespace-nowrap bg-foreground text-background text-xs font-medium px-3 py-2 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
           WhatsApp ile Görüş
         </span>

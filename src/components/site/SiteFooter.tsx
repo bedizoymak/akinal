@@ -33,7 +33,7 @@ export default function SiteFooter() {
   const companyName = settings.company_name || "Şirket";
 
   return (
-    <footer className="bg-gradient-dark text-white mt-24">
+    <footer className="relative z-40 bg-gradient-dark text-white mt-24">
       <div className="container-narrow py-16 grid gap-12 md:grid-cols-2 lg:grid-cols-4">
         <div>
           <Link to="/" className="inline-flex items-center" aria-label={companyName}>
@@ -85,28 +85,26 @@ export default function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-white/10">
-        <div className="container-narrow py-5 flex flex-col gap-3 text-center text-xs text-white/55 md:flex-row md:items-center md:justify-between md:text-left">
-          <p>© {currentYear} {companyName}</p>
-          <nav aria-label="Yasal bağlantılar" className="flex flex-wrap justify-center gap-x-4 gap-y-2 md:justify-end">
+        <div className="container-narrow py-5 grid gap-3 text-center text-xs text-white/55 md:grid-cols-3 md:items-center md:text-left">
+          <p>© {currentYear} Akinal İnşaat Ltd. Şti.</p>
+          <nav aria-label="Yasal bağlantılar" className="flex flex-wrap justify-center gap-x-4 gap-y-2">
             {legalLinks.map((item) => (
               <Link key={item.to} to={item.to} className="hover:text-white transition-colors">
                 {item.label}
               </Link>
             ))}
           </nav>
-        </div>
-      </div>
-      <div className="border-t border-white/[0.06]">
-        <div className="container-narrow py-3 text-center text-[10px] leading-none text-white/35">
-          made by{" "}
-          <a
-            href="https://eclipsemuhendislik.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-colors hover:text-white/60"
-          >
-            Eclipse Mühendislik
-          </a>
+          <p className="text-white/40 md:text-right">
+            made by{" "}
+            <a
+              href="https://eclipsemuhendislik.com/?ref=akinal"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-colors hover:text-white/65"
+            >
+              Eclipse Mühendislik
+            </a>
+          </p>
         </div>
       </div>
     </footer>
