@@ -13,8 +13,6 @@ import { useSiteSettings, getWhatsAppLink, getTelLink, getMapsLink } from "@/hoo
 import { SERVICE_OPTIONS } from "@/lib/projects";
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
-const CONTACT_MAP_EMBED_URL =
-  "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d5228170.642444712!2d23.591164850000013!3d38.853652309546376!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14cabb3caf9301eb%3A0x6137647a341cd4d5!2zQUvEsE5BTCDEsE7FnkFBVCBPVE9NT1TEsFYgR0lEQSBUVVLEsFpNIE5BS0zEsFlFIFNBTkFZxLDEsCBWRSBUxLBDQVJFVCBMxLBNxLBURUQgxZ7EsFJLRVTEsA!5e1!3m2!1str!2str!4v1779854883467!5m2!1str!2str";
 
 type TurnstileRenderOptions = {
   sitekey: string;
@@ -121,17 +119,17 @@ export default function Contact() {
   }
 
   const cards = [
-    { icon: Phone, title: "Telefon", value: settings.phone, href: getTelLink(settings.phone) },
-    { icon: MessageCircle, title: "WhatsApp", value: settings.whatsapp_number, href: getWhatsAppLink(settings.whatsapp_number, settings.whatsapp_message) },
-    { icon: Mail, title: "E-posta", value: settings.email, href: `mailto:${settings.email}` },
-    { icon: MapPin, title: "Adres", value: settings.address, href: getMapsLink(settings.address) },
-  ];
+    settings.phone ? { icon: Phone, title: "Telefon", value: settings.phone, href: getTelLink(settings.phone) } : null,
+    settings.whatsapp_number ? { icon: MessageCircle, title: "WhatsApp", value: settings.whatsapp_number, href: getWhatsAppLink(settings.whatsapp_number, settings.whatsapp_message) } : null,
+    settings.email ? { icon: Mail, title: "E-posta", value: settings.email, href: `mailto:${settings.email}` } : null,
+    settings.address ? { icon: MapPin, title: "Adres", value: settings.address, href: getMapsLink(settings.address) } : null,
+  ].filter(Boolean);
 
   return (
     <>
       <Seo
         title="İletişim"
-        description="AKİNAL İNŞAAT telefon, WhatsApp, e-posta, adres ve iletişim formu üzerinden proje ve kentsel dönüşüm talepleriniz için bize ulaşın."
+        description="Akinal İnşaat telefon, WhatsApp, e-posta, adres ve iletişim formu üzerinden proje ve kentsel dönüşüm talepleriniz için bize ulaşın."
         canonical="/iletisim"
         breadcrumbs={[
           { name: "Ana Sayfa", path: "/" },
@@ -163,9 +161,11 @@ export default function Contact() {
               return c.href ? <a key={c.title} href={c.href} target={c.href.startsWith("http") ? "_blank" : undefined} rel="noreferrer">{Inner}</a> : <div key={c.title}>{Inner}</div>;
             })}
 
-            <div className="aspect-video rounded-lg border border-border bg-surface-muted overflow-hidden">
-              <iframe src={CONTACT_MAP_EMBED_URL} className="h-full w-full" loading="lazy" title="Harita" referrerPolicy="no-referrer-when-downgrade" />
-            </div>
+            {settings.map_embed_url && (
+              <div className="aspect-video rounded-lg border border-border bg-surface-muted overflow-hidden">
+                <iframe src={settings.map_embed_url} className="h-full w-full" loading="lazy" title="Harita" referrerPolicy="no-referrer-when-downgrade" />
+              </div>
+            )}
           </div>
 
           <form onSubmit={onSubmit} className="p-6 md:p-8 rounded-lg border border-border bg-card shadow-card-soft">

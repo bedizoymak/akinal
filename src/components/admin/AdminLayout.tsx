@@ -113,7 +113,7 @@ function findPageMeta(pathname: string) {
   return (
     PAGE_META.find((item) => (item.match ? item.match(pathname) : item.exact ? pathname === item.path : pathname.startsWith(item.path))) ?? {
       title: "Yönetim Paneli",
-      group: "AKİNAL İNŞAAT",
+      group: "Akinal İnşaat",
     }
   );
 }
@@ -162,10 +162,10 @@ export default function AdminLayout() {
         <div className="border-b border-sidebar-border p-5">
           <Link to="/admin" className="flex items-center gap-3">
             <div className="rounded-md bg-white p-1.5 shadow-card-soft">
-              <img src={logoImg} alt="AKİNAL İNŞAAT" className="h-10 w-auto object-contain" />
+              <img src={logoImg} alt="Akinal İnşaat" className="h-10 w-auto object-contain" />
             </div>
             <div className="min-w-0 leading-tight">
-              <div className="font-display text-lg font-bold">AKİNAL İNŞAAT</div>
+              <div className="font-display text-lg font-bold">Akinal İnşaat</div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/65">Yönetim Paneli</div>
             </div>
           </Link>

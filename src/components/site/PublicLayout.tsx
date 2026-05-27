@@ -15,7 +15,7 @@ export default function PublicLayout() {
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-background">
       <SiteHeader />
-      <main key={location.pathname} className="flex-1 w-full max-w-full overflow-x-hidden motion-safe:animate-public-page-in">
+      <main key={location.pathname} className="flex-1 w-full max-w-full overflow-x-hidden animate-public-page-in">
         <Outlet />
       </main>
       <SiteFooter />

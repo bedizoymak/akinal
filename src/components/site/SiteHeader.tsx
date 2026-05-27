@@ -3,6 +3,7 @@ import { Menu, X } from "lucide-react";
 import logoImg from "@/assets/logo.png";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const NAV = [
   { to: "/", label: "Ana Sayfa" },
@@ -17,6 +18,8 @@ export default function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { pathname } = useLocation();
+  const { settings } = useSiteSettings();
+  const companyName = settings.company_name || "Şirket";
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -37,10 +40,10 @@ export default function SiteHeader() {
       )}
     >
       <div className="container-narrow flex h-20 md:h-24 items-center justify-between gap-6">
-        <Link to="/" className="flex items-center shrink-0 group" aria-label="AKİNAL İNŞAAT - Ana Sayfa">
+        <Link to="/" className="flex items-center shrink-0 group" aria-label={`${companyName} - Ana Sayfa`}>
           <img
             src={logoImg}
-            alt="AKİNAL İNŞAAT"
+            alt={companyName}
             className="h-12 md:h-16 w-auto object-contain"
             loading="eager"
             decoding="async"

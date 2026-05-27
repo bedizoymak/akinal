@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import Seo from "@/components/site/Seo";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 type LegalContent = {
   title: string;
@@ -10,11 +11,11 @@ type LegalContent = {
 const legalPages: Record<string, LegalContent> = {
   "/gizlilik-politikasi": {
     title: "Gizlilik Politikası",
-    description: "AKİNAL İNŞAAT ile paylaşılan bilgilerin nasıl değerlendirildiğine ilişkin temel bilgilendirme.",
+    description: "Akinal İnşaat ile paylaşılan bilgilerin nasıl değerlendirildiğine ilişkin temel bilgilendirme.",
     sections: [
       {
         title: "Şirket unvanı",
-        body: "AKİNAL İNŞAAT OTOMOTİV GIDA TURİZM NAKLİYE SANAYİİ VE TİCARET LİMİTED ŞİRKETİ",
+        body: "COMPANY_NAME",
       },
       {
         title: "Toplanan bilgiler",
@@ -36,7 +37,7 @@ const legalPages: Record<string, LegalContent> = {
     sections: [
       {
         title: "Şirket unvanı",
-        body: "AKİNAL İNŞAAT OTOMOTİV GIDA TURİZM NAKLİYE SANAYİİ VE TİCARET LİMİTED ŞİRKETİ",
+        body: "COMPANY_NAME",
       },
       {
         title: "Zorunlu çerezler",
@@ -54,11 +55,11 @@ const legalPages: Record<string, LegalContent> = {
   },
   "/kullanim-sartlari": {
     title: "Kullanım Şartları",
-    description: "AKİNAL İNŞAAT web sitesinin kullanımına ilişkin temel şartlar.",
+    description: "Akinal İnşaat web sitesinin kullanımına ilişkin temel şartlar.",
     sections: [
       {
         title: "Şirket unvanı",
-        body: "AKİNAL İNŞAAT OTOMOTİV GIDA TURİZM NAKLİYE SANAYİİ VE TİCARET LİMİTED ŞİRKETİ",
+        body: "COMPANY_NAME",
       },
       {
         title: "Site içeriği",
@@ -66,11 +67,11 @@ const legalPages: Record<string, LegalContent> = {
       },
       {
         title: "Bağlantılar ve sorumluluk",
-        body: "Sitede yer alan iletişim, harita ve yönlendirme bağlantıları kullanıcı kolaylığı için sunulur. Dış servislerde oluşabilecek teknik aksaklıklardan AKİNAL İNŞAAT sorumlu değildir.",
+        body: "Sitede yer alan iletişim, harita ve yönlendirme bağlantıları kullanıcı kolaylığı için sunulur. Dış servislerde oluşabilecek teknik aksaklıklardan Akinal İnşaat sorumlu değildir.",
       },
       {
         title: "Güncellemeler",
-        body: "AKİNAL İNŞAAT, web sitesi içeriklerini ve kullanım şartlarını gerektiğinde güncelleme hakkını saklı tutar.",
+        body: "Akinal İnşaat, web sitesi içeriklerini ve kullanım şartlarını gerektiğinde güncelleme hakkını saklı tutar.",
       },
     ],
   },
@@ -78,7 +79,9 @@ const legalPages: Record<string, LegalContent> = {
 
 export default function LegalPage() {
   const { pathname } = useLocation();
+  const { settings } = useSiteSettings();
   const content = legalPages[pathname] ?? legalPages["/gizlilik-politikasi"];
+  const companyName = settings.company_name || "Şirket";
 
   return (
     <>
@@ -100,7 +103,7 @@ export default function LegalPage() {
             {content.sections.map((section) => (
               <article key={section.title} className="rounded-lg border border-border bg-card p-6 shadow-card-soft">
                 <h2 className="font-display text-2xl font-semibold text-foreground">{section.title}</h2>
-                <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{section.body}</p>
+                <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{section.body.replace("COMPANY_NAME", companyName)}</p>
               </article>
             ))}
           </div>

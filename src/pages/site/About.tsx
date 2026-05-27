@@ -15,7 +15,7 @@ export default function About() {
     <>
       <Seo
         title="Hakkımızda"
-        description="AKİNAL İNŞAAT'ın kentsel dönüşüm, inşaat yaklaşımı, vizyonu, misyonu ve kurumsal değerleri hakkında bilgi alın."
+        description="Akinal İnşaat'ın kentsel dönüşüm, inşaat yaklaşımı, vizyonu, misyonu ve kurumsal değerleri hakkında bilgi alın."
         canonical="/hakkimizda"
         breadcrumbs={[
           { name: "Ana Sayfa", path: "/" },
@@ -33,7 +33,7 @@ export default function About() {
         <div className="container-narrow grid lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2 space-y-6 text-base md:text-lg leading-relaxed text-foreground/85">
             <p>
-              AKİNAL İNŞAAT; güvenli, estetik ve uzun ömürlü yapılar üretme hedefiyle kentsel dönüşüm ve inşaat projelerinde profesyonel çözümler sunar. Arsa sahipleri, bina sakinleri ve yatırımcılar için sürecin her aşamasında şeffaf, planlı ve teknik bir yaklaşım benimser.
+              Akinal İnşaat; güvenli, estetik ve uzun ömürlü yapılar üretme hedefiyle kentsel dönüşüm ve inşaat projelerinde profesyonel çözümler sunar. Arsa sahipleri, bina sakinleri ve yatırımcılar için sürecin her aşamasında şeffaf, planlı ve teknik bir yaklaşım benimser.
             </p>
             <p>
               Kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde fizibiliteden ruhsata, uygulamadan teslime kadar tüm aşamaları tek elden yönetiyor; mülk sahiplerine süreci anlaşılır ve güvenilir hâle getiriyoruz.

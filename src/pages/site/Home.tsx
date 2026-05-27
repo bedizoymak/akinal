@@ -93,12 +93,12 @@ export default function Home() {
 
       {/* HERO */}
       <section className="relative min-h-[90vh] flex items-center overflow-hidden">
-        <img src={heroImg} alt="AKİNAL İNŞAAT — Modern inşaat projesi" className="absolute inset-0 h-full w-full object-cover" />
+        <img src={heroImg} alt="Akinal İnşaat — Modern inşaat projesi" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-hero" />
         <div className="container-narrow relative z-10 py-24 text-white">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur border border-white/20 text-xs font-semibold uppercase tracking-widest text-accent mb-6 reveal-up">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" /> AKİNAL İNŞAAT
+              <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" /> Akinal İnşaat
             </div>
             <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-extrabold leading-[1.05] mb-6 reveal-up">
               {settings.hero_title}
@@ -134,11 +134,11 @@ export default function Home() {
               <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Hakkımızda</div>
               <h2 className="mb-6 font-display text-3xl font-bold leading-tight md:text-5xl">Güvenli yapılar için planlı, teknik ve şeffaf yaklaşım</h2>
               <p className="text-base leading-relaxed text-muted-foreground md:text-lg">
-                AKİNAL İNŞAAT; kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde süreci yalnızca inşa etmekle değil, doğru kararlarla yönetmekle ele alır. Arsa sahipleri, bina sakinleri ve yatırımcılar için her adımda anlaşılır, kontrollü ve güven veren bir çalışma modeli sunar.
+                Akinal İnşaat; kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde süreci yalnızca inşa etmekle değil, doğru kararlarla yönetmekle ele alır. Arsa sahipleri, bina sakinleri ve yatırımcılar için her adımda anlaşılır, kontrollü ve güven veren bir çalışma modeli sunar.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button asChild className="bg-primary text-primary-foreground hover:bg-primary-glow">
-                  <Link to="/hakkimizda">AKİNAL Yaklaşımını İnceleyin <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                  <Link to="/hakkimizda">Akinal Yaklaşımını İnceleyin <ArrowRight className="ml-2 h-4 w-4" /></Link>
                 </Button>
                 <Button asChild variant="outline" className="border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground">
                   <Link to="/iletisim">Ön Görüşme Planlayın</Link>
@@ -160,9 +160,9 @@ export default function Home() {
             <div className="relative">
               <div className="absolute -inset-4 hidden rounded-lg border border-accent/15 lg:block" />
               <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-elegant">
-                <img src={sampleProject1} alt="AKİNAL İNŞAAT proje uygulama yaklaşımı" className="aspect-[4/3] w-full object-cover" />
+                <img src={sampleProject1} alt="Akinal İnşaat proje uygulama yaklaşımı" className="aspect-[4/3] w-full object-cover" />
                 <div className="border-t border-border bg-card p-5">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">AKİNAL Yaklaşımı</div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Akinal Yaklaşımı</div>
                   <div className="mt-1 font-display text-xl font-bold text-foreground">Projeye başlamadan önce netlik sağlarız.</div>
                 </div>
               </div>
@@ -186,7 +186,7 @@ export default function Home() {
 
           <div className="mb-10 overflow-hidden rounded-lg border border-border bg-card shadow-elegant">
             <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
-              <img src={sampleProject3} alt="AKİNAL İNŞAAT hizmet kapsamı" className="aspect-[16/10] h-full w-full object-cover lg:aspect-auto" />
+              <img src={sampleProject3} alt="Akinal İnşaat hizmet kapsamı" className="aspect-[16/10] h-full w-full object-cover lg:aspect-auto" />
               <div className="flex flex-col justify-center p-6 md:p-8 lg:p-10">
                 <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
                   <Building className="h-3.5 w-3.5" /> Uçtan Uca Hizmet
@@ -219,7 +219,7 @@ export default function Home() {
 
       {/* KENTSEL DÖNÜŞÜM TIMELINE */}
       <section className="relative overflow-hidden py-20 md:py-28">
-        {/* Temporary decorative visual; replace with real AKİNAL project imagery before production if needed. */}
+        {/* Temporary decorative visual; replace with real Akinal project imagery before production if needed. */}
         <img src={blueprintPattern} alt="" aria-hidden="true" className="absolute -right-40 top-10 hidden h-[560px] w-[680px] object-cover opacity-[0.045] lg:block" />
         <div className="container-narrow relative">
           <div className="mb-14 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
@@ -255,14 +255,14 @@ export default function Home() {
       {/* WHY US — DARK */}
       <section className="relative overflow-hidden bg-gradient-dark py-20 text-white md:py-28">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,hsl(var(--accent)/0.18),transparent_32%)]" />
-        {/* Temporary decorative visual; replace with real AKİNAL project imagery before production if needed. */}
+        {/* Temporary decorative visual; replace with real Akinal project imagery before production if needed. */}
         <img src={urbanSilhouette} alt="" aria-hidden="true" className="absolute inset-x-0 bottom-0 h-64 w-full object-cover opacity-[0.18] mix-blend-screen" />
         <div className="container-narrow relative">
           <div className="mb-14 max-w-3xl">
-            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Neden AKİNAL?</div>
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Neden Akinal?</div>
             <h2 className="font-display text-3xl font-bold leading-tight md:text-5xl">Güven, teknik disiplin ve şeffaf yönetim aynı masada</h2>
             <p className="mt-5 text-white/70 leading-relaxed">
-              Her proje; hak sahipleri, yatırımcılar ve kullanıcılar için netlik gerektirir. AKİNAL İNŞAAT bu netliği tasarım, resmi süreç, saha uygulaması ve iletişim başlıklarında birlikte kurar.
+              Her proje; hak sahipleri, yatırımcılar ve kullanıcılar için netlik gerektirir. Akinal İnşaat bu netliği tasarım, resmi süreç, saha uygulaması ve iletişim başlıklarında birlikte kurar.
             </p>
           </div>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
@@ -306,7 +306,7 @@ export default function Home() {
         <div className="container-narrow relative">
           <div className="grid gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-center">
             <div className="overflow-hidden rounded-lg border border-border bg-card shadow-elegant">
-              <img src={sampleProject3} alt="AKİNAL İNŞAAT proje değerlendirme yaklaşımı" className="aspect-[4/3] w-full object-cover" />
+              <img src={sampleProject3} alt="Akinal İnşaat proje değerlendirme yaklaşımı" className="aspect-[4/3] w-full object-cover" />
               <div className="border-t border-border bg-card p-5">
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Başlangıç Netliği</div>
                 <div className="mt-1 font-display text-xl font-bold">Teknik çerçeve sade, anlaşılır ve uygulanabilir şekilde kurulur.</div>
@@ -314,7 +314,7 @@ export default function Home() {
             </div>
 
             <div>
-              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">AKİNAL Yaklaşımı</div>
+              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Akinal Yaklaşımı</div>
               <h2 className="font-display text-3xl font-bold leading-tight md:text-5xl">Projeye başlamadan önce netlik sağlarız</h2>
               <p className="mt-5 text-muted-foreground leading-relaxed">
                 Güven veren bir inşaat süreci, ilk görüşmeden itibaren doğru soruları sormakla başlar. Teknik değerlendirme, resmi süreç ve uygulama planı aynı çerçevede ele alınır.
@@ -337,7 +337,7 @@ export default function Home() {
 
       {/* MAIN CTA */}
       <section className="relative overflow-hidden bg-primary py-20 text-primary-foreground md:py-28">
-        <img src={sampleProject2} alt="AKİNAL İNŞAAT iletişim ve ön değerlendirme" className="absolute inset-0 h-full w-full object-cover opacity-20" />
+        <img src={sampleProject2} alt="Akinal İnşaat iletişim ve ön değerlendirme" className="absolute inset-0 h-full w-full object-cover opacity-20" />
         <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/95 to-secondary/85" />
         <div className="container-narrow relative">
           <div className="rounded-lg border border-white/15 bg-white/[0.08] p-6 shadow-elegant backdrop-blur md:p-10">
@@ -346,7 +346,7 @@ export default function Home() {
                 <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Ön Değerlendirme</div>
                 <h2 className="font-display text-3xl font-bold leading-tight md:text-5xl">Binanız veya arsanız için doğru yol haritasını birlikte çıkaralım</h2>
                 <p className="mt-5 max-w-2xl text-base leading-relaxed text-primary-foreground/80 md:text-lg">
-                  Kentsel dönüşüm, kat karşılığı inşaat veya proje geliştirme ihtiyaçlarınız için AKİNAL İNŞAAT ile iletişime geçin. Ekibimiz, projeniz için en uygun başlangıç adımını belirlemek üzere sizinle görüşsün.
+                  Kentsel dönüşüm, kat karşılığı inşaat veya proje geliştirme ihtiyaçlarınız için Akinal İnşaat ile iletişime geçin. Ekibimiz, projeniz için en uygun başlangıç adımını belirlemek üzere sizinle görüşsün.
                 </p>
               </div>
               <div className="rounded-lg border border-white/15 bg-white/10 p-5 shadow-elegant backdrop-blur">

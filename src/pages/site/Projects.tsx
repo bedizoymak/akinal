@@ -54,7 +54,7 @@ export default function Projects() {
     <>
       <Seo
         title="Projelerimiz"
-        description="AKİNAL İNŞAAT'ın tamamlanan ve süren konut, ticari proje ve kentsel dönüşüm çalışmalarını inceleyin."
+        description="Akinal İnşaat'ın tamamlanan ve süren konut, ticari proje ve kentsel dönüşüm çalışmalarını inceleyin."
         canonical="/projelerimiz"
         breadcrumbs={[
           { name: "Ana Sayfa", path: "/" },

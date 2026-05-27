@@ -30,14 +30,15 @@ const legalLinks = [
 export default function SiteFooter() {
   const { settings } = useSiteSettings();
   const currentYear = new Date().getFullYear();
+  const companyName = settings.company_name || "Şirket";
 
   return (
     <footer className="bg-gradient-dark text-white mt-24">
       <div className="container-narrow py-16 grid gap-12 md:grid-cols-2 lg:grid-cols-4">
         <div>
-          <Link to="/" className="inline-flex items-center" aria-label="AKİNAL İNŞAAT">
+          <Link to="/" className="inline-flex items-center" aria-label={companyName}>
             <div className="bg-white rounded-md p-3 shadow-card-soft inline-flex">
-              <img src={logoImg} alt="AKİNAL İNŞAAT" className="h-12 w-auto object-contain" />
+              <img src={logoImg} alt={companyName} className="h-12 w-auto object-contain" />
             </div>
           </Link>
           <p className="mt-5 text-sm text-white/70 leading-relaxed">{settings.footer_description}</p>
@@ -77,15 +78,15 @@ export default function SiteFooter() {
         <div>
           <h4 className="font-display text-sm uppercase tracking-widest text-accent mb-5">İletişim</h4>
           <ul className="space-y-3 text-sm text-white/75">
-            <li className="flex items-start gap-3"><Phone className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <a href={getTelLink(settings.phone)} className="hover:text-white">{settings.phone}</a></li>
-            <li className="flex items-start gap-3"><Mail className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <a href={`mailto:${settings.email}`} className="hover:text-white break-all">{settings.email}</a></li>
-            <li className="flex items-start gap-3"><MapPin className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <a href={getMapsLink(settings.address)} target="_blank" rel="noreferrer" className="hover:text-white">{settings.address}</a></li>
+            {settings.phone && <li className="flex items-start gap-3"><Phone className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <a href={getTelLink(settings.phone)} className="hover:text-white">{settings.phone}</a></li>}
+            {settings.email && <li className="flex items-start gap-3"><Mail className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <a href={`mailto:${settings.email}`} className="hover:text-white break-all">{settings.email}</a></li>}
+            {settings.address && <li className="flex items-start gap-3"><MapPin className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <a href={getMapsLink(settings.address)} target="_blank" rel="noreferrer" className="hover:text-white">{settings.address}</a></li>}
           </ul>
         </div>
       </div>
       <div className="border-t border-white/10">
         <div className="container-narrow py-5 flex flex-col gap-3 text-center text-xs text-white/55 md:flex-row md:items-center md:justify-between md:text-left">
-          <p>© {currentYear} AKİNAL İNŞAAT LTD. ŞTİ.</p>
+          <p>© {currentYear} {companyName}</p>
           <nav aria-label="Yasal bağlantılar" className="flex flex-wrap justify-center gap-x-4 gap-y-2 md:justify-end">
             {legalLinks.map((item) => (
               <Link key={item.to} to={item.to} className="hover:text-white transition-colors">
