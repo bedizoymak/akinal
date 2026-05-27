@@ -13,6 +13,8 @@ import { useSiteSettings, getWhatsAppLink, getTelLink, getMapsLink } from "@/hoo
 import { SERVICE_OPTIONS } from "@/lib/projects";
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
+const isTurnstileConfigured = Boolean(TURNSTILE_SITE_KEY);
+const showTurnstileDevMessage = !isTurnstileConfigured && import.meta.env.DEV;
 
 type TurnstileRenderOptions = {
   sitekey: string;
@@ -90,6 +92,10 @@ export default function Contact() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!isTurnstileConfigured) {
+      toast({ title: "Güvenlik doğrulaması hazır değil", description: "Form şu anda gönderilemiyor. Lütfen daha sonra tekrar deneyin.", variant: "destructive" });
+      return;
+    }
     const parsed = schema.safeParse(form);
     if (!parsed.success) {
       toast({ title: "Form eksik", description: parsed.error.errors[0].message, variant: "destructive" });
@@ -101,15 +107,18 @@ export default function Contact() {
       return;
     }
     setSubmitting(true);
-    const { error } = await supabase.from("contact_requests").insert({
-      full_name: parsed.data.full_name,
-      phone: parsed.data.phone,
-      email: parsed.data.email || null,
-      service_type: parsed.data.service_type,
-      message: parsed.data.message,
+    const { error } = await supabase.functions.invoke("submit-contact-request", {
+      body: {
+        ...parsed.data,
+        email: parsed.data.email || null,
+        turnstileToken: captchaToken,
+      },
     });
     setSubmitting(false);
     if (error) {
+      setCaptchaToken("");
+      setCaptchaError("Güvenlik doğrulaması yenilenmelidir. Lütfen tekrar doğrulayın.");
+      window.turnstile?.reset(widgetIdRef.current);
       toast({ title: "Hata", description: "Talebiniz gönderilemedi. Lütfen tekrar deneyin.", variant: "destructive" });
       return;
     }
@@ -206,16 +215,18 @@ export default function Contact() {
               <div className="sm:col-span-2">
                 <Label>Güvenlik Doğrulaması *</Label>
                 <div className="mt-2 rounded-lg border border-border bg-background p-3">
-                  {TURNSTILE_SITE_KEY ? (
+                  {isTurnstileConfigured ? (
                     <div ref={turnstileRef} className="min-h-[65px]" />
+                  ) : showTurnstileDevMessage ? (
+                    <p className="text-sm text-muted-foreground">Dev: VITE_TURNSTILE_SITE_KEY tanımlanmadığı için Turnstile gösterilemiyor.</p>
                   ) : (
-                    <p className="text-sm text-muted-foreground">Ben robot değilim doğrulaması için site anahtarı tanımlanmalıdır.</p>
+                    <div className="min-h-[65px]" aria-hidden="true" />
                   )}
                 </div>
                 {captchaError && <p className="mt-2 text-sm text-destructive">{captchaError}</p>}
               </div>
             </div>
-            <Button type="submit" disabled={submitting || !captchaToken} aria-busy={submitting} className="mt-5 w-full bg-accent hover:bg-accent-glow text-accent-foreground font-semibold">
+            <Button type="submit" disabled={submitting || !isTurnstileConfigured || !captchaToken} aria-busy={submitting} className="mt-5 w-full bg-accent hover:bg-accent-glow text-accent-foreground font-semibold">
               {submitting ? "Gönderiliyor..." : "Gönder"}
             </Button>
           </form>

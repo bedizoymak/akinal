@@ -527,14 +527,6 @@ BEGIN
     $pol$;
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'contact_requests' AND policyname = 'Anyone submits contact') THEN
-    EXECUTE $pol$
-      CREATE POLICY "Anyone submits contact"
-      ON public.contact_requests FOR INSERT TO anon, authenticated
-      WITH CHECK (true)
-    $pol$;
-  END IF;
-
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'contact_requests' AND policyname = 'Admins manage contacts') THEN
     EXECUTE $pol$
       CREATE POLICY "Admins manage contacts"
