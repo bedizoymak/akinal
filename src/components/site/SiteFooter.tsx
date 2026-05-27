@@ -3,6 +3,30 @@ import { Phone, Mail, MapPin, Instagram, Facebook, Linkedin } from "lucide-react
 import { getMapsLink, getTelLink, useSiteSettings } from "@/hooks/useSiteSettings";
 import logoImg from "@/assets/logo.png";
 
+const menuLinks = [
+  { label: "Ana Sayfa", to: "/" },
+  { label: "Hakkımızda", to: "/hakkimizda" },
+  { label: "Hizmetlerimiz", to: "/hizmetlerimiz" },
+  { label: "Projelerimiz", to: "/projelerimiz" },
+  { label: "Kentsel Dönüşüm", to: "/kentsel-donusum" },
+  { label: "İletişim", to: "/iletisim" },
+];
+
+const serviceLinks = [
+  { label: "Kentsel Dönüşüm", to: "/hizmetlerimiz/kentsel-donusum" },
+  { label: "Kat Karşılığı İnşaat", to: "/hizmetlerimiz/kat-karsiligi-insaat" },
+  { label: "Anahtar Teslim İnşaat", to: "/hizmetlerimiz/anahtar-teslim-insaat" },
+  { label: "Proje Geliştirme", to: "/hizmetlerimiz/proje-gelistirme" },
+  { label: "Ruhsat ve Resmi Süreç Takibi", to: "/hizmetlerimiz/ruhsat-ve-resmi-surec-takibi" },
+  { label: "Riskli Yapı Danışmanlığı", to: "/hizmetlerimiz/riskli-yapi-danismanligi" },
+];
+
+const legalLinks = [
+  { label: "Gizlilik Politikası", to: "/gizlilik-politikasi" },
+  { label: "Çerez Politikası", to: "/cerez-politikasi" },
+  { label: "Kullanım Şartları", to: "/kullanim-sartlari" },
+];
+
 export default function SiteFooter() {
   const { settings } = useSiteSettings();
   return (
@@ -25,24 +49,26 @@ export default function SiteFooter() {
         <div>
           <h4 className="font-display text-sm uppercase tracking-widest text-accent mb-5">Menü</h4>
           <ul className="space-y-3 text-sm">
-            <li><Link to="/" className="text-white/75 hover:text-white">Ana Sayfa</Link></li>
-            <li><Link to="/hakkimizda" className="text-white/75 hover:text-white">Hakkımızda</Link></li>
-            <li><Link to="/hizmetlerimiz" className="text-white/75 hover:text-white">Hizmetlerimiz</Link></li>
-            <li><Link to="/projelerimiz" className="text-white/75 hover:text-white">Projelerimiz</Link></li>
-            <li><Link to="/kentsel-donusum" className="text-white/75 hover:text-white">Kentsel Dönüşüm</Link></li>
-            <li><Link to="/iletisim" className="text-white/75 hover:text-white">İletişim</Link></li>
+            {menuLinks.map((item) => (
+              <li key={item.to}>
+                <Link to={item.to} className="text-white/75 hover:text-white transition-colors">
+                  {item.label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
 
         <div>
           <h4 className="font-display text-sm uppercase tracking-widest text-accent mb-5">Hizmetler</h4>
-          <ul className="space-y-3 text-sm text-white/75">
-            <li>Kentsel Dönüşüm</li>
-            <li>Kat Karşılığı İnşaat</li>
-            <li>Anahtar Teslim İnşaat</li>
-            <li>Proje Geliştirme</li>
-            <li>Ruhsat ve Resmi Süreç Takibi</li>
-            <li>Riskli Yapı Danışmanlığı</li>
+          <ul className="space-y-3 text-sm">
+            {serviceLinks.map((item) => (
+              <li key={item.to}>
+                <Link to={item.to} className="text-white/75 hover:text-white transition-colors">
+                  {item.label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
 
@@ -50,14 +76,21 @@ export default function SiteFooter() {
           <h4 className="font-display text-sm uppercase tracking-widest text-accent mb-5">İletişim</h4>
           <ul className="space-y-3 text-sm text-white/75">
             <li className="flex items-start gap-3"><Phone className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <a href={getTelLink(settings.phone)} className="hover:text-white">{settings.phone}</a></li>
-            <li className="flex items-start gap-3"><Mail className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <span>{settings.email}</span></li>
+            <li className="flex items-start gap-3"><Mail className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <a href={`mailto:${settings.email}`} className="hover:text-white break-all">{settings.email}</a></li>
             <li className="flex items-start gap-3"><MapPin className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <a href={getMapsLink(settings.address)} target="_blank" rel="noreferrer" className="hover:text-white">{settings.address}</a></li>
           </ul>
         </div>
       </div>
       <div className="border-t border-white/10">
-        <div className="container-narrow py-5 text-center text-xs text-white/55">
-          © 2026 {settings.company_name}. Tüm hakları saklıdır.
+        <div className="container-narrow py-5 flex flex-col gap-3 text-center text-xs text-white/55 md:flex-row md:items-center md:justify-between md:text-left">
+          <p>© 2026 Akınal İnşaat. Tüm hakları saklıdır.</p>
+          <nav aria-label="Yasal bağlantılar" className="flex flex-wrap justify-center gap-x-4 gap-y-2 md:justify-end">
+            {legalLinks.map((item) => (
+              <Link key={item.to} to={item.to} className="hover:text-white transition-colors">
+                {item.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </div>
     </footer>

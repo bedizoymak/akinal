@@ -10,10 +10,12 @@ const PublicLayout = lazy(() => import("./components/site/PublicLayout"));
 const Home = lazy(() => import("./pages/site/Home"));
 const About = lazy(() => import("./pages/site/About"));
 const Services = lazy(() => import("./pages/site/Services"));
+const ServiceDetail = lazy(() => import("./pages/site/ServiceDetail"));
 const Projects = lazy(() => import("./pages/site/Projects"));
 const ProjectDetail = lazy(() => import("./pages/site/ProjectDetail"));
 const UrbanTransformation = lazy(() => import("./pages/site/UrbanTransformation"));
 const Contact = lazy(() => import("./pages/site/Contact"));
+const LegalPage = lazy(() => import("./pages/site/LegalPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const AdminAuth = lazy(() => import("./pages/admin/AdminAuth"));
@@ -80,14 +82,18 @@ const App = () => (
 
               <Route element={<PublicLayout />}>
                 <Route path="/" element={<Home />} />
-                <Route path="/hakkimizda" element={<About />} />
-                <Route path="/hizmetlerimiz" element={<Services />} />
-                <Route path="/projelerimiz" element={<Projects />} />
-                <Route path="/projelerimiz/:slug" element={<ProjectDetail />} />
-                <Route path="/kentsel-donusum" element={<UrbanTransformation />} />
-                <Route path="/iletisim" element={<Contact />} />
-                <Route path="*" element={<NotFound />} />
-              </Route>
+              <Route path="/hakkimizda" element={<About />} />
+              <Route path="/hizmetlerimiz" element={<Services />} />
+              <Route path="/hizmetlerimiz/:slug" element={<ServiceDetail />} />
+              <Route path="/projelerimiz" element={<Projects />} />
+              <Route path="/projelerimiz/:slug" element={<ProjectDetail />} />
+              <Route path="/kentsel-donusum" element={<UrbanTransformation />} />
+              <Route path="/iletisim" element={<Contact />} />
+              <Route path="/gizlilik-politikasi" element={<LegalPage />} />
+              <Route path="/cerez-politikasi" element={<LegalPage />} />
+              <Route path="/kullanim-sartlari" element={<LegalPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
             </Routes>
           </Suspense>
         </BrowserRouter>
