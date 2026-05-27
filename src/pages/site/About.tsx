@@ -11,6 +11,8 @@ const VALUES = [
 ];
 
 export default function About() {
+  const experienceYears = new Date().getFullYear() - 2011;
+
   return (
     <>
       <Seo
@@ -26,6 +28,9 @@ export default function About() {
         <div className="container-narrow">
           <div className="text-xs uppercase tracking-[0.2em] text-accent font-semibold mb-3">Hakkımızda</div>
           <h1 className="font-display text-4xl md:text-6xl font-bold leading-tight max-w-3xl">Güvenli yapılar, planlı süreçler, kalıcı değer.</h1>
+          <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/70 md:text-base">
+            2011'den bugüne güvenilir inşaat yaklaşımı ve {experienceYears}+ yıllık sektör deneyimi.
+          </p>
         </div>
       </section>
 
@@ -33,7 +38,7 @@ export default function About() {
         <div className="container-narrow grid lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2 space-y-6 text-base md:text-lg leading-relaxed text-foreground/85">
             <p>
-              Akinal İnşaat; güvenli, estetik ve uzun ömürlü yapılar üretme hedefiyle kentsel dönüşüm ve inşaat projelerinde profesyonel çözümler sunar. Arsa sahipleri, bina sakinleri ve yatırımcılar için sürecin her aşamasında şeffaf, planlı ve teknik bir yaklaşım benimser.
+              Akinal İnşaat; 2011'den bu yana süren saha deneyimiyle güvenli, estetik ve uzun ömürlü yapılar üretme hedefiyle kentsel dönüşüm ve inşaat projelerinde profesyonel çözümler sunar. Arsa sahipleri, bina sakinleri ve yatırımcılar için sürecin her aşamasında şeffaf, planlı ve teknik bir yaklaşım benimser.
             </p>
             <p>
               Kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde fizibiliteden ruhsata, uygulamadan teslime kadar tüm aşamaları tek elden yönetiyor; mülk sahiplerine süreci anlaşılır ve güvenilir hâle getiriyoruz.

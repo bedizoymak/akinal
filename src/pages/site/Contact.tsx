@@ -43,6 +43,7 @@ const schema = z.object({
 export default function Contact() {
   const { settings } = useSiteSettings();
   const { toast } = useToast();
+  const experienceYears = new Date().getFullYear() - 2011;
   const [form, setForm] = useState({ full_name: "", phone: "", email: "", service_type: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
@@ -140,6 +141,9 @@ export default function Contact() {
         <div className="container-narrow">
           <div className="text-xs uppercase tracking-[0.2em] text-accent font-semibold mb-3">İletişim</div>
           <h1 className="font-display text-4xl md:text-6xl font-bold leading-tight">Bize Ulaşın</h1>
+          <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/70 md:text-base">
+            2011'den bu yana süren saha deneyimiyle, projeniz için doğru başlangıç adımını birlikte netleştirelim.
+          </p>
         </div>
       </section>
 
@@ -170,6 +174,9 @@ export default function Contact() {
 
           <form onSubmit={onSubmit} className="p-6 md:p-8 rounded-lg border border-border bg-card shadow-card-soft">
             <h2 className="font-display text-2xl font-bold mb-6">Projeniz İçin Bize Ulaşın</h2>
+            <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
+              {experienceYears}+ yıllık sektör deneyimiyle, talebinizi teknik ve uygulanabilir bir çerçevede değerlendirelim.
+            </p>
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <Label htmlFor="full_name">Ad Soyad *</Label>

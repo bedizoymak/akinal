@@ -74,6 +74,7 @@ const APPROACH = [
 export default function Home() {
   const { settings } = useSiteSettings();
   const [projects, setProjects] = useState<ProjectCardData[]>([]);
+  const experienceYears = new Date().getFullYear() - 2011;
 
   useEffect(() => {
     supabase
@@ -114,9 +115,12 @@ export default function Home() {
                 <Link to="/projelerimiz">Projelerimizi İnceleyin</Link>
               </Button>
             </div>
-            <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl">
+            <div className="mt-12 grid max-w-5xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:gap-4">
+              <div className="flex min-w-0 items-center gap-2 text-xs leading-snug text-white/80 xl:text-sm">
+                <ShieldCheck className="h-4 w-4 text-accent shrink-0" /> {experienceYears}+ yıllık sektör deneyimi
+              </div>
               {TRUST.map((t) => (
-                <div key={t} className="flex items-center gap-2 text-sm text-white/80">
+                <div key={t} className="flex min-w-0 items-center gap-2 text-xs leading-snug text-white/80 xl:text-sm">
                   <ShieldCheck className="h-4 w-4 text-accent shrink-0" /> {t}
                 </div>
               ))}
@@ -134,7 +138,7 @@ export default function Home() {
               <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Hakkımızda</div>
               <h2 className="mb-6 font-display text-3xl font-bold leading-tight md:text-5xl">Güvenli yapılar için planlı, teknik ve şeffaf yaklaşım</h2>
               <p className="text-base leading-relaxed text-muted-foreground md:text-lg">
-                Akinal İnşaat; kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde süreci yalnızca inşa etmekle değil, doğru kararlarla yönetmekle ele alır. Arsa sahipleri, bina sakinleri ve yatırımcılar için her adımda anlaşılır, kontrollü ve güven veren bir çalışma modeli sunar.
+                Akinal İnşaat; 2011'den bu yana süren saha deneyimiyle kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde süreci yalnızca inşa etmekle değil, doğru kararlarla yönetmekle ele alır. Arsa sahipleri, bina sakinleri ve yatırımcılar için her adımda anlaşılır, kontrollü ve güven veren bir çalışma modeli sunar.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button asChild className="bg-primary text-primary-foreground hover:bg-primary-glow">
