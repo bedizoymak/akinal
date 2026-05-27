@@ -33,9 +33,9 @@ export default function SiteFooter() {
     <footer className="bg-gradient-dark text-white mt-24">
       <div className="container-narrow py-16 grid gap-12 md:grid-cols-2 lg:grid-cols-4">
         <div>
-          <Link to="/" className="inline-flex items-center" aria-label="Akınal İnşaat">
+          <Link to="/" className="inline-flex items-center" aria-label="AKİNAL İNŞAAT">
             <div className="bg-white rounded-md p-3 shadow-card-soft inline-flex">
-              <img src={logoImg} alt="Akınal İnşaat" className="h-12 w-auto object-contain" />
+              <img src={logoImg} alt="AKİNAL İNŞAAT" className="h-12 w-auto object-contain" />
             </div>
           </Link>
           <p className="mt-5 text-sm text-white/70 leading-relaxed">{settings.footer_description}</p>
@@ -83,7 +83,7 @@ export default function SiteFooter() {
       </div>
       <div className="border-t border-white/10">
         <div className="container-narrow py-5 flex flex-col gap-3 text-center text-xs text-white/55 md:flex-row md:items-center md:justify-between md:text-left">
-          <p>© 2026 Akınal İnşaat. Tüm hakları saklıdır.</p>
+          <p>© 2026 AKİNAL İNŞAAT. Tüm hakları saklıdır.</p>
           <nav aria-label="Yasal bağlantılar" className="flex flex-wrap justify-center gap-x-4 gap-y-2 md:justify-end">
             {legalLinks.map((item) => (
               <Link key={item.to} to={item.to} className="hover:text-white transition-colors">
@@ -91,6 +91,19 @@ export default function SiteFooter() {
               </Link>
             ))}
           </nav>
+        </div>
+      </div>
+      <div className="border-t border-white/[0.06]">
+        <div className="container-narrow py-3 text-center text-[10px] leading-none text-white/35">
+          made by{" "}
+          <a
+            href="https://eclipsemuhendislik.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-colors hover:text-white/60"
+          >
+            Eclipse Mühendislik
+          </a>
         </div>
       </div>
     </footer>

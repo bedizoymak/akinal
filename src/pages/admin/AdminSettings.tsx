@@ -424,7 +424,7 @@ export default function AdminSettings() {
 
             <PreviewPanel title="Ana Sayfa Hero Önizleme" description="Ana sayfanın ilk ekranındaki mesajın kompakt önizlemesi.">
               <div className="rounded-lg bg-gradient-dark p-5 text-white">
-                <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent">Akınal İnşaat</div>
+                <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent">AKİNAL İNŞAAT</div>
                 <div className="font-display text-2xl font-bold leading-tight">{data.hero_title || "Hero başlığı girilmemiş"}</div>
                 <p className="mt-3 text-sm leading-relaxed text-white/75">{data.hero_subtitle || "Hero açıklaması girilmemiş"}</p>
               </div>
@@ -454,7 +454,7 @@ export default function AdminSettings() {
             <PreviewPanel title="Google Sitelinks Hedef Önizlemesi" description="Ana marka aramasında hedeflenen bağlantı mimarisinin temsili görünümü.">
               <div className="rounded-lg border border-border bg-white p-4">
                 <div className="text-sm text-[#202124]">{domainPreview}</div>
-                <div className="mt-1 text-xl text-[#1a0dab]">{data.company_name || "Akınal İnşaat"}</div>
+                <div className="mt-1 text-xl text-[#1a0dab]">{data.company_name || "AKİNAL İNŞAAT"}</div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {["Projelerimiz", "Kentsel Dönüşüm", "Hakkımızda", "İletişim"].map((item) => (
                     <div key={item} className="rounded-md border border-[#dadce0] px-3 py-2">

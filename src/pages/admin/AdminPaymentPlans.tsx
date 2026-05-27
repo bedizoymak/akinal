@@ -165,7 +165,7 @@ export default function AdminPaymentPlans() {
               </div>
               <div className="mt-3 text-xs text-muted-foreground">Vade: {formatDate(p.due_date)} · {daysUntil(p.due_date) < 0 ? `${Math.abs(daysUntil(p.due_date))} gün geçti` : `${daysUntil(p.due_date)} gün kaldı`}</div>
               <div className="mt-3 flex flex-wrap gap-2">
-                {p.customer?.whatsapp && <Button asChild size="sm" variant="outline"><a href={whatsappLink(p.customer.whatsapp, `Merhaba, Akınal İnşaat ödeme planınıza göre ${formatDate(p.due_date)} tarihli ${formatTRY(p.remain)} ödemeniz bulunmaktadır. Bilginize sunarız.`)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 text-emerald-700" /> Hatırlat</a></Button>}
+                {p.customer?.whatsapp && <Button asChild size="sm" variant="outline"><a href={whatsappLink(p.customer.whatsapp, `Merhaba, AKİNAL İNŞAAT ödeme planınıza göre ${formatDate(p.due_date)} tarihli ${formatTRY(p.remain)} ödemeniz bulunmaktadır. Bilginize sunarız.`)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 text-emerald-700" /> Hatırlat</a></Button>}
                 <Button size="sm" variant="outline" onClick={() => openEdit(p)}><Edit className="h-4 w-4" /> Düzenle</Button>
                 <Button size="sm" variant="ghost" onClick={() => remove(p.id)}><Trash2 className="h-4 w-4 text-destructive" /> Sil</Button>
               </div>
@@ -195,7 +195,7 @@ export default function AdminPaymentPlans() {
                   <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(p.computed))}>{p.computed}</span></td>
                   <td className="p-3 text-right">
                     <div className="flex justify-end gap-1">
-                      {p.customer?.whatsapp && <Button asChild size="sm" variant="ghost" title="WhatsApp ile Hatırlat"><a href={whatsappLink(p.customer.whatsapp, `Merhaba, Akınal İnşaat ödeme planınıza göre ${formatDate(p.due_date)} tarihli ${formatTRY(p.remain)} ödemeniz bulunmaktadır. Bilginize sunarız.`)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 text-emerald-700" /></a></Button>}
+                      {p.customer?.whatsapp && <Button asChild size="sm" variant="ghost" title="WhatsApp ile Hatırlat"><a href={whatsappLink(p.customer.whatsapp, `Merhaba, AKİNAL İNŞAAT ödeme planınıza göre ${formatDate(p.due_date)} tarihli ${formatTRY(p.remain)} ödemeniz bulunmaktadır. Bilginize sunarız.`)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 text-emerald-700" /></a></Button>}
                       <Button size="sm" variant="ghost" title="Düzenle" onClick={() => openEdit(p)}><Edit className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Düzenle</span></Button>
                       <Button size="sm" variant="ghost" title="Sil" onClick={() => remove(p.id)}><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only xl:not-sr-only xl:ml-1">Sil</span></Button>
                     </div>

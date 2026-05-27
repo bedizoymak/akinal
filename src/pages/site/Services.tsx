@@ -17,7 +17,7 @@ export default function Services() {
     <>
       <Seo
         title="Hizmetlerimiz"
-        description="Akınal İnşaat'ın kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme hizmetlerini inceleyin."
+        description="AKİNAL İNŞAAT'ın kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme hizmetlerini inceleyin."
         canonical="/hizmetlerimiz"
         breadcrumbs={[
           { name: "Ana Sayfa", path: "/" },

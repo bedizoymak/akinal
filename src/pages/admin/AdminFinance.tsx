@@ -255,7 +255,7 @@ export default function AdminFinance() {
                     <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md text-xs", p.days === 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-700")}>{p.days} gün</span></td>
                     <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(label))}>{label}</span></td>
                     <td className="p-3 text-right">
-                      {p.customer?.whatsapp && <Button asChild size="sm" variant="outline"><a href={whatsappLink(p.customer.whatsapp, `Merhaba, Akınal İnşaat ödeme planınıza göre ${formatDate(p.due_date)} tarihli ${formatTRY(p.remain)} ödemeniz bulunmaktadır. Bilginize sunarız.`)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 mr-1 text-emerald-700" /> WhatsApp ile Hatırlat</a></Button>}
+                      {p.customer?.whatsapp && <Button asChild size="sm" variant="outline"><a href={whatsappLink(p.customer.whatsapp, `Merhaba, AKİNAL İNŞAAT ödeme planınıza göre ${formatDate(p.due_date)} tarihli ${formatTRY(p.remain)} ödemeniz bulunmaktadır. Bilginize sunarız.`)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 mr-1 text-emerald-700" /> WhatsApp ile Hatırlat</a></Button>}
                     </td>
                   </tr>
                 );
@@ -281,7 +281,7 @@ export default function AdminFinance() {
                   <td className="p-3 text-right font-medium">{formatTRY(p.remain)}</td>
                   <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass("Gecikti"))}>Vadesi Geçti</span></td>
                   <td className="p-3 text-right">
-                    {p.customer?.whatsapp && <Button asChild size="sm" variant="outline"><a href={whatsappLink(p.customer.whatsapp, `Merhaba, Akınal İnşaat ödeme planınıza göre ${formatDate(p.due_date)} tarihli ${formatTRY(p.remain)} ödemeniz bulunmaktadır. Bilginize sunarız.`)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 mr-1 text-emerald-700" /> WhatsApp</a></Button>}
+                    {p.customer?.whatsapp && <Button asChild size="sm" variant="outline"><a href={whatsappLink(p.customer.whatsapp, `Merhaba, AKİNAL İNŞAAT ödeme planınıza göre ${formatDate(p.due_date)} tarihli ${formatTRY(p.remain)} ödemeniz bulunmaktadır. Bilginize sunarız.`)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 mr-1 text-emerald-700" /> WhatsApp</a></Button>}
                   </td>
                 </tr>
               ))}

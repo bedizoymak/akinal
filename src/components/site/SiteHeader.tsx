@@ -37,10 +37,10 @@ export default function SiteHeader() {
       )}
     >
       <div className="container-narrow flex h-20 md:h-24 items-center justify-between gap-6">
-        <Link to="/" className="flex items-center shrink-0 group" aria-label="Akınal İnşaat - Ana Sayfa">
+        <Link to="/" className="flex items-center shrink-0 group" aria-label="AKİNAL İNŞAAT - Ana Sayfa">
           <img
             src={logoImg}
-            alt="Akınal İnşaat"
+            alt="AKİNAL İNŞAAT"
             className="h-12 md:h-16 w-auto object-contain"
             loading="eager"
             decoding="async"

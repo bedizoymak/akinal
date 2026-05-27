@@ -54,9 +54,9 @@ function ReportHeader({ title, dateRange }: { title: string; dateRange: string }
     <div className="hidden print:block mb-6 pb-4 border-b">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <img src={logoImg} alt="Akınal İnşaat" className="h-12" />
+          <img src={logoImg} alt="AKİNAL İNŞAAT" className="h-12" />
           <div>
-            <div className="font-display font-bold text-xl">Akınal İnşaat</div>
+            <div className="font-display font-bold text-xl">AKİNAL İNŞAAT</div>
             <div className="text-xs text-muted-foreground">Yönetim Paneli</div>
           </div>
         </div>
@@ -73,7 +73,7 @@ function ReportHeader({ title, dateRange }: { title: string; dateRange: string }
 function ReportFooter() {
   return (
     <div className="hidden print:block mt-8 pt-4 border-t text-xs text-center text-muted-foreground">
-      Akınal İnşaat Yönetim Paneli tarafından oluşturulmuştur.
+      AKİNAL İNŞAAT Yönetim Paneli tarafından oluşturulmuştur.
     </div>
   );
 }

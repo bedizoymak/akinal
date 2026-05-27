@@ -129,7 +129,7 @@ export default function Contact() {
     <>
       <Seo
         title="İletişim"
-        description="Akınal İnşaat telefon, WhatsApp, e-posta, adres ve iletişim formu üzerinden proje ve kentsel dönüşüm talepleriniz için bize ulaşın."
+        description="AKİNAL İNŞAAT telefon, WhatsApp, e-posta, adres ve iletişim formu üzerinden proje ve kentsel dönüşüm talepleriniz için bize ulaşın."
         canonical="/iletisim"
         breadcrumbs={[
           { name: "Ana Sayfa", path: "/" },

@@ -26,7 +26,7 @@ export interface SiteSettings {
 
 const defaults: SiteSettings = {
   id: "",
-  company_name: "Akınal İnşaat",
+  company_name: "AKİNAL İNŞAAT",
   phone: CONTACT_PHONE,
   whatsapp_number: CONTACT_PHONE,
   email: "info@akinalinsaat.com",
@@ -35,12 +35,12 @@ const defaults: SiteSettings = {
   instagram_url: null,
   facebook_url: null,
   linkedin_url: null,
-  footer_description: "Akınal İnşaat; kentsel dönüşüm ve inşaat projelerinde güvenilir, planlı ve teknik çözümler sunar.",
+  footer_description: "AKİNAL İNŞAAT; kentsel dönüşüm ve inşaat projelerinde güvenilir, planlı ve teknik çözümler sunar.",
   hero_title: "Güvenli Yapılar, Değerli Yaşam Alanları",
-  hero_subtitle: "Akınal İnşaat olarak kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde; planlama, ruhsat, uygulama ve teslim süreçlerini profesyonel şekilde yönetiyoruz.",
+  hero_subtitle: "AKİNAL İNŞAAT olarak kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde; planlama, ruhsat, uygulama ve teslim süreçlerini profesyonel şekilde yönetiyoruz.",
   whatsapp_message: "Merhaba, kentsel dönüşüm / inşaat hizmetleriniz hakkında bilgi almak istiyorum.",
-  seo_title: "Akınal İnşaat | Kentsel Dönüşüm ve İnşaat Hizmetleri",
-  seo_description: "Akınal İnşaat; kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme alanlarında güvenilir çözümler sunar.",
+  seo_title: "AKİNAL İNŞAAT | Kentsel Dönüşüm ve İnşaat Hizmetleri",
+  seo_description: "AKİNAL İNŞAAT; kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme alanlarında güvenilir çözümler sunar.",
 };
 
 export function useSiteSettings() {

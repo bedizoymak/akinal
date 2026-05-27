@@ -182,7 +182,7 @@ export default function AdminCustomers() {
                   </td>
                   <td className="p-3">
                     <div className="flex items-center gap-1 text-xs"><Phone className="h-3 w-3" /> {c.phone || "-"}</div>
-                    {c.whatsapp && <a href={whatsappLink(c.whatsapp, "Merhaba, Akınal İnşaat")} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-emerald-700"><MessageCircle className="h-3 w-3" /> {c.whatsapp}</a>}
+                    {c.whatsapp && <a href={whatsappLink(c.whatsapp, "Merhaba, AKİNAL İNŞAAT")} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-emerald-700"><MessageCircle className="h-3 w-3" /> {c.whatsapp}</a>}
                   </td>
                   <td className="p-3 text-xs">{c.projectNames.join(", ") || <span className="text-muted-foreground">—</span>}</td>
                   <td className="p-3 text-right font-medium">{formatTRY(c.totalDue)}</td>

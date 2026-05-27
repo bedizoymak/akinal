@@ -10,8 +10,12 @@ type LegalContent = {
 const legalPages: Record<string, LegalContent> = {
   "/gizlilik-politikasi": {
     title: "Gizlilik Politikası",
-    description: "Akınal İnşaat ile paylaşılan bilgilerin nasıl değerlendirildiğine ilişkin temel bilgilendirme.",
+    description: "AKİNAL İNŞAAT ile paylaşılan bilgilerin nasıl değerlendirildiğine ilişkin temel bilgilendirme.",
     sections: [
+      {
+        title: "Şirket unvanı",
+        body: "AKİNAL İNŞAAT OTOMOTİV GIDA TURİZM NAKLİYE SANAYİİ VE TİCARET LİMİTED ŞİRKETİ",
+      },
       {
         title: "Toplanan bilgiler",
         body: "İletişim formu üzerinden ad, soyad, telefon, e-posta ve mesaj bilgileri alınabilir. Bu bilgiler yalnızca talebinizi değerlendirmek ve sizinle iletişime geçmek amacıyla kullanılır.",
@@ -31,6 +35,10 @@ const legalPages: Record<string, LegalContent> = {
     description: "Web sitesinde kullanılan çerez türleri ve tercihlerinize ilişkin kısa bilgilendirme.",
     sections: [
       {
+        title: "Şirket unvanı",
+        body: "AKİNAL İNŞAAT OTOMOTİV GIDA TURİZM NAKLİYE SANAYİİ VE TİCARET LİMİTED ŞİRKETİ",
+      },
+      {
         title: "Zorunlu çerezler",
         body: "Sitenin güvenli ve doğru şekilde çalışması için gerekli olan temel çerezlerdir. Bu çerezler kapatılamaz.",
       },
@@ -46,19 +54,23 @@ const legalPages: Record<string, LegalContent> = {
   },
   "/kullanim-sartlari": {
     title: "Kullanım Şartları",
-    description: "Akınal İnşaat web sitesinin kullanımına ilişkin temel şartlar.",
+    description: "AKİNAL İNŞAAT web sitesinin kullanımına ilişkin temel şartlar.",
     sections: [
+      {
+        title: "Şirket unvanı",
+        body: "AKİNAL İNŞAAT OTOMOTİV GIDA TURİZM NAKLİYE SANAYİİ VE TİCARET LİMİTED ŞİRKETİ",
+      },
       {
         title: "Site içeriği",
         body: "Bu web sitesindeki proje, hizmet ve bilgilendirme içerikleri genel tanıtım amacı taşır. Detaylı teklif ve uygulama koşulları proje özelinde değerlendirilir.",
       },
       {
         title: "Bağlantılar ve sorumluluk",
-        body: "Sitede yer alan iletişim, harita ve yönlendirme bağlantıları kullanıcı kolaylığı için sunulur. Dış servislerde oluşabilecek teknik aksaklıklardan Akınal İnşaat sorumlu değildir.",
+        body: "Sitede yer alan iletişim, harita ve yönlendirme bağlantıları kullanıcı kolaylığı için sunulur. Dış servislerde oluşabilecek teknik aksaklıklardan AKİNAL İNŞAAT sorumlu değildir.",
       },
       {
         title: "Güncellemeler",
-        body: "Akınal İnşaat, web sitesi içeriklerini ve kullanım şartlarını gerektiğinde güncelleme hakkını saklı tutar.",
+        body: "AKİNAL İNŞAAT, web sitesi içeriklerini ve kullanım şartlarını gerektiğinde güncelleme hakkını saklı tutar.",
       },
     ],
   },
@@ -71,7 +83,7 @@ export default function LegalPage() {
   return (
     <>
       <Seo
-        title={`${content.title} | Akınal İnşaat`}
+        title={`${content.title} | AKİNAL İNŞAAT`}
         description={content.description}
         breadcrumbs={[
           { name: "Ana Sayfa", path: "/" },

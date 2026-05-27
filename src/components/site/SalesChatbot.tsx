@@ -62,7 +62,7 @@ function getLocalFallbackResponse(question: string) {
   }
 
   if (includesAny(normalized, ["kentsel donusum", "donusum", "riskli yapi", "riskli bina"])) {
-    return "Akınal İnşaat kentsel dönüşüm süreçlerinde ön değerlendirme, proje planlama ve uygulama konularında destek sağlar. Sürecin detayları yapı ve arsa durumuna göre değiştiği için ön görüşme için WhatsApp üzerinden ekibimize ulaşabilirsiniz. Kentsel dönüşüm sayfası: /kentsel-donusum";
+    return "AKİNAL İNŞAAT kentsel dönüşüm süreçlerinde ön değerlendirme, proje planlama ve uygulama konularında destek sağlar. Sürecin detayları yapı ve arsa durumuna göre değiştiği için ön görüşme için WhatsApp üzerinden ekibimize ulaşabilirsiniz. Kentsel dönüşüm sayfası: /kentsel-donusum";
   }
 
   if (includesAny(normalized, ["kat karsiligi", "arsa", "arsa sahibi"])) {
@@ -78,10 +78,10 @@ function getLocalFallbackResponse(question: string) {
   }
 
   if (includesAny(normalized, ["hizmet", "ne yapiyorsunuz", "ne is yapiyorsunuz", "insaat"])) {
-    return "Akınal İnşaat; kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme alanlarında hizmet verir. İhtiyacınıza göre doğru yönlendirme için WhatsApp üzerinden kısa bir ön görüşme yapabilirsiniz.";
+    return "AKİNAL İNŞAAT; kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme alanlarında hizmet verir. İhtiyacınıza göre doğru yönlendirme için WhatsApp üzerinden kısa bir ön görüşme yapabilirsiniz.";
   }
 
-  return "Bu konuda en doğru yönlendirmeyi satış ekibimiz yapabilir. Akınal İnşaat projeleri, kentsel dönüşüm, kat karşılığı inşaat ve iletişim konularında WhatsApp üzerinden bize ulaşabilirsiniz.";
+  return "Bu konuda en doğru yönlendirmeyi satış ekibimiz yapabilir. AKİNAL İNŞAAT projeleri, kentsel dönüşüm, kat karşılığı inşaat ve iletişim konularında WhatsApp üzerinden bize ulaşabilirsiniz.";
 }
 
 function getHistoryForFunction(messages: ChatMessage[]) {
