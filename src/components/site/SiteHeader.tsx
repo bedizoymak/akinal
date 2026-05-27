@@ -1,7 +1,7 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import logoImg from "@/assets/logo.png";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
@@ -16,10 +16,27 @@ const NAV = [
 
 export default function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const [renderMobileMenu, setRenderMobileMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const closeTimerRef = useRef<number>();
   const { pathname } = useLocation();
   const { settings } = useSiteSettings();
   const companyName = settings.company_name || "Şirket";
+
+  function openMobileMenu() {
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    setRenderMobileMenu(true);
+    window.requestAnimationFrame(() => setOpen(true));
+  }
+
+  function closeMobileMenu() {
+    setOpen(false);
+  }
+
+  function toggleMobileMenu() {
+    if (open) closeMobileMenu();
+    else openMobileMenu();
+  }
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -28,7 +45,19 @@ export default function SiteHeader() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => closeMobileMenu(), [pathname]);
+
+  useEffect(() => {
+    if (open) {
+      setRenderMobileMenu(true);
+      return;
+    }
+
+    closeTimerRef.current = window.setTimeout(() => setRenderMobileMenu(false), 350);
+    return () => {
+      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    };
+  }, [open]);
 
   return (
     <header
@@ -76,23 +105,39 @@ export default function SiteHeader() {
           aria-controls="site-mobile-menu"
           aria-expanded={open}
           className="lg:hidden p-2 -mr-2 text-foreground"
-          onClick={() => setOpen((o) => !o)}
+          onClick={toggleMobileMenu}
         >
           {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
 
-      {open && (
-        <div id="site-mobile-menu" className="lg:hidden border-t border-border bg-background">
+      {renderMobileMenu && (
+        <div
+          id="site-mobile-menu"
+          style={{
+            transitionDuration: open ? "450ms" : "340ms",
+            transitionTimingFunction: open ? "cubic-bezier(0.16, 1, 0.3, 1)" : "cubic-bezier(0.22, 1, 0.36, 1)",
+          }}
+          className={cn(
+            "lg:hidden overflow-hidden border-t border-border bg-background transition-[max-height,opacity] motion-reduce:transition-none",
+            open ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+          )}
+        >
           <nav className="container-narrow py-4 flex flex-col">
-            {NAV.map((n) => (
+            {NAV.map((n, index) => (
               <NavLink
                 key={n.to}
                 to={n.to}
                 end={n.to === "/"}
+                style={{
+                  transitionDelay: open ? `${110 + index * 30}ms` : "0ms",
+                  transitionDuration: "320ms",
+                  transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
+                }}
                 className={({ isActive }) =>
                   cn(
-                    "px-3 py-3 text-base font-medium rounded-md",
+                    "translate-y-0 px-3 py-3 text-base font-medium rounded-md opacity-100 transition-[opacity,transform] motion-reduce:transition-none",
+                    renderMobileMenu && !open && "translate-y-1 opacity-0",
                     isActive ? "text-accent bg-muted" : "text-foreground hover:bg-muted"
                   )
                 }
