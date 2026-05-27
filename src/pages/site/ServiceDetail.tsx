@@ -107,7 +107,7 @@ export default function ServiceDetailPage() {
   return (
     <>
       <Seo
-        title={`${service.title} | AKİNAL İNŞAAT`}
+        title={service.title}
         description={service.description}
         breadcrumbs={[
           { name: "Ana Sayfa", path: "/" },

@@ -39,7 +39,7 @@ const defaults: SiteSettings = {
   hero_title: "Güvenli Yapılar, Değerli Yaşam Alanları",
   hero_subtitle: "AKİNAL İNŞAAT olarak kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde; planlama, ruhsat, uygulama ve teslim süreçlerini profesyonel şekilde yönetiyoruz.",
   whatsapp_message: "Merhaba, kentsel dönüşüm / inşaat hizmetleriniz hakkında bilgi almak istiyorum.",
-  seo_title: "AKİNAL İNŞAAT | Kentsel Dönüşüm ve İnşaat Hizmetleri",
+  seo_title: "Akinal İnşaat | Kentsel Dönüşüm",
   seo_description: "AKİNAL İNŞAAT; kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme alanlarında güvenilir çözümler sunar.",
 };
 

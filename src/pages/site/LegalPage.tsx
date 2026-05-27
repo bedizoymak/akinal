@@ -83,7 +83,7 @@ export default function LegalPage() {
   return (
     <>
       <Seo
-        title={`${content.title} | AKİNAL İNŞAAT`}
+        title={content.title}
         description={content.description}
         breadcrumbs={[
           { name: "Ana Sayfa", path: "/" },

@@ -19,6 +19,7 @@ type SeoProps = {
 };
 
 const DEFAULT_SITE_URL = "https://akinalinsaat.com";
+const TITLE_BRAND = "Akinal İnşaat";
 
 const NAVIGATION_ITEMS = [
   { name: "Ana Sayfa", path: "/" },
@@ -73,7 +74,7 @@ export default function Seo({ title, description, canonical, noIndex, structured
   const { settings } = useSiteSettings();
   const origin = getOrigin();
   const canonicalUrl = toAbsoluteUrl(canonical || getCurrentPath(), origin);
-  const pageTitle = title ? `${title} | ${settings.company_name}` : settings.seo_title;
+  const pageTitle = title ? `${TITLE_BRAND} | ${title}` : settings.seo_title;
   const pageDescription = description || settings.seo_description;
   const sameAs = [settings.instagram_url, settings.facebook_url, settings.linkedin_url].filter(Boolean);
 
