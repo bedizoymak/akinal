@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getWhatsAppLink, useSiteSettings } from "@/hooks/useSiteSettings";
 import { cn } from "@/lib/utils";
 
-const ASSISTANT_NAME = "AKINAL Yapay Zeka Asistanı";
+const ASSISTANT_NAME = "Akinal İnşaat Yapay Zeka Asistanı";
 const MESSAGE_LIMIT = 500;
 
 type ChatMessage = {
@@ -105,7 +105,7 @@ function AssistantAvatar() {
 function TypingBubble() {
   return (
     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-      <span>AKINAL yazıyor</span>
+      <span>Akinal İnşaat yazıyor</span>
       <span className="flex items-center gap-1" aria-hidden="true">
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.2s]" />
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.1s]" />
@@ -148,7 +148,7 @@ export default function SalesChatbot() {
     setFormError("");
     const history = getHistoryForFunction(messages);
     const visitorMessage = createMessage("visitor", text);
-    const loadingMessage = createMessage("assistant", "AKINAL yazıyor...", { isLoading: true });
+    const loadingMessage = createMessage("assistant", "Akinal İnşaat yazıyor...", { isLoading: true });
 
     setMessages((current) => [...current, visitorMessage, loadingMessage]);
     setInput("");
@@ -199,7 +199,7 @@ export default function SalesChatbot() {
     <>
       {isOpen && (
         <section
-          aria-label="AKINAL Yapay Zeka Asistanı"
+          aria-label="Akinal İnşaat Yapay Zeka Asistanı"
           className="fixed inset-0 z-40 flex h-[100dvh] w-full max-w-full flex-col overflow-hidden bg-background text-foreground shadow-elegant animate-in fade-in slide-in-from-bottom-3 duration-200 sm:inset-auto sm:bottom-28 sm:right-6 sm:h-[min(620px,calc(100dvh-8rem))] sm:w-[min(420px,calc(100vw-3rem))] sm:rounded-2xl sm:border sm:border-border sm:bg-card"
         >
           <header className="flex shrink-0 items-center gap-3 border-b border-border/70 bg-card/95 px-4 py-4 backdrop-blur">
@@ -323,8 +323,8 @@ export default function SalesChatbot() {
       {!isOpen && (
         <Button
           type="button"
-          aria-label="AKINAL Yapay Zeka Asistanı aç"
-          title="AKINAL Yapay Zeka Asistanı aç"
+          aria-label="Akinal İnşaat Yapay Zeka Asistanı aç"
+          title="Akinal İnşaat Yapay Zeka Asistanı aç"
           onClick={() => setIsOpen(true)}
           className="fixed bottom-24 right-5 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-accent-glow transition-all duration-200 hover:scale-105 hover:bg-primary-glow md:bottom-28 md:right-6 md:h-16 md:w-16"
         >

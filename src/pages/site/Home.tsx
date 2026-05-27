@@ -138,7 +138,7 @@ export default function Home() {
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button asChild className="bg-primary text-primary-foreground hover:bg-primary-glow">
-                  <Link to="/hakkimizda">Akinal Yaklaşımını İnceleyin <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                  <Link to="/hakkimizda">Akinal İnşaat Yaklaşımını İnceleyin <ArrowRight className="ml-2 h-4 w-4" /></Link>
                 </Button>
                 <Button asChild variant="outline" className="border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground">
                   <Link to="/iletisim">Ön Görüşme Planlayın</Link>
@@ -162,7 +162,7 @@ export default function Home() {
               <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-elegant">
                 <img src={sampleProject1} alt="Akinal İnşaat proje uygulama yaklaşımı" className="aspect-[4/3] w-full object-cover" />
                 <div className="border-t border-border bg-card p-5">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Akinal Yaklaşımı</div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Akinal İnşaat Yaklaşımı</div>
                   <div className="mt-1 font-display text-xl font-bold text-foreground">Projeye başlamadan önce netlik sağlarız.</div>
                 </div>
               </div>
@@ -219,7 +219,7 @@ export default function Home() {
 
       {/* KENTSEL DÖNÜŞÜM TIMELINE */}
       <section className="relative overflow-hidden py-20 md:py-28">
-        {/* Temporary decorative visual; replace with real Akinal project imagery before production if needed. */}
+          {/* Temporary decorative visual; replace with real Akinal İnşaat project imagery before production if needed. */}
         <img src={blueprintPattern} alt="" aria-hidden="true" className="absolute -right-40 top-10 hidden h-[560px] w-[680px] object-cover opacity-[0.045] lg:block" />
         <div className="container-narrow relative">
           <div className="mb-14 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
@@ -255,11 +255,11 @@ export default function Home() {
       {/* WHY US — DARK */}
       <section className="relative overflow-hidden bg-gradient-dark py-20 text-white md:py-28">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,hsl(var(--accent)/0.18),transparent_32%)]" />
-        {/* Temporary decorative visual; replace with real Akinal project imagery before production if needed. */}
+          {/* Temporary decorative visual; replace with real Akinal İnşaat project imagery before production if needed. */}
         <img src={urbanSilhouette} alt="" aria-hidden="true" className="absolute inset-x-0 bottom-0 h-64 w-full object-cover opacity-[0.18] mix-blend-screen" />
         <div className="container-narrow relative">
           <div className="mb-14 max-w-3xl">
-            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Neden Akinal?</div>
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Neden Akinal İnşaat?</div>
             <h2 className="font-display text-3xl font-bold leading-tight md:text-5xl">Güven, teknik disiplin ve şeffaf yönetim aynı masada</h2>
             <p className="mt-5 text-white/70 leading-relaxed">
               Her proje; hak sahipleri, yatırımcılar ve kullanıcılar için netlik gerektirir. Akinal İnşaat bu netliği tasarım, resmi süreç, saha uygulaması ve iletişim başlıklarında birlikte kurar.
@@ -314,7 +314,7 @@ export default function Home() {
             </div>
 
             <div>
-              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Akinal Yaklaşımı</div>
+              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Akinal İnşaat Yaklaşımı</div>
               <h2 className="font-display text-3xl font-bold leading-tight md:text-5xl">Projeye başlamadan önce netlik sağlarız</h2>
               <p className="mt-5 text-muted-foreground leading-relaxed">
                 Güven veren bir inşaat süreci, ilk görüşmeden itibaren doğru soruları sormakla başlar. Teknik değerlendirme, resmi süreç ve uygulama planı aynı çerçevede ele alınır.

@@ -1,4 +1,4 @@
--- Akinal Insaat manual Supabase schema
+-- Akinal İnşaat manual Supabase schema
 -- Purpose: safe setup for a new empty Supabase project.
 -- Safe to rerun: uses IF NOT EXISTS checks and does not drop or truncate data.
 -- After running this file, create/authenticate an admin user and add admin email as noted below.
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS public.media_library (
 
 CREATE TABLE IF NOT EXISTS public.site_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  company_name TEXT NOT NULL DEFAULT 'Akınal İnşaat',
+  company_name TEXT NOT NULL DEFAULT 'Akinal İnşaat',
   phone TEXT DEFAULT '+90 000 000 00 00',
   whatsapp_number TEXT DEFAULT '+90 000 000 00 00',
   email TEXT DEFAULT 'info@akinalinsaat.com',
@@ -105,12 +105,12 @@ CREATE TABLE IF NOT EXISTS public.site_settings (
   instagram_url TEXT,
   facebook_url TEXT,
   linkedin_url TEXT,
-  footer_description TEXT DEFAULT 'Akınal İnşaat; kentsel dönüşüm ve inşaat projelerinde güvenilir, planlı ve teknik çözümler sunar.',
+  footer_description TEXT DEFAULT 'Akinal İnşaat; kentsel dönüşüm ve inşaat projelerinde güvenilir, planlı ve teknik çözümler sunar.',
   hero_title TEXT DEFAULT 'Güvenli Yapılar, Değerli Yaşam Alanları',
-  hero_subtitle TEXT DEFAULT 'Akınal İnşaat olarak kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde; planlama, ruhsat, uygulama ve teslim süreçlerini profesyonel şekilde yönetiyoruz.',
+  hero_subtitle TEXT DEFAULT 'Akinal İnşaat olarak kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde; planlama, ruhsat, uygulama ve teslim süreçlerini profesyonel şekilde yönetiyoruz.',
   whatsapp_message TEXT DEFAULT 'Merhaba, kentsel dönüşüm / inşaat hizmetleriniz hakkında bilgi almak istiyorum.',
-  seo_title TEXT DEFAULT 'Akınal İnşaat | Kentsel Dönüşüm ve İnşaat Hizmetleri',
-  seo_description TEXT DEFAULT 'Akınal İnşaat; kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme alanlarında güvenilir çözümler sunar.',
+  seo_title TEXT DEFAULT 'Akinal İnşaat | Kentsel Dönüşüm ve İnşaat Hizmetleri',
+  seo_description TEXT DEFAULT 'Akinal İnşaat; kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme alanlarında güvenilir çözümler sunar.',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -621,17 +621,17 @@ INSERT INTO public.site_settings (
   seo_description
 )
 SELECT
-  'Akınal İnşaat',
+  'Akinal İnşaat',
   '+90 000 000 00 00',
   '+90 000 000 00 00',
   'info@akinalinsaat.com',
   'İstanbul, Türkiye',
-  'Akınal İnşaat; kentsel dönüşüm ve inşaat projelerinde güvenilir, planlı ve teknik çözümler sunar.',
+  'Akinal İnşaat; kentsel dönüşüm ve inşaat projelerinde güvenilir, planlı ve teknik çözümler sunar.',
   'Güvenli Yapılar, Değerli Yaşam Alanları',
-  'Akınal İnşaat olarak kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde; planlama, ruhsat, uygulama ve teslim süreçlerini profesyonel şekilde yönetiyoruz.',
+  'Akinal İnşaat olarak kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde; planlama, ruhsat, uygulama ve teslim süreçlerini profesyonel şekilde yönetiyoruz.',
   'Merhaba, kentsel dönüşüm / inşaat hizmetleriniz hakkında bilgi almak istiyorum.',
-  'Akınal İnşaat | Kentsel Dönüşüm ve İnşaat Hizmetleri',
-  'Akınal İnşaat; kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme alanlarında güvenilir çözümler sunar.'
+  'Akinal İnşaat | Kentsel Dönüşüm ve İnşaat Hizmetleri',
+  'Akinal İnşaat; kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme alanlarında güvenilir çözümler sunar.'
 WHERE NOT EXISTS (SELECT 1 FROM public.site_settings);
 
 CREATE OR REPLACE FUNCTION public.notify_new_contact()

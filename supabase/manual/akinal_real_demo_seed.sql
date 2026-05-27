@@ -1,6 +1,6 @@
--- Akinal Insaat recovered public content seed
+-- Akinal İnşaat recovered public content seed
 -- Source: supabase/migrations/20260504085635_578d0353-7e11-4999-bfb8-de917018f9e2.sql
--- Scope: only Akinal-related public site settings found in the old migrations.
+-- Scope: only Akinal İnşaat-related public site settings found in the old migrations.
 --
 -- No project/project_images/content/storage.objects seed rows were present in the
 -- provided migration files, so this file intentionally does not invent project data.
@@ -35,17 +35,17 @@ INSERT INTO public.site_settings (
 )
 SELECT
   id,
-  'Akınal İnşaat',
+  'Akinal İnşaat',
   '+90 000 000 00 00',
   '+90 000 000 00 00',
   'info@akinalinsaat.com',
   'İstanbul, Türkiye',
-  'Akınal İnşaat; kentsel dönüşüm ve inşaat projelerinde güvenilir, planlı ve teknik çözümler sunar.',
+  'Akinal İnşaat; kentsel dönüşüm ve inşaat projelerinde güvenilir, planlı ve teknik çözümler sunar.',
   'Güvenli Yapılar, Değerli Yaşam Alanları',
-  'Akınal İnşaat olarak kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde; planlama, ruhsat, uygulama ve teslim süreçlerini profesyonel şekilde yönetiyoruz.',
+  'Akinal İnşaat olarak kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde; planlama, ruhsat, uygulama ve teslim süreçlerini profesyonel şekilde yönetiyoruz.',
   'Merhaba, kentsel dönüşüm / inşaat hizmetleriniz hakkında bilgi almak istiyorum.',
-  'Akınal İnşaat | Kentsel Dönüşüm ve İnşaat Hizmetleri',
-  'Akınal İnşaat; kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme alanlarında güvenilir çözümler sunar.',
+  'Akinal İnşaat | Kentsel Dönüşüm ve İnşaat Hizmetleri',
+  'Akinal İnşaat; kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme alanlarında güvenilir çözümler sunar.',
   now()
 FROM target_settings
 ON CONFLICT (id) DO UPDATE SET

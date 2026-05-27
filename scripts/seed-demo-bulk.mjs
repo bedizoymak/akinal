@@ -14,7 +14,7 @@ const REQUIRED_ENV = [
 ];
 
 const projectNames = [
-  "Akınal Residence",
+  "Akinal Residence",
   "Marmara Loft",
   "Kuzey Park Evleri",
   "Vadi Konakları",
