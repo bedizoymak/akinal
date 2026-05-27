@@ -33,7 +33,7 @@ export default function SiteFooter() {
   const companyName = settings.company_name || "Şirket";
 
   return (
-    <footer className="relative z-40 bg-gradient-dark text-white mt-24">
+    <footer className="relative z-40 bg-gradient-dark text-white">
       <div className="container-narrow py-16 grid gap-12 md:grid-cols-2 lg:grid-cols-4">
         <div>
           <Link to="/" className="inline-flex items-center" aria-label={companyName}>

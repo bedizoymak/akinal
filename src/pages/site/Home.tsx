@@ -336,36 +336,39 @@ export default function Home() {
       </section>
 
       {/* MAIN CTA */}
-      <section className="relative overflow-hidden bg-primary py-20 text-primary-foreground md:py-28">
-        <img src={sampleProject2} alt="Akinal İnşaat iletişim ve ön değerlendirme" className="absolute inset-0 h-full w-full object-cover opacity-20" />
-        <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/95 to-secondary/85" />
+      <section className="relative w-full overflow-hidden bg-primary py-14 text-primary-foreground md:py-20">
+        <img src={sampleProject2} alt="Akinal İnşaat iletişim ve ön değerlendirme" className="absolute inset-0 h-full w-full object-cover opacity-16" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/92 to-primary-glow/80" />
         <div className="container-narrow relative">
-          <div className="rounded-lg border border-white/15 bg-white/[0.08] p-6 shadow-elegant backdrop-blur md:p-10">
-            <div className="grid gap-10 lg:grid-cols-[1fr_0.85fr] lg:items-center">
+          <div className="rounded-lg border border-white/15 bg-white/[0.07] p-5 shadow-elegant backdrop-blur md:p-8">
+            <div className="grid gap-7 lg:grid-cols-[1fr_0.78fr] lg:items-center">
               <div>
                 <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Ön Değerlendirme</div>
                 <h2 className="font-display text-3xl font-bold leading-tight md:text-5xl">Binanız veya arsanız için doğru yol haritasını birlikte çıkaralım</h2>
-                <p className="mt-5 max-w-2xl text-base leading-relaxed text-primary-foreground/80 md:text-lg">
+                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-primary-foreground/82 md:text-base">
                   Kentsel dönüşüm, kat karşılığı inşaat veya proje geliştirme ihtiyaçlarınız için Akinal İnşaat ile iletişime geçin. Ekibimiz, projeniz için en uygun başlangıç adımını belirlemek üzere sizinle görüşsün.
                 </p>
               </div>
-              <div className="rounded-lg border border-white/15 bg-white/10 p-5 shadow-elegant backdrop-blur">
-                <div className="mb-5 flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-md bg-accent text-accent-foreground">
+              <div className="rounded-lg border border-white/20 bg-white/[0.12] p-5 text-white shadow-elegant backdrop-blur md:p-6">
+                <div className="mb-5 flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground shadow-accent-glow">
                     <MessageCircle className="h-5 w-5" />
                   </div>
-                  <div className="font-display text-2xl font-bold">Görüşme kanalı seçin</div>
+                  <div>
+                    <div className="font-display text-2xl font-bold leading-tight">Görüşme kanalı seçin</div>
+                    <p className="mt-1 text-sm text-white/70">Size en uygun kanaldan hızlıca ulaşın.</p>
+                  </div>
                 </div>
                 <div className="grid gap-3">
-                  <Button asChild size="lg" className="justify-start bg-[#25D366] text-white hover:bg-[#20BD5C]">
+                  <Button asChild size="lg" className="justify-center bg-[#25D366] text-white shadow-accent-glow hover:bg-[#20BD5C]">
                     <a href={getWhatsAppLink(settings.whatsapp_number, settings.whatsapp_message)} target="_blank" rel="noreferrer">
                       <MessageCircle className="mr-2 h-5 w-5" /> WhatsApp ile Görüş
                     </a>
                   </Button>
-                  <Button asChild size="lg" className="justify-start bg-accent text-accent-foreground hover:bg-accent-glow">
+                  <Button asChild size="lg" className="justify-center border border-white/15 bg-white/12 text-white shadow-sm hover:bg-white hover:text-primary">
                     <a href={getTelLink(settings.phone)}><PhoneIcon className="mr-2 h-5 w-5" /> Telefonla Ara</a>
                   </Button>
-                  <Button asChild size="lg" variant="outline" className="justify-start border-white/40 bg-transparent text-white hover:bg-white hover:text-primary">
+                  <Button asChild size="lg" variant="outline" className="justify-center border-white/25 bg-transparent text-white shadow-sm hover:bg-white hover:text-primary">
                     <Link to="/iletisim"><Mail className="mr-2 h-5 w-5" /> İletişim Formu Doldur</Link>
                   </Button>
                 </div>
