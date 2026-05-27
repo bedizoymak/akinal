@@ -13,6 +13,8 @@ import { useSiteSettings, getWhatsAppLink, getTelLink, getMapsLink } from "@/hoo
 import { SERVICE_OPTIONS } from "@/lib/projects";
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
+const CONTACT_MAP_EMBED_URL =
+  "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d5228170.642444712!2d23.591164850000013!3d38.853652309546376!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14cabb3caf9301eb%3A0x6137647a341cd4d5!2zQUvEsE5BTCDEsE7FnkFBVCBPVE9NT1TEsFYgR0lEQSBUVVLEsFpNIE5BS0zEsFlFIFNBTkFZxLDEsCBWRSBUxLBDQVJFVCBMxLBNxLBURUQgxZ7EsFJLRVTEsA!5e1!3m2!1str!2str!4v1779854883467!5m2!1str!2str";
 
 type TurnstileRenderOptions = {
   sitekey: string;
@@ -162,11 +164,7 @@ export default function Contact() {
             })}
 
             <div className="aspect-video rounded-lg border border-border bg-surface-muted overflow-hidden">
-              {settings.map_embed_url ? (
-                <iframe src={settings.map_embed_url} className="h-full w-full" loading="lazy" title="Harita" referrerPolicy="no-referrer-when-downgrade" />
-              ) : (
-                <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">Harita alanı buraya eklenecek.</div>
-              )}
+              <iframe src={CONTACT_MAP_EMBED_URL} className="h-full w-full" loading="lazy" title="Harita" referrerPolicy="no-referrer-when-downgrade" />
             </div>
           </div>
 
