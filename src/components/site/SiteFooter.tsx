@@ -83,7 +83,7 @@ export default function SiteFooter() {
       </div>
       <div className="border-t border-white/10">
         <div className="container-narrow py-5 flex flex-col gap-3 text-center text-xs text-white/55 md:flex-row md:items-center md:justify-between md:text-left">
-          <p>© 2026 AKİNAL İNŞAAT. Tüm hakları saklıdır.</p>
+          <p>© 2026 AKİNAL İNŞAAT LTD ŞTİ. Tüm hakları saklıdır.</p>
           <nav aria-label="Yasal bağlantılar" className="flex flex-wrap justify-center gap-x-4 gap-y-2 md:justify-end">
             {legalLinks.map((item) => (
               <Link key={item.to} to={item.to} className="hover:text-white transition-colors">
