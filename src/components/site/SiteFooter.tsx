@@ -29,6 +29,8 @@ const legalLinks = [
 
 export default function SiteFooter() {
   const { settings } = useSiteSettings();
+  const currentYear = new Date().getFullYear();
+
   return (
     <footer className="bg-gradient-dark text-white mt-24">
       <div className="container-narrow py-16 grid gap-12 md:grid-cols-2 lg:grid-cols-4">
@@ -83,7 +85,7 @@ export default function SiteFooter() {
       </div>
       <div className="border-t border-white/10">
         <div className="container-narrow py-5 flex flex-col gap-3 text-center text-xs text-white/55 md:flex-row md:items-center md:justify-between md:text-left">
-          <p>© 2026 AKİNAL İNŞAAT LTD. ŞTİ.</p>
+          <p>© {currentYear} AKİNAL İNŞAAT LTD. ŞTİ.</p>
           <nav aria-label="Yasal bağlantılar" className="flex flex-wrap justify-center gap-x-4 gap-y-2 md:justify-end">
             {legalLinks.map((item) => (
               <Link key={item.to} to={item.to} className="hover:text-white transition-colors">
