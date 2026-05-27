@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+export const DEFAULT_SITE_ADDRESS = "Molla Gürani Mah. Sarı Musa Sk. NO:49/A 34349 Fatih/İstanbul/Türkiye";
+
 export interface SiteSettings {
   id: string;
   company_name: string;
@@ -26,7 +28,7 @@ const defaults: SiteSettings = {
   phone: "",
   whatsapp_number: "",
   email: "",
-  address: "",
+  address: DEFAULT_SITE_ADDRESS,
   map_embed_url: null,
   instagram_url: null,
   facebook_url: null,
@@ -54,6 +56,7 @@ export function useSiteSettings() {
           setSettings({
             ...defaults,
             ...data,
+            address: data.address || defaults.address,
             whatsapp_number: data.whatsapp_number || data.phone || "",
           });
         }

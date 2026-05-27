@@ -45,22 +45,24 @@ export default function CookieConsent() {
     <>
       <section
         aria-label="Çerez bildirimi"
-        className="fixed inset-x-3 bottom-3 z-[60] mx-auto max-w-5xl rounded-xl border border-white/10 bg-secondary/95 p-4 text-white shadow-elegant backdrop-blur md:bottom-5 md:p-5"
+        className="fixed inset-x-0 bottom-3 z-[60] px-3 text-white sm:px-4 md:bottom-5"
       >
-        <div className="grid gap-4 lg:grid-cols-[auto_1fr_auto] lg:items-center">
-          <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-accent/10 text-accent">
-            <Cookie className="h-5 w-5" />
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 rounded-lg border border-white/10 bg-secondary/95 p-3 shadow-elegant backdrop-blur md:flex-row md:items-center md:p-4">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10">
+              <Cookie className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-display text-lg font-bold leading-tight text-white">Çerez Tercihleriniz</h2>
+              <p className="mt-1 text-xs leading-relaxed text-white/75 sm:text-sm">
+                Web sitemizde zorunlu çerezlerin yanında, deneyimi iyileştirmek ve site kullanımını anlamak için analitik ve pazarlama çerezleri kullanabiliriz.
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="font-display text-xl font-bold text-white">Çerez Tercihleriniz</h2>
-            <p className="mt-2 text-sm leading-relaxed text-white/75">
-              Web sitemizde zorunlu çerezlerin yanında, deneyimi iyileştirmek ve site kullanımını anlamak için analitik ve pazarlama çerezleri kullanabiliriz. Tercihlerinizi dilediğiniz şekilde yönetebilirsiniz.
-            </p>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-3 lg:w-[520px]">
+          <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap md:w-auto md:justify-end">
             <Button
               type="button"
-              className="bg-accent text-accent-foreground hover:bg-accent-glow"
+              className="h-auto min-h-10 whitespace-normal bg-accent px-3 py-2 text-sm leading-tight text-accent-foreground hover:bg-accent-glow"
               onClick={() => saveConsent({ consent_status: "accepted", necessary: true, analytics: true, marketing: true })}
             >
               Tüm Çerezleri Kabul Et
@@ -68,12 +70,17 @@ export default function CookieConsent() {
             <Button
               type="button"
               variant="outline"
-              className="border-white/25 bg-transparent text-white hover:bg-white hover:text-secondary"
+              className="h-auto min-h-10 whitespace-normal border-white/25 bg-transparent px-3 py-2 text-sm leading-tight text-white hover:bg-white hover:text-secondary"
               onClick={() => saveConsent({ consent_status: "rejected", necessary: true, analytics: false, marketing: false })}
             >
               Tüm Çerezleri Reddet
             </Button>
-            <Button type="button" variant="secondary" className="bg-white/12 text-white hover:bg-white/20" onClick={() => setManageOpen(true)}>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-auto min-h-10 whitespace-normal bg-white/12 px-3 py-2 text-sm leading-tight text-white hover:bg-white/20"
+              onClick={() => setManageOpen(true)}
+            >
               Çerezleri Yönet
             </Button>
           </div>
@@ -81,20 +88,20 @@ export default function CookieConsent() {
       </section>
 
       {manageOpen && (
-        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 p-3 sm:items-center">
+        <div className="fixed inset-0 z-[70] flex items-end justify-center overflow-y-auto bg-black/60 px-3 py-4 sm:items-center sm:px-4">
           <section
             role="dialog"
             aria-modal="true"
             aria-labelledby="cookie-manage-title"
-            className="w-full max-w-lg rounded-xl border border-border bg-background p-5 shadow-elegant sm:p-6"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-lg border border-border bg-background p-4 shadow-elegant sm:p-5"
           >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
                   <ShieldCheck className="h-5 w-5" />
                 </div>
-                <h2 id="cookie-manage-title" className="font-display text-2xl font-bold">Çerezleri Yönet</h2>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                <h2 id="cookie-manage-title" className="font-display text-xl font-bold leading-tight sm:text-2xl">Çerezleri Yönet</h2>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">
                   Zorunlu çerezler sitenin çalışması için gereklidir. Diğer çerez kategorilerini tercihinize göre açıp kapatabilirsiniz.
                 </p>
               </div>
@@ -108,23 +115,23 @@ export default function CookieConsent() {
               </button>
             </div>
 
-            <div className="mt-6 space-y-3">
-              <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-surface-light p-4">
-                <div>
+            <div className="mt-4 space-y-2.5">
+              <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-light p-3">
+                <div className="min-w-0">
                   <div className="font-semibold">Zorunlu Çerezler</div>
                   <p className="mt-1 text-xs text-muted-foreground">Güvenlik ve temel site işlevleri için her zaman aktiftir.</p>
                 </div>
                 <Switch checked disabled aria-label="Zorunlu Çerezler" />
               </div>
-              <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-4">
-                <div>
+              <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
+                <div className="min-w-0">
                   <div className="font-semibold">Analitik Çerezler</div>
                   <p className="mt-1 text-xs text-muted-foreground">Site kullanımını anlamamıza ve deneyimi iyileştirmemize yardımcı olur.</p>
                 </div>
                 <Switch checked={analytics} onCheckedChange={setAnalytics} aria-label="Analitik Çerezler" />
               </div>
-              <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-4">
-                <div>
+              <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
+                <div className="min-w-0">
                   <div className="font-semibold">Pazarlama Çerezleri</div>
                   <p className="mt-1 text-xs text-muted-foreground">İlgi alanınıza daha uygun iletişim ve içerik sunmak için kullanılabilir.</p>
                 </div>
@@ -132,10 +139,10 @@ export default function CookieConsent() {
               </div>
             </div>
 
-            <div className="mt-6 grid gap-2 sm:grid-cols-2">
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
               <Button
                 type="button"
-                className="bg-accent text-accent-foreground hover:bg-accent-glow"
+                className="h-auto min-h-10 whitespace-normal bg-accent px-3 py-2 text-accent-foreground hover:bg-accent-glow"
                 onClick={() => saveConsent({ consent_status: "managed", necessary: true, analytics, marketing })}
               >
                 Tercihlerimi Kaydet

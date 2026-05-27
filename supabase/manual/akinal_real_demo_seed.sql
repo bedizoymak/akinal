@@ -39,7 +39,7 @@ SELECT
   '+90 000 000 00 00',
   '+90 000 000 00 00',
   'info@akinalinsaat.com',
-  'İstanbul, Türkiye',
+  'Molla Gürani Mah. Sarı Musa Sk. NO:49/A 34349 Fatih/İstanbul/Türkiye',
   'Akinal İnşaat; kentsel dönüşüm ve inşaat projelerinde güvenilir, planlı ve teknik çözümler sunar.',
   'Güvenli Yapılar, Değerli Yaşam Alanları',
   'Akinal İnşaat olarak kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde; planlama, ruhsat, uygulama ve teslim süreçlerini profesyonel şekilde yönetiyoruz.',

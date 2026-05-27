@@ -27,6 +27,8 @@ const legalLinks = [
   { label: "Kullanım Şartları", to: "/kullanim-sartlari" },
 ];
 
+const footerAddressLines = ["Molla Gürani Mah.", "Sarı Musa Sk.", "NO:49/A 34349", "İstanbul/Türkiye"];
+
 export default function SiteFooter() {
   const { settings } = useSiteSettings();
   const currentYear = new Date().getFullYear();
@@ -80,7 +82,21 @@ export default function SiteFooter() {
           <ul className="space-y-3 text-sm text-white/75">
             {settings.phone && <li className="flex items-start gap-3"><Phone className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <a href={getTelLink(settings.phone)} className="hover:text-white">{settings.phone}</a></li>}
             {settings.email && <li className="flex items-start gap-3"><Mail className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <a href={`mailto:${settings.email}`} className="hover:text-white break-all">{settings.email}</a></li>}
-            {settings.address && <li className="flex items-start gap-3"><MapPin className="h-4 w-4 mt-0.5 text-accent shrink-0" /> <a href={getMapsLink(settings.address)} target="_blank" rel="noreferrer" className="hover:text-white">{settings.address}</a></li>}
+            {settings.address && (
+              <li className="flex items-start gap-3">
+                <MapPin className="h-4 w-4 mt-0.5 text-accent shrink-0" />
+                <a href={getMapsLink(settings.address)} target="_blank" rel="noreferrer" className="min-w-0 leading-relaxed hover:text-white">
+                  <span>
+                    {footerAddressLines.map((line, index) => (
+                      <span key={line}>
+                        {line}
+                        {index < footerAddressLines.length - 1 && <br />}
+                      </span>
+                    ))}
+                  </span>
+                </a>
+              </li>
+            )}
           </ul>
         </div>
       </div>
