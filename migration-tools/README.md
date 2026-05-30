@@ -17,13 +17,34 @@ Copy the export into the ignored local tooling folder:
 copy full_export.json migration-tools\exports\full_export.json
 ```
 
-Run a production-clean dry run:
+Run the recommended public website launch dry run:
+
+```bash
+node migration-tools/convert-supabase-json-to-mysql.mjs --input migration-tools/exports/full_export.json --mode public-launch --dry-run
+```
+
+Generate public website launch SQL and reports:
+
+```bash
+node migration-tools/convert-supabase-json-to-mysql.mjs --input migration-tools/exports/full_export.json --mode public-launch --output migration-tools/output/import-public-launch.sql
+```
+
+This mode imports only:
+
+- `site_settings` -> `ak_site_settings`
+- `projects` -> `ak_projects`
+- `project_images` -> `ak_project_images`
+- `media_library` -> `ak_media_library`
+
+It skips `DEMO_DATA`, unpublished projects, project images without an included project, and media rows that point at excluded projects. It does not import contact requests, cookie consents, admin users, profiles, CRM, finance, documents, employees, or notifications.
+
+Run a broader production-clean dry run only after the public launch is stable:
 
 ```bash
 node migration-tools/convert-supabase-json-to-mysql.mjs --input migration-tools/exports/full_export.json --mode production-clean --dry-run
 ```
 
-Generate production-clean SQL and reports:
+Generate broader production-clean SQL and reports only when CRM/admin API migration is ready:
 
 ```bash
 node migration-tools/convert-supabase-json-to-mysql.mjs --input migration-tools/exports/full_export.json --mode production-clean --output migration-tools/output/import-production-clean.sql
@@ -99,7 +120,7 @@ node migration-tools/convert-supabase-json-to-mysql.mjs \
   --output migration-tools/output/import.sql
 ```
 
-Default mode is `production-clean`, which skips demo data and filters orphan child rows. Use `--mode full-with-demo` only for local testing.
+Default mode is `public-launch`, which imports only public website launch data. `production-clean` skips demo data and filters orphan child rows for the broader schema. Use `--mode full-with-demo` only for local testing.
 
 ## Output
 

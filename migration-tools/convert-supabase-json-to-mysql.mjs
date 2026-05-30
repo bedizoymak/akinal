@@ -30,6 +30,10 @@ const importOrder = [
 ];
 
 const productionExcludedTables = new Set(["admin_users", "profiles", "user_roles"]);
+const publicLaunchTables = new Set(["site_settings", "projects", "project_images", "media_library"]);
+const publicLaunchProjectFields = [
+  "title", "slug", "short_description", "detailed_description", "seo_title", "seo_description", "cover_image_url",
+];
 
 const tableColumns = {
   admin_users: ["id", "email", "email_lower", "password_hash", "role", "is_active", "created_at"],
@@ -98,14 +102,14 @@ const dateColumns = new Set(["due_date", "payment_date", "expense_date", "entry_
 const urlColumns = new Set(["cover_image_url", "image_url", "thumbnail_url", "file_url", "document_url"]);
 
 const args = parseArgs(process.argv.slice(2));
-const mode = args.mode || (args.includeDemo ? "full-with-demo" : "production-clean");
+const mode = args.mode || (args.includeDemo ? "full-with-demo" : "public-launch");
 
 if (!args.input || (!args.dryRun && !args.output)) {
-  fail("Usage: node migration-tools/convert-supabase-json-to-mysql.mjs --input <file-or-folder> --mode production-clean --dry-run\n   or: node migration-tools/convert-supabase-json-to-mysql.mjs --input <file-or-folder> --mode production-clean --output <file.sql>");
+  fail("Usage: node migration-tools/convert-supabase-json-to-mysql.mjs --input <file-or-folder> --mode public-launch --dry-run\n   or: node migration-tools/convert-supabase-json-to-mysql.mjs --input <file-or-folder> --mode public-launch --output <file.sql>");
 }
 
-if (!["production-clean", "full-with-demo"].includes(mode)) {
-  fail(`Unknown mode "${mode}". Use production-clean or full-with-demo.`);
+if (!["public-launch", "production-clean", "full-with-demo"].includes(mode)) {
+  fail(`Unknown mode "${mode}". Use public-launch, production-clean, or full-with-demo.`);
 }
 
 const exportPayload = loadInput(args.input);
@@ -122,6 +126,7 @@ for (const sourceTable of Object.keys(tableMap)) {
     source_row_count: rows.length,
     imported_row_count: 0,
     skipped_demo_count: 0,
+    skipped_not_public_count: 0,
     skipped_orphan_fk_count: 0,
     warnings_count: 0,
   };
@@ -218,6 +223,9 @@ function selectRowsForImport() {
     if (mode === "production-clean" && productionExcludedTables.has(sourceTable)) {
       continue;
     }
+    if (mode === "public-launch" && !publicLaunchTables.has(sourceTable)) {
+      continue;
+    }
 
     const rowsToEvaluate = sourceTable === "site_settings" ? latestRows(rows) : rows;
     for (const row of rowsToEvaluate) {
@@ -226,12 +234,22 @@ function selectRowsForImport() {
         continue;
       }
 
-      if (mode === "production-clean" && sourceTable !== "site_settings" && isDemoRow(row)) {
+      if (mode !== "full-with-demo" && sourceTable !== "site_settings" && isDemoRowForMode(sourceTable, row)) {
         report.tables[sourceTable].skipped_demo_count++;
         continue;
       }
 
-      if (mode === "production-clean" && !passesFkRules(sourceTable, row)) {
+      if (mode === "public-launch" && sourceTable === "projects" && !isPublished(row.is_published)) {
+        report.tables[sourceTable].skipped_not_public_count++;
+        continue;
+      }
+
+      if (mode === "public-launch" && hasInvalidRequiredPublicAssetUrl(sourceTable, row)) {
+        report.tables[sourceTable].skipped_not_public_count++;
+        continue;
+      }
+
+      if (mode !== "full-with-demo" && !passesFkRules(sourceTable, row)) {
         report.tables[sourceTable].skipped_orphan_fk_count++;
         continue;
       }
@@ -302,8 +320,10 @@ function buildSql() {
     const targetTable = tableMap[sourceTable];
     if (!targetTable) continue;
     if (mode === "production-clean" && productionExcludedTables.has(sourceTable)) continue;
+    if (mode === "public-launch" && !publicLaunchTables.has(sourceTable)) continue;
 
     const rows = includedRows[sourceTable] || [];
+    if (mode === "public-launch" && rows.length === 0) continue;
     const columns = tableColumns[sourceTable];
     if (!columns) {
       warn(sourceTable, `No target column list for ${sourceTable}; skipped SQL generation.`);
@@ -394,6 +414,41 @@ function isDemoRow(row) {
   });
 }
 
+function isDemoRowForMode(sourceTable, row) {
+  if (mode === "public-launch" && sourceTable === "projects") {
+    return publicLaunchProjectFields.some((field) => {
+      const value = row[field];
+      return typeof value === "string" && value.includes("DEMO_DATA");
+    });
+  }
+  return isDemoRow(row);
+}
+
+function isPublished(value) {
+  return normalizeBoolean(value) === 1;
+}
+
+function hasInvalidRequiredPublicAssetUrl(sourceTable, row) {
+  const requiredUrlColumn = {
+    project_images: "image_url",
+    media_library: "image_url",
+  }[sourceTable];
+  if (!requiredUrlColumn) return false;
+
+  const value = row[requiredUrlColumn];
+  if (typeof value !== "string" || value.trim() === "") {
+    warn(sourceTable, `Skipped row ${row.id ?? "(no id)"} because ${requiredUrlColumn} is required for public launch.`);
+    return true;
+  }
+
+  if (value.trim().startsWith("/src/assets/")) {
+    warn(sourceTable, `Skipped row ${row.id ?? "(no id)"} because ${requiredUrlColumn} uses ${value.trim()}, which does not exist in production.`);
+    return true;
+  }
+
+  return false;
+}
+
 function buildUpsert(targetTable, columns, row) {
   const quotedColumns = columns.map((column) => `\`${column}\``).join(", ");
   const values = columns.map((column) => sqlValue(row[column])).join(", ");
@@ -420,6 +475,7 @@ function buildEmptyReport(exportPayload) {
     export_metadata: exportPayload.metadata,
     generated_at: new Date().toISOString(),
     intentionally_not_imported_in_production_clean: mode === "production-clean" ? Array.from(productionExcludedTables) : [],
+    public_launch_tables: mode === "public-launch" ? Array.from(publicLaunchTables) : [],
     tables: {},
     warnings: warnings,
   };
@@ -433,14 +489,14 @@ function buildSummaryMarkdown(data, cliArgs, selectedMode) {
     `- Dry run: ${cliArgs.dryRun ? "yes" : "no"}`,
     `- Export shape detected: ${data.export_shape_detected}`,
     "",
-    "| Source table | Target table | Source rows | Imported | Skipped demo | Skipped orphan FK | Warnings |",
-    "| --- | --- | ---: | ---: | ---: | ---: | ---: |",
+    "| Source table | Target table | Source rows | Imported | Skipped demo | Skipped not public | Skipped orphan FK | Warnings |",
+    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
   ];
 
   for (const sourceTable of Object.keys(tableMap)) {
     const row = data.tables[sourceTable];
     if (!row) continue;
-    lines.push(`| ${sourceTable} | ${row.target_table} | ${row.source_row_count} | ${row.imported_row_count} | ${row.skipped_demo_count} | ${row.skipped_orphan_fk_count} | ${row.warnings_count} |`);
+    lines.push(`| ${sourceTable} | ${row.target_table} | ${row.source_row_count} | ${row.imported_row_count} | ${row.skipped_demo_count} | ${row.skipped_not_public_count} | ${row.skipped_orphan_fk_count} | ${row.warnings_count} |`);
   }
 
   lines.push("");

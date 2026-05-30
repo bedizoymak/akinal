@@ -26,7 +26,53 @@ This matches the real export structure:
 ]
 ```
 
-## Actual Table List and Production-Clean Counts
+## Recommended Current Import Mode
+
+`public-launch` is now the preferred mode for the first controlled production import. It imports only the public website data needed by the current PHP API/frontend cutover:
+
+- `site_settings` -> `ak_site_settings`
+- `projects` -> `ak_projects`
+- `project_images` -> `ak_project_images`
+- `media_library` -> `ak_media_library`
+
+All other exported data remains intentionally unimported for now, including contact requests, cookie consents, customers, finance data, notifications, profiles, roles, and admin users. The 20 `ak_` tables stay in MySQL; most simply remain empty until the matching PHP admin/API work is implemented.
+
+## Actual Table List and Public-Launch Counts
+
+| Source table | Target table | Source rows | Expected imported rows | Skipped DEMO_DATA | Skipped not public | Skipped orphan FK | Warnings |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `admin_users` | `ak_admin_users` | 0 | 0 | 0 | 0 | 0 | 0 |
+| `projects` | `ak_projects` | 23 | 3 | 20 | 0 | 0 | 3 |
+| `project_images` | `ak_project_images` | 0 | 0 | 0 | 0 | 0 | 0 |
+| `media_library` | `ak_media_library` | 0 | 0 | 0 | 0 | 0 | 0 |
+| `site_settings` | `ak_site_settings` | 1 | 1 | 0 | 0 | 0 | 0 |
+| `contact_requests` | `ak_contact_requests` | 2 | 0 | 0 | 0 | 0 | 0 |
+| `customers` | `ak_customers` | 21 | 0 | 0 | 0 | 0 | 0 |
+| `customer_projects` | `ak_customer_projects` | 61 | 0 | 0 | 0 | 0 | 0 |
+| `payment_plans` | `ak_payment_plans` | 400 | 0 | 0 | 0 | 0 | 0 |
+| `payments` | `ak_payments` | 164 | 0 | 0 | 0 | 0 | 0 |
+| `expenses` | `ak_expenses` | 120 | 0 | 0 | 0 | 0 | 0 |
+| `customer_notes` | `ak_customer_notes` | 40 | 0 | 0 | 0 | 0 | 0 |
+| `documents` | `ak_documents` | 0 | 0 | 0 | 0 | 0 | 0 |
+| `notifications` | `ak_notifications` | 5560 | 0 | 0 | 0 | 0 | 0 |
+| `employees` | `ak_employees` | 20 | 0 | 0 | 0 | 0 | 0 |
+| `expense_cards` | `ak_expense_cards` | 21 | 0 | 0 | 0 | 0 | 0 |
+| `financial_entries` | `ak_financial_entries` | 761 | 0 | 0 | 0 | 0 | 0 |
+| `cookie_consents` | `ak_cookie_consents` | 8 | 0 | 0 | 0 | 0 | 0 |
+| `profiles` | `ak_profiles` | 1 | 0 | 0 | 0 | 0 | 0 |
+| `user_roles` | `ak_user_roles` | 1 | 0 | 0 | 0 | 0 | 0 |
+
+Public-launch generated:
+
+- `migration-tools/output/import-public-launch.sql`
+- `migration-tools/output/import-public-launch-report.json`
+- `migration-tools/output/import-public-launch-summary.md`
+
+These files are ignored by Git and must not be committed.
+
+## Broader Production-Clean Counts
+
+`production-clean` remains available for later backend phases, but it is not the recommended first import because it includes CRM/contact/finance-like rows before the replacement PHP admin workflows are ready.
 
 | Source table | Target table | Source rows | Expected imported rows | Skipped DEMO_DATA | Skipped orphan FK | Warnings |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
