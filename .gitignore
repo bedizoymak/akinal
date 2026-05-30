@@ -13,6 +13,8 @@ dist-ssr
 *.local
 supabase/.temp/
 public_html/api/config.php
+public_html/import-data/*.json
+!public_html/import-data/.gitkeep
 
 # Editor directories and files
 .vscode/*
