@@ -19,7 +19,7 @@ import {
   Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { getPublishedProjects } from "@/lib/apiClient";
 import ProjectCard, { ProjectCardData } from "@/components/site/ProjectCard";
 import Seo from "@/components/site/Seo";
 import { useSiteSettings, getWhatsAppLink, getTelLink } from "@/hooks/useSiteSettings";
@@ -77,15 +77,20 @@ export default function Home() {
   const experienceYears = new Date().getFullYear() - 2011;
 
   useEffect(() => {
-    supabase
-      .from("projects")
-      .select("id,title,slug,short_description,project_type,project_status,location,cover_image_url,is_featured,sort_order,created_at")
-      .eq("is_published", true)
-      .order("is_featured", { ascending: false })
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false })
-      .limit(6)
-      .then(({ data }) => setProjects((data as ProjectCardData[]) || []));
+    getPublishedProjects()
+      .then((data) => {
+        const sorted = [...data].sort(
+          (a, b) =>
+            Number(b.is_featured) - Number(a.is_featured) ||
+            (a.sort_order ?? 0) - (b.sort_order ?? 0) ||
+            b.created_at.localeCompare(a.created_at)
+        );
+        setProjects(sorted.slice(0, 6) as ProjectCardData[]);
+      })
+      .catch((error) => {
+        console.error("Projects API error:", error);
+        setProjects([]);
+      });
   }, []);
 
   return (

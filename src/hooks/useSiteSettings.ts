@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getSiteSettings } from "@/lib/apiClient";
+import type { SiteSettings as ApiSiteSettings } from "@/lib/apiTypes";
 
 export const DEFAULT_SITE_ADDRESS = "Molla Gürani Mah. Sarı Musa Sk. NO:49/A 34349 Fatih/İstanbul/Türkiye";
 
@@ -46,22 +47,40 @@ export function useSiteSettings() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
-      .from("site_settings")
-      .select("*")
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
+    let alive = true;
+
+    getSiteSettings()
+      .then((data) => {
+        if (!alive) return;
         if (data) {
           setSettings({
             ...defaults,
-            ...data,
+            ...(data as ApiSiteSettings),
+            company_name: data.company_name || defaults.company_name,
+            phone: data.phone || defaults.phone,
+            email: data.email || defaults.email,
             address: data.address || defaults.address,
             whatsapp_number: data.whatsapp_number || data.phone || "",
+            footer_description: data.footer_description || defaults.footer_description,
+            hero_title: data.hero_title || defaults.hero_title,
+            hero_subtitle: data.hero_subtitle || defaults.hero_subtitle,
+            whatsapp_message: data.whatsapp_message || defaults.whatsapp_message,
+            seo_title: data.seo_title || defaults.seo_title,
+            seo_description: data.seo_description || defaults.seo_description,
           });
         }
+      })
+      .catch((error) => {
+        console.error("Site settings API error:", error);
+      })
+      .finally(() => {
+        if (!alive) return;
         setLoading(false);
       });
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   return { settings, loading };

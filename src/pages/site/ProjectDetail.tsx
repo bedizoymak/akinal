@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { getProjectDetail, getPublishedProjects } from "@/lib/apiClient";
 import Seo from "@/components/site/Seo";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, MapPin, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
@@ -61,18 +61,24 @@ export default function ProjectDetail() {
     if (!slug) return;
     setLoading(true);
     (async () => {
-      const { data: p } = await supabase.from("projects").select("*").eq("slug", slug).eq("is_published", true).maybeSingle();
-      if (!p) { setLoading(false); return; }
-      const projectData = p as ProjectDetailData;
-      setProject(projectData);
-      const [{ data: imgs }, { data: all }] = await Promise.all([
-        supabase.from("project_images").select("*").eq("project_id", projectData.id).order("sort_order"),
-        supabase.from("projects").select("id,title,slug,sort_order,created_at").eq("is_published", true),
-      ]);
-      setImages((imgs as ProjectImage[]) || []);
-      const sorted = ((all as ProjectSibling[]) || []).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.created_at.localeCompare(b.created_at));
-      setSiblings(sorted);
-      setLoading(false);
+      try {
+        const [detail, all] = await Promise.all([
+          getProjectDetail(slug),
+          getPublishedProjects(),
+        ]);
+        const projectData = detail.project as ProjectDetailData;
+        setProject(projectData);
+        setImages((detail.images as ProjectImage[]) || []);
+        const sorted = ((all as ProjectSibling[]) || []).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.created_at.localeCompare(b.created_at));
+        setSiblings(sorted);
+      } catch (error) {
+        console.error("Project detail API error:", error);
+        setProject(null);
+        setImages([]);
+        setSiblings([]);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [slug]);
 

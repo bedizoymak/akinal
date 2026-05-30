@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getPublishedProjects } from "@/lib/apiClient";
 import Seo from "@/components/site/Seo";
 import ProjectCard, { ProjectCardData } from "@/components/site/ProjectCard";
 import { Input } from "@/components/ui/input";
@@ -22,12 +22,15 @@ export default function Projects() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
-      .from("projects")
-      .select("id,title,slug,short_description,project_type,project_status,location,cover_image_url,is_featured,sort_order,created_at")
-      .eq("is_published", true)
-      .then(({ data }) => {
+    getPublishedProjects()
+      .then((data) => {
         setItems((data as ProjectListItem[]) || []);
+      })
+      .catch((error) => {
+        console.error("Projects API error:", error);
+        setItems([]);
+      })
+      .finally(() => {
         setLoading(false);
       });
   }, []);
