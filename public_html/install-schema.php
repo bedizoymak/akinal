@@ -16,12 +16,26 @@ $charset = 'utf8mb4';
 
 $dsn = "mysql:host={$host};dbname={$database};charset={$charset}";
 
+if (($_GET['confirm'] ?? '') !== 'INSTALL_AKINAL_SCHEMA') {
+    echo "<pre>This installer is locked.\n";
+    echo "To run it intentionally, open install-schema.php?confirm=INSTALL_AKINAL_SCHEMA.\n";
+    echo "Delete this file immediately after a successful production install.</pre>";
+    exit;
+}
+
+if (!extension_loaded('pdo_mysql')) {
+    http_response_code(500);
+    echo "<pre>Cannot run installer: the pdo_mysql PHP extension is not loaded.</pre>";
+    exit;
+}
+
 $tables = [
     'ak_admin_users' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_admin_users (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   email VARCHAR(255) NOT NULL,
-  email_lower VARCHAR(255) GENERATED ALWAYS AS (LOWER(email)) STORED,
+  -- PHP/API code must always write strtolower(email) into email_lower on admin create/update.
+  email_lower VARCHAR(255) NOT NULL,
   password_hash VARCHAR(255) NULL,
   role VARCHAR(50) NOT NULL DEFAULT 'admin',
   is_active TINYINT(1) NOT NULL DEFAULT 1,
@@ -34,7 +48,7 @@ SQL,
 
     'ak_profiles' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_profiles (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   user_id CHAR(36) NOT NULL,
   email VARCHAR(255) NULL,
   display_name VARCHAR(255) NULL,
@@ -46,7 +60,7 @@ SQL,
 
     'ak_user_roles' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_user_roles (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   user_id CHAR(36) NOT NULL,
   role VARCHAR(50) NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -57,7 +71,7 @@ SQL,
 
     'ak_projects' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_projects (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
   slug VARCHAR(255) NOT NULL,
   short_description TEXT NOT NULL,
@@ -90,7 +104,7 @@ SQL,
 
     'ak_project_images' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_project_images (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   project_id CHAR(36) NOT NULL,
   image_url TEXT NOT NULL,
   thumbnail_url TEXT NULL,
@@ -105,7 +119,7 @@ SQL,
 
     'ak_media_library' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_media_library (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   image_url TEXT NOT NULL,
   thumbnail_url TEXT NULL,
   file_name VARCHAR(255) NULL,
@@ -120,7 +134,7 @@ SQL,
 
     'ak_site_settings' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_site_settings (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   company_name VARCHAR(255) NOT NULL DEFAULT 'Akinal İnşaat',
   phone VARCHAR(50) NULL DEFAULT '+90 000 000 00 00',
   whatsapp_number VARCHAR(50) NULL DEFAULT '+90 000 000 00 00',
@@ -142,7 +156,7 @@ SQL,
 
     'ak_contact_requests' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_contact_requests (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   full_name VARCHAR(255) NOT NULL,
   phone VARCHAR(100) NOT NULL,
   email VARCHAR(255) NULL,
@@ -155,7 +169,7 @@ SQL,
 
     'ak_customers' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_customers (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   customer_type VARCHAR(100) NOT NULL DEFAULT 'Bireysel',
   full_name VARCHAR(255) NULL,
   company_name VARCHAR(255) NULL,
@@ -175,7 +189,7 @@ SQL,
 
     'ak_customer_projects' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_customer_projects (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   customer_id CHAR(36) NOT NULL,
   project_id CHAR(36) NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -189,7 +203,7 @@ SQL,
 
     'ak_payment_plans' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_payment_plans (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   customer_id CHAR(36) NULL,
   project_id CHAR(36) NULL,
   title VARCHAR(255) NOT NULL,
@@ -210,12 +224,12 @@ SQL,
 
     'ak_payments' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_payments (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   customer_id CHAR(36) NULL,
   project_id CHAR(36) NULL,
   payment_plan_id CHAR(36) NULL,
   amount DECIMAL(14,2) NOT NULL DEFAULT 0.00,
-  payment_date DATE NOT NULL DEFAULT (CURRENT_DATE),
+  payment_date DATE NOT NULL,
   payment_method VARCHAR(100) NOT NULL DEFAULT 'Nakit',
   description TEXT NULL,
   document_url TEXT NULL,
@@ -232,13 +246,13 @@ SQL,
 
     'ak_expenses' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_expenses (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   project_id CHAR(36) NULL,
   customer_id CHAR(36) NULL,
   title VARCHAR(255) NOT NULL,
   category VARCHAR(100) NOT NULL DEFAULT 'Diğer',
   amount DECIMAL(14,2) NOT NULL DEFAULT 0.00,
-  expense_date DATE NOT NULL DEFAULT (CURRENT_DATE),
+  expense_date DATE NOT NULL,
   description TEXT NULL,
   document_url TEXT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -253,7 +267,7 @@ SQL,
 
     'ak_customer_notes' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_customer_notes (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   customer_id CHAR(36) NOT NULL,
   note TEXT NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -264,7 +278,7 @@ SQL,
 
     'ak_documents' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_documents (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   customer_id CHAR(36) NULL,
   project_id CHAR(36) NULL,
   title VARCHAR(255) NOT NULL,
@@ -281,7 +295,7 @@ SQL,
 
     'ak_notifications' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_notifications (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
   message TEXT NOT NULL,
   type VARCHAR(100) NOT NULL DEFAULT 'Genel',
@@ -291,7 +305,7 @@ CREATE TABLE IF NOT EXISTS ak_notifications (
   related_payment_plan_id CHAR(36) NULL,
   is_read TINYINT(1) NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_notifications_created_at (created_at DESC),
+  KEY idx_notifications_created_at (created_at),
   KEY idx_notifications_is_read (is_read),
   KEY idx_notifications_plan (related_payment_plan_id),
   KEY idx_notifications_customer (related_customer_id),
@@ -304,7 +318,7 @@ SQL,
 
     'ak_employees' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_employees (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   full_name VARCHAR(255) NOT NULL,
   phone VARCHAR(100) NULL,
   role VARCHAR(100) NULL,
@@ -317,7 +331,7 @@ SQL,
 
     'ak_expense_cards' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_expense_cards (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   category VARCHAR(100) NULL,
   description TEXT NULL,
@@ -329,9 +343,9 @@ SQL,
 
     'ak_financial_entries' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_financial_entries (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   project_id CHAR(36) NULL,
-  entry_date DATE NOT NULL DEFAULT (CURRENT_DATE),
+  entry_date DATE NOT NULL,
   card_type VARCHAR(50) NOT NULL,
   customer_id CHAR(36) NULL,
   employee_id CHAR(36) NULL,
@@ -346,12 +360,6 @@ CREATE TABLE IF NOT EXISTS ak_financial_entries (
   document_url TEXT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CHECK (card_type IN ('customer', 'employee', 'expense')),
-  CHECK (currency_tag IN ('TRY', 'USD', 'EUR')),
-  CHECK (group_tag IN ('Resmi', 'Gayri Resmi')),
-  CHECK (direction IN ('Gelir', 'Gider')),
-  CHECK (status IN ('Planlandı', 'Gerçekleşti', 'İptal')),
-  CHECK (amount > 0),
   KEY idx_financial_entries_project_date (project_id, entry_date),
   KEY idx_financial_entries_card_type (card_type),
   KEY idx_financial_entries_customer_id (customer_id),
@@ -370,14 +378,13 @@ SQL,
 
     'ak_cookie_consents' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_cookie_consents (
-  id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  id CHAR(36) NOT NULL PRIMARY KEY,
   consent_status VARCHAR(50) NOT NULL,
   necessary TINYINT(1) NOT NULL DEFAULT 1,
   analytics TINYINT(1) NOT NULL DEFAULT 0,
   marketing TINYINT(1) NOT NULL DEFAULT 0,
   user_agent TEXT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CHECK (consent_status IN ('accepted', 'rejected', 'managed'))
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
 ];
@@ -390,16 +397,24 @@ try {
 
     echo "<pre>\nConnected to {$database} on {$host}.\n\n";
 
+    $createdCount = 0;
+    $existingCount = 0;
     foreach ($tables as $tableName => $sql) {
         $exists = tableExists($pdo, $database, $tableName);
         $pdo->exec($sql);
+        $exists ? $existingCount++ : $createdCount++;
         echo ($exists ? 'Already existed: ' : 'Created: ') . $tableName . "\n";
     }
 
-    seedSiteSettings($pdo);
+    $siteSettingsSeedStatus = seedSiteSettings($pdo);
 
     echo "\nSchema installation finished.\n";
-    echo "Remove or protect this installer after a successful run.\n</pre>";
+    echo "Connected database: {$database}\n";
+    echo "Created table count: {$createdCount}\n";
+    echo "Already existing table count: {$existingCount}\n";
+    echo "Expected table count: " . count($tables) . "\n";
+    echo "Site settings seed status: {$siteSettingsSeedStatus}\n";
+    echo "Important: delete install-schema.php immediately after a successful run.\n</pre>";
 } catch (Throwable $exception) {
     http_response_code(500);
     echo "<pre>Schema installation failed:\n" . htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8') . "</pre>";
@@ -418,14 +433,15 @@ function tableExists(PDO $pdo, string $database, string $tableName): bool
     return (int) $statement->fetchColumn() > 0;
 }
 
-function seedSiteSettings(PDO $pdo): void
+function seedSiteSettings(PDO $pdo): string
 {
     $statement = $pdo->query('SELECT COUNT(*) FROM ak_site_settings');
     if ((int) $statement->fetchColumn() > 0) {
-        return;
+        return 'skipped; ak_site_settings already has data';
     }
 
-    $pdo->exec(<<<'SQL'
+    $siteSettingsId = uuidv4();
+    $statement = $pdo->prepare(<<<'SQL'
 INSERT INTO ak_site_settings (
   id,
   address,
@@ -434,14 +450,33 @@ INSERT INTO ak_site_settings (
   whatsapp_message,
   seo_description
 ) VALUES (
-  UUID(),
-  'Molla Gürani Mah. Sarı Musa Sk. NO:49/A 34349 Fatih/İstanbul/Türkiye',
-  'Akinal İnşaat; kentsel dönüşüm ve inşaat projelerinde güvenilir, planlı ve teknik çözümler sunar.',
-  'Akinal İnşaat olarak kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde; planlama, ruhsat, uygulama ve teslim süreçlerini profesyonel şekilde yönetiyoruz.',
-  'Merhaba, kentsel dönüşüm / inşaat hizmetleriniz hakkında bilgi almak istiyorum.',
-  'Akinal İnşaat; kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme alanlarında güvenilir çözümler sunar.'
+  :id,
+  :address,
+  :footer_description,
+  :hero_subtitle,
+  :whatsapp_message,
+  :seo_description
 )
 SQL);
 
-    echo "\nSeeded default ak_site_settings row.\n";
+    $statement->execute([
+        'id' => $siteSettingsId,
+        'address' => 'Molla Gürani Mah. Sarı Musa Sk. NO:49/A 34349 Fatih/İstanbul/Türkiye',
+        'footer_description' => 'Akinal İnşaat; kentsel dönüşüm ve inşaat projelerinde güvenilir, planlı ve teknik çözümler sunar.',
+        'hero_subtitle' => 'Akinal İnşaat olarak kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde; planlama, ruhsat, uygulama ve teslim süreçlerini profesyonel şekilde yönetiyoruz.',
+        'whatsapp_message' => 'Merhaba, kentsel dönüşüm / inşaat hizmetleriniz hakkında bilgi almak istiyorum.',
+        'seo_description' => 'Akinal İnşaat; kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme alanlarında güvenilir çözümler sunar.',
+    ]);
+
+    return 'inserted default ak_site_settings row';
 }
+
+function uuidv4(): string
+{
+    $data = random_bytes(16);
+    $data[6] = chr((ord($data[6]) & 0x0f) | 0x40);
+    $data[8] = chr((ord($data[8]) & 0x3f) | 0x80);
+
+    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+}
+

@@ -14,7 +14,7 @@ This project is moving from Supabase/PostgreSQL to MySQL on shared hosting. The 
 ## Type Mapping
 
 - `uuid` -> `CHAR(36)`.
-- `gen_random_uuid()` -> `UUID()` in MySQL, or generated in PHP before insert.
+- `gen_random_uuid()` -> generated in PHP before insert.
 - `timestamptz` -> `DATETIME`.
 - `jsonb` -> `JSON`.
 - `boolean` -> `TINYINT(1)`.
