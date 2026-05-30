@@ -1,0 +1,14 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * Example API database config.
+ *
+ * Copy this file to config.php on the production server only, then replace the
+ * placeholder values there. Do not commit config.php or real credentials.
+ */
+
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'akinalin_wp282');
+define('DB_USER', 'MYSQL_USERNAME_HERE');
+define('DB_PASS', 'MYSQL_PASSWORD_HERE');

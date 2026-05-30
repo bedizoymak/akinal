@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 supabase/.temp/
+public_html/api/config.php
 
 # Editor directories and files
 .vscode/*
