@@ -15,6 +15,10 @@ supabase/.temp/
 public_html/api/config.php
 public_html/import-data/*.json
 !public_html/import-data/.gitkeep
+migration-tools/exports/*
+migration-tools/output/*
+!migration-tools/exports/.gitkeep
+!migration-tools/output/.gitkeep
 
 # Editor directories and files
 .vscode/*

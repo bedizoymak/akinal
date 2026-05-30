@@ -1,0 +1,21 @@
+{
+  "projects": "ak_projects",
+  "project_images": "ak_project_images",
+  "media_library": "ak_media_library",
+  "site_settings": "ak_site_settings",
+  "contact_requests": "ak_contact_requests",
+  "customers": "ak_customers",
+  "customer_projects": "ak_customer_projects",
+  "payment_plans": "ak_payment_plans",
+  "payments": "ak_payments",
+  "expenses": "ak_expenses",
+  "customer_notes": "ak_customer_notes",
+  "documents": "ak_documents",
+  "notifications": "ak_notifications",
+  "employees": "ak_employees",
+  "expense_cards": "ak_expense_cards",
+  "financial_entries": "ak_financial_entries",
+  "cookie_consents": "ak_cookie_consents",
+  "profiles": "ak_profiles",
+  "user_roles": "ak_user_roles"
+}
