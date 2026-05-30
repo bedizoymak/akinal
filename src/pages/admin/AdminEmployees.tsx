@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { displayLabel } from "@/lib/finance";
-import { financeSupabase, type EmployeeInsert, type EmployeeRow, type EmployeeUpdate } from "@/lib/financialTypes";
+import { createAdminEmployee, deleteAdminEmployee, getAdminEmployees, updateAdminEmployee } from "@/lib/apiClient";
+import type { AdminEmployee } from "@/lib/apiTypes";
 import { cn } from "@/lib/utils";
 
 const EMPLOYEE_STATUSES = ["Aktif", "Pasif"] as const;
@@ -33,7 +34,7 @@ const emptyForm: EmployeeForm = {
   status: "Aktif",
 };
 
-function formFromEmployee(employee: EmployeeRow): EmployeeForm {
+function formFromEmployee(employee: AdminEmployee): EmployeeForm {
   return {
     id: employee.id,
     full_name: employee.full_name,
@@ -46,7 +47,7 @@ function formFromEmployee(employee: EmployeeRow): EmployeeForm {
 
 export default function AdminEmployees() {
   const { toast } = useToast();
-  const [items, setItems] = useState<EmployeeRow[]>([]);
+  const [items, setItems] = useState<AdminEmployee[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -57,14 +58,13 @@ export default function AdminEmployees() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await financeSupabase.from("employees").select("*").order("full_name", { ascending: true });
-    if (error) {
+    try {
+      setItems(await getAdminEmployees());
+    } catch (error) {
       toast({ title: "Personel kayıtları alınamadı.", description: "Veriler alınırken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
+    } finally {
       setLoading(false);
-      return;
     }
-    setItems(data ?? []);
-    setLoading(false);
   }, [toast]);
 
   useEffect(() => {
@@ -92,7 +92,7 @@ export default function AdminEmployees() {
     setDialogOpen(true);
   }
 
-  function openEdit(employee: EmployeeRow) {
+  function openEdit(employee: AdminEmployee) {
     setForm(formFromEmployee(employee));
     setFormError("");
     setDialogOpen(true);
@@ -111,7 +111,7 @@ export default function AdminEmployees() {
     setSaving(true);
     setFormError("");
 
-    const payload: EmployeeInsert = {
+    const payload: Partial<AdminEmployee> = {
       full_name: form.full_name.trim(),
       phone: form.phone.trim() || null,
       role: form.role.trim() || null,
@@ -119,27 +119,27 @@ export default function AdminEmployees() {
       status: form.status,
     };
 
-    const result = form.id
-      ? await financeSupabase.from("employees").update(payload as EmployeeUpdate).eq("id", form.id)
-      : await financeSupabase.from("employees").insert(payload);
-
-    setSaving(false);
-
-    if (result.error) {
+    try {
+      if (form.id) await updateAdminEmployee({ ...payload, id: form.id });
+      else await createAdminEmployee(payload);
+    } catch (error) {
+      setSaving(false);
       toast({ title: "Personel kaydedilemedi.", description: "Personel bilgileri kaydedilirken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
       return;
     }
 
+    setSaving(false);
     toast({ title: form.id ? "Personel güncellendi." : "Personel oluşturuldu." });
     setDialogOpen(false);
     await load();
   }
 
-  async function deleteEmployee(employee: EmployeeRow) {
+  async function deleteEmployee(employee: AdminEmployee) {
     if (!confirm(`"${employee.full_name}" personel kartını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
 
-    const { error } = await financeSupabase.from("employees").delete().eq("id", employee.id);
-    if (error) {
+    try {
+      await deleteAdminEmployee(employee.id);
+    } catch (error) {
       toast({ title: "Personel silinemedi.", description: "Personel kartı silinirken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
       return;
     }

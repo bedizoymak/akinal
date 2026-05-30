@@ -1,41 +1,50 @@
 import { useEffect, useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
+import { getAdminReportsData } from "@/lib/apiClient";
+import type { AdminReportsResponse } from "@/lib/apiTypes";
 
-type Tables = Database["public"]["Tables"];
-export type Customer = Tables["customers"]["Row"];
-export type PaymentPlan = Tables["payment_plans"]["Row"];
-export type Payment = Tables["payments"]["Row"];
-export type Expense = Tables["expenses"]["Row"];
-export type Project = Tables["projects"]["Row"];
-export type FinancialEntry = Tables["financial_entries"]["Row"];
-export type CustomerProject = Tables["customer_projects"]["Row"];
-type FinanceTableName = "customers" | "payment_plans" | "payments" | "expenses" | "financial_entries" | "projects" | "customer_projects";
+const emptyReportsData: AdminReportsResponse = {
+  customers: [],
+  payment_plans: [],
+  payments: [],
+  expenses: [],
+  financial_entries: [],
+  projects: [],
+  customer_projects: [],
+  contact_requests: [],
+  aggregates: {
+    total_projects: 0,
+    total_customers: 0,
+    total_payments: 0,
+    total_expenses: 0,
+    total_contact_requests: 0,
+  },
+};
 
-export function useTable<T>(table: FinanceTableName, orderBy = "created_at", asc = false) {
+function useStaticTable<T>(sourceData: T[], loading: boolean, reload: () => Promise<void>) {
   const [data, setData] = useState<T[]>([]);
-  const [loading, setLoading] = useState(true);
-  const reload = useCallback(async () => {
-    setLoading(true);
-    const { data } = await supabase.from(table).select("*").order(orderBy, { ascending: asc });
-    setData((data as T[]) || []);
-    setLoading(false);
-  }, [table, orderBy, asc]);
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => { setData(sourceData); }, [sourceData]);
   return { data, loading, reload, setData };
 }
 
 export function useFinanceAll() {
-  const customers = useTable<Customer>("customers", "created_at", false);
-  const plans = useTable<PaymentPlan>("payment_plans", "due_date", true);
-  const payments = useTable<Payment>("payments", "payment_date", false);
-  const expenses = useTable<Expense>("expenses", "expense_date", false);
-  const financialEntries = useTable<FinancialEntry>("financial_entries", "entry_date", false);
-  const projects = useTable<Project>("projects", "sort_order", true);
-  const links = useTable<CustomerProject>("customer_projects", "created_at", true);
-  const loading = customers.loading || plans.loading || payments.loading || expenses.loading || financialEntries.loading || projects.loading;
-  const reloadAll = async () => {
-    await Promise.all([customers.reload(), plans.reload(), payments.reload(), expenses.reload(), financialEntries.reload(), projects.reload(), links.reload()]);
-  };
+  const [reports, setReports] = useState<AdminReportsResponse>(emptyReportsData);
+  const [loading, setLoading] = useState(true);
+  const reloadAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      setReports(await getAdminReportsData());
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => { reloadAll(); }, [reloadAll]);
+
+  const customers = useStaticTable(reports.customers, loading, reloadAll);
+  const plans = useStaticTable(reports.payment_plans, loading, reloadAll);
+  const payments = useStaticTable(reports.payments, loading, reloadAll);
+  const expenses = useStaticTable(reports.expenses, loading, reloadAll);
+  const financialEntries = useStaticTable(reports.financial_entries, loading, reloadAll);
+  const projects = useStaticTable(reports.projects, loading, reloadAll);
+  const links = useStaticTable(reports.customer_projects, loading, reloadAll);
   return { customers, plans, payments, expenses, financialEntries, projects, links, loading, reloadAll };
 }

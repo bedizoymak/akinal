@@ -14,7 +14,12 @@ import type {
   AdminExpenseCard,
   AdminExpenseCardsResponse,
   AdminExpensesResponse,
+  AdminEmployee,
+  AdminEmployeesResponse,
   AdminFinanceSummaryResponse,
+  AdminNotification,
+  AdminNotificationsResponse,
+  AdminReportsResponse,
   ContactRequestPayload,
   CookieConsentPayload,
   ProjectDetailResponse,
@@ -528,6 +533,78 @@ export async function updateAdminExpenseCard(payload: Partial<AdminExpenseCard> 
 export async function deleteAdminExpenseCard(id: string): Promise<void> {
   await apiRequest<{ deleted: boolean }>(`/api/admin/expense-cards.php?id=${encodeURIComponent(id)}`, {
     method: "DELETE",
+    credentials: "include",
+  });
+}
+
+export async function getAdminNotifications(): Promise<AdminNotification[]> {
+  const data = await apiRequest<AdminNotificationsResponse>("/api/admin/notifications.php", {
+    method: "GET",
+    credentials: "include",
+  });
+  return data.notifications || [];
+}
+
+export async function updateAdminNotificationRead(id: string, isRead = true): Promise<AdminNotification> {
+  const data = await apiRequest<{ notification: AdminNotification }>("/api/admin/notifications.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify({ id, is_read: isRead }),
+  });
+  return data.notification;
+}
+
+export async function markAllAdminNotificationsRead(): Promise<void> {
+  await apiRequest<{ updated: boolean }>("/api/admin/notifications.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify({ all: true }),
+  });
+}
+
+export async function deleteAdminNotification(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/notifications.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+export async function getAdminEmployees(): Promise<AdminEmployee[]> {
+  const data = await apiRequest<AdminEmployeesResponse>("/api/admin/employees.php", {
+    method: "GET",
+    credentials: "include",
+  });
+  return data.employees || [];
+}
+
+export async function createAdminEmployee(payload: Partial<AdminEmployee>): Promise<AdminEmployee> {
+  const data = await apiRequest<{ employee: AdminEmployee }>("/api/admin/employees.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.employee;
+}
+
+export async function updateAdminEmployee(payload: Partial<AdminEmployee> & { id: string }): Promise<AdminEmployee> {
+  const data = await apiRequest<{ employee: AdminEmployee }>("/api/admin/employees.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.employee;
+}
+
+export async function deleteAdminEmployee(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/employees.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+export async function getAdminReportsData(): Promise<AdminReportsResponse> {
+  return apiRequest<AdminReportsResponse>("/api/admin/reports.php", {
+    method: "GET",
     credentials: "include",
   });
 }

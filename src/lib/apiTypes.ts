@@ -193,6 +193,30 @@ export interface AdminExpenseCard {
   updated_at: string;
 }
 
+export interface AdminEmployee {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  role: string | null;
+  notes: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  priority: string;
+  related_customer_id: string | null;
+  related_project_id: string | null;
+  related_payment_plan_id: string | null;
+  is_read: boolean | number;
+  created_at: string;
+}
+
 export interface AdminFinancialEntry {
   id: string;
   project_id: string | null;
@@ -270,6 +294,32 @@ export interface AdminExpensesResponse {
 
 export interface AdminExpenseCardsResponse {
   expense_cards: AdminExpenseCard[];
+}
+
+export interface AdminEmployeesResponse {
+  employees: AdminEmployee[];
+}
+
+export interface AdminNotificationsResponse {
+  notifications: AdminNotification[];
+}
+
+export interface AdminReportsResponse {
+  customers: AdminCustomer[];
+  payment_plans: AdminPaymentPlan[];
+  payments: AdminPayment[];
+  expenses: AdminExpense[];
+  financial_entries: AdminFinancialEntry[];
+  projects: PublicProject[];
+  customer_projects: AdminCustomerProjectLink[];
+  contact_requests: AdminContactRequest[];
+  aggregates: {
+    total_projects: number;
+    total_customers: number;
+    total_payments: number;
+    total_expenses: number;
+    total_contact_requests: number;
+  };
 }
 
 export type ConsentStatus = "accepted" | "rejected" | "managed";
