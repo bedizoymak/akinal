@@ -2,8 +2,8 @@ import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Bot, MessageCircle, Mic, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
 import { getWhatsAppLink, useSiteSettings } from "@/hooks/useSiteSettings";
+import { submitSalesChatbotMessage } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
 
 const ASSISTANT_NAME = "Akinal İnşaat Yapay Zeka Asistanı";
@@ -155,12 +155,9 @@ export default function SalesChatbot() {
     setIsSending(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke("sales-chatbot", {
-        body: { message: text, history },
-      });
-
+      const data = await submitSalesChatbotMessage({ message: text, history });
       const fallbackReply = getLocalFallbackResponse(text);
-      const reply = !error && typeof data?.reply === "string" && data.reply.trim() ? data.reply.trim() : fallbackReply;
+      const reply = typeof data.reply === "string" && data.reply.trim() ? data.reply.trim() : fallbackReply;
 
       setMessages((current) =>
         current.map((message) =>

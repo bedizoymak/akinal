@@ -41,15 +41,18 @@ import {
   type FinanceLookups,
 } from "@/lib/financialEntries";
 import {
-  financeSupabase,
-  type CustomerLookup,
-  type EmployeeRow,
-  type ExpenseCardRow,
-  type FinancialEntryInsert,
-  type FinancialEntryRow,
-  type FinancialEntryUpdate,
-  type ProjectLookup,
-} from "@/lib/financialTypes";
+  createAdminFinancialEntry,
+  deleteAdminFinancialEntry,
+  getAdminFinancialStatement,
+  updateAdminFinancialEntry,
+} from "@/lib/apiClient";
+import type {
+  AdminCustomerLookup,
+  AdminEmployee,
+  AdminExpenseCard,
+  AdminFinancialEntry,
+  AdminProjectLookup,
+} from "@/lib/apiTypes";
 import { cn } from "@/lib/utils";
 
 export type FinancialStatementKind = "project" | "customer" | "employee" | "expense";
@@ -124,16 +127,9 @@ function defaultDirection(cardType: CardType): EntryDirection {
   return cardType === "customer" ? "Gelir" : "Gider";
 }
 
-function getFixedFilter(kind: FinancialStatementKind): "project_id" | "customer_id" | "employee_id" | "expense_card_id" {
-  if (kind === "project") return "project_id";
-  if (kind === "customer") return "customer_id";
-  if (kind === "employee") return "employee_id";
-  return "expense_card_id";
-}
-
-function makeEntity(kind: FinancialStatementKind, row: ProjectLookup | CustomerLookup | EmployeeRow | ExpenseCardRow): StatementEntity {
+function makeEntity(kind: FinancialStatementKind, row: AdminProjectLookup | AdminCustomerLookup | AdminEmployee | AdminExpenseCard): StatementEntity {
   if (kind === "project") {
-    const project = row as ProjectLookup;
+    const project = row as AdminProjectLookup;
     return {
       id: project.id,
       title: project.title,
@@ -152,7 +148,7 @@ function makeEntity(kind: FinancialStatementKind, row: ProjectLookup | CustomerL
   }
 
   if (kind === "customer") {
-    const customer = row as CustomerLookup;
+    const customer = row as AdminCustomerLookup;
     return {
       id: customer.id,
       title: getCustomerName(customer),
@@ -173,7 +169,7 @@ function makeEntity(kind: FinancialStatementKind, row: ProjectLookup | CustomerL
   }
 
   if (kind === "employee") {
-    const employee = row as EmployeeRow;
+    const employee = row as AdminEmployee;
     return {
       id: employee.id,
       title: employee.full_name,
@@ -193,7 +189,7 @@ function makeEntity(kind: FinancialStatementKind, row: ProjectLookup | CustomerL
     };
   }
 
-  const card = row as ExpenseCardRow;
+  const card = row as AdminExpenseCard;
   return {
     id: card.id,
     title: card.name,
@@ -233,7 +229,7 @@ function emptyForm(kind: FinancialStatementKind, entityId: string): EntryFormSta
   };
 }
 
-function formFromEntry(entry: FinancialEntryRow): EntryFormState {
+function formFromEntry(entry: AdminFinancialEntry): EntryFormState {
   return {
     id: entry.id,
     project_id: entry.project_id ?? "",
@@ -320,7 +316,7 @@ function toLookupMap<T extends { id: string }>(items: T[]): Map<string, T> {
   return new Map(items.map((item) => [item.id, item]));
 }
 
-function getSummary(entries: FinancialEntryRow[]) {
+function getSummary(entries: AdminFinancialEntry[]) {
   const realizedIncome = sumEntriesByCurrency(entries.filter((entry) => entry.status === "Gerçekleşti" && entry.direction === "Gelir"));
   const realizedExpense = sumEntriesByCurrency(entries.filter((entry) => entry.status === "Gerçekleşti" && entry.direction === "Gider"));
   const plannedIncome = sumEntriesByCurrency(entries.filter((entry) => entry.status === "Planlandı" && entry.direction === "Gelir"));
@@ -346,7 +342,7 @@ function getSummary(entries: FinancialEntryRow[]) {
   };
 }
 
-function getProjectChartData(entries: FinancialEntryRow[], currency: CurrencyTag): ChartDatum[] {
+function getProjectChartData(entries: AdminFinancialEntry[], currency: CurrencyTag): ChartDatum[] {
   const scoped = entries.filter((entry) => entry.currency_tag === currency && entry.status === "Gerçekleşti");
   const income = scoped.filter((entry) => entry.direction === "Gelir").reduce((sum, entry) => sum + Number(entry.amount), 0);
   const expense = scoped.filter((entry) => entry.direction === "Gider").reduce((sum, entry) => sum + Number(entry.amount), 0);
@@ -359,7 +355,7 @@ function getProjectChartData(entries: FinancialEntryRow[], currency: CurrencyTag
   ];
 }
 
-function getCardChartData(kind: FinancialStatementKind, entries: FinancialEntryRow[], currency: CurrencyTag): ChartDatum[] {
+function getCardChartData(kind: FinancialStatementKind, entries: AdminFinancialEntry[], currency: CurrencyTag): ChartDatum[] {
   const scoped = entries.filter((entry) => entry.currency_tag === currency);
   const canceled = scoped.filter((entry) => entry.status === "İptal").reduce((sum, entry) => sum + Number(entry.amount), 0);
 
@@ -386,7 +382,7 @@ function getCardChartData(kind: FinancialStatementKind, entries: FinancialEntryR
   ];
 }
 
-function getDistributionData(entries: FinancialEntryRow[], currency: CurrencyTag, lookups: FinanceLookups): DistributionDatum[] {
+function getDistributionData(entries: AdminFinancialEntry[], currency: CurrencyTag, lookups: FinanceLookups): DistributionDatum[] {
   const totals = entries
     .filter((entry) => entry.currency_tag === currency && entry.status !== "İptal" && entry.project_id)
     .reduce<Map<string, number>>((map, entry) => {
@@ -406,7 +402,7 @@ function getDistributionData(entries: FinancialEntryRow[], currency: CurrencyTag
     }));
 }
 
-function buildPayload(form: EntryFormState): FinancialEntryInsert {
+function buildPayload(form: EntryFormState): Partial<AdminFinancialEntry> {
   return {
     project_id: form.project_id,
     entry_date: form.entry_date,
@@ -496,11 +492,11 @@ type FinancialStatementPageProps = {
 export default function FinancialStatementPage({ kind, entityId }: FinancialStatementPageProps) {
   const { toast } = useToast();
   const [entity, setEntity] = useState<StatementEntity | null>(null);
-  const [entries, setEntries] = useState<FinancialEntryRow[]>([]);
-  const [projects, setProjects] = useState<ProjectLookup[]>([]);
-  const [customers, setCustomers] = useState<CustomerLookup[]>([]);
-  const [employees, setEmployees] = useState<EmployeeRow[]>([]);
-  const [expenseCards, setExpenseCards] = useState<ExpenseCardRow[]>([]);
+  const [entries, setEntries] = useState<AdminFinancialEntry[]>([]);
+  const [projects, setProjects] = useState<AdminProjectLookup[]>([]);
+  const [customers, setCustomers] = useState<AdminCustomerLookup[]>([]);
+  const [employees, setEmployees] = useState<AdminEmployee[]>([]);
+  const [expenseCards, setExpenseCards] = useState<AdminExpenseCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -524,54 +520,19 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
     expenseCards: toLookupMap(expenseCards),
   }), [projects, customers, employees, expenseCards]);
 
-  const loadEntity = useCallback(async () => {
-    if (kind === "project") {
-      const { data, error: queryError } = await financeSupabase.from("projects").select("id,title,location,project_status").eq("id", entityId).maybeSingle();
-      if (queryError) throw queryError;
-      return data ? makeEntity(kind, data as ProjectLookup) : null;
-    }
-    if (kind === "customer") {
-      const { data, error: queryError } = await financeSupabase.from("customers").select("id,customer_type,full_name,company_name,phone,email,tax_or_identity_number,status").eq("id", entityId).maybeSingle();
-      if (queryError) throw queryError;
-      return data ? makeEntity(kind, data as CustomerLookup) : null;
-    }
-    if (kind === "employee") {
-      const { data, error: queryError } = await financeSupabase.from("employees").select("*").eq("id", entityId).maybeSingle();
-      if (queryError) throw queryError;
-      return data ? makeEntity(kind, data) : null;
-    }
-    const { data, error: queryError } = await financeSupabase.from("expense_cards").select("*").eq("id", entityId).maybeSingle();
-    if (queryError) throw queryError;
-    return data ? makeEntity(kind, data) : null;
-  }, [entityId, kind]);
-
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
 
     try {
-      const fixedFilter = getFixedFilter(kind);
-      const [entityResult, entriesResult, projectsResult, customersResult, employeesResult, expenseCardsResult] = await Promise.all([
-        loadEntity(),
-        financeSupabase.from("financial_entries").select("*").eq(fixedFilter, entityId).order("entry_date", { ascending: false }).order("created_at", { ascending: false }),
-        financeSupabase.from("projects").select("id,title,location,project_status").order("sort_order", { ascending: true }),
-        financeSupabase.from("customers").select("id,customer_type,full_name,company_name,phone,email,tax_or_identity_number,status").order("created_at", { ascending: false }),
-        financeSupabase.from("employees").select("*").order("full_name", { ascending: true }),
-        financeSupabase.from("expense_cards").select("*").order("name", { ascending: true }),
-      ]);
+      const data = await getAdminFinancialStatement(kind, entityId);
 
-      if (entriesResult.error) throw entriesResult.error;
-      if (projectsResult.error) throw projectsResult.error;
-      if (customersResult.error) throw customersResult.error;
-      if (employeesResult.error) throw employeesResult.error;
-      if (expenseCardsResult.error) throw expenseCardsResult.error;
-
-      setEntity(entityResult);
-      setEntries(entriesResult.data ?? []);
-      setProjects((projectsResult.data ?? []) as ProjectLookup[]);
-      setCustomers((customersResult.data ?? []) as CustomerLookup[]);
-      setEmployees(employeesResult.data ?? []);
-      setExpenseCards(expenseCardsResult.data ?? []);
+      setEntity(data.entity ? makeEntity(kind, data.entity) : null);
+      setEntries(data.entries ?? []);
+      setProjects(data.projects ?? []);
+      setCustomers(data.customers ?? []);
+      setEmployees(data.employees ?? []);
+      setExpenseCards(data.expense_cards ?? []);
     } catch {
       const message = "Veriler alınırken bir problem oluştu. Lütfen bağlantınızı kontrol edip tekrar deneyin.";
       setError(message);
@@ -579,7 +540,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
     } finally {
       setLoading(false);
     }
-  }, [entityId, kind, loadEntity, toast]);
+  }, [entityId, kind, toast]);
 
   useEffect(() => {
     load();
@@ -622,7 +583,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
     setDialogOpen(true);
   }
 
-  function openEdit(entry: FinancialEntryRow) {
+  function openEdit(entry: AdminFinancialEntry) {
     setForm(formFromEntry(entry));
     setFormError("");
     setDialogOpen(true);
@@ -657,13 +618,10 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
     try {
       const payload = buildPayload(form);
       if (form.id) {
-        const updatePayload: FinancialEntryUpdate = payload;
-        const { error: updateError } = await financeSupabase.from("financial_entries").update(updatePayload).eq("id", form.id);
-        if (updateError) throw updateError;
+        await updateAdminFinancialEntry({ ...payload, id: form.id });
         toast({ title: "Finansal hareket güncellendi." });
       } else {
-        const { error: insertError } = await financeSupabase.from("financial_entries").insert(payload);
-        if (insertError) throw insertError;
+        await createAdminFinancialEntry(payload);
         toast({ title: "Finansal hareket oluşturuldu." });
       }
       setDialogOpen(false);
@@ -675,11 +633,12 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
     }
   }
 
-  async function deleteEntry(entry: FinancialEntryRow) {
+  async function deleteEntry(entry: AdminFinancialEntry) {
     if (!confirm(`"${entry.title}" finansal hareketini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
 
-    const { error: deleteError } = await financeSupabase.from("financial_entries").delete().eq("id", entry.id);
-    if (deleteError) {
+    try {
+      await deleteAdminFinancialEntry(entry.id);
+    } catch {
       toast({ title: "Silinemedi.", description: "Finansal hareket silinirken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
       return;
     }

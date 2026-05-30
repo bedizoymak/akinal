@@ -16,6 +16,9 @@ import type {
   AdminExpensesResponse,
   AdminEmployee,
   AdminEmployeesResponse,
+  AdminFinancialEntry,
+  AdminFinancialStatementKind,
+  AdminFinancialStatementResponse,
   AdminFinanceSummaryResponse,
   AdminNotification,
   AdminNotificationsResponse,
@@ -148,6 +151,13 @@ export async function submitContactRequest(payload: ContactRequestPayload): Prom
 
 export async function submitCookieConsent(payload: CookieConsentPayload): Promise<void> {
   await apiRequest<{ stored: boolean }>("/api/cookie-consent.php", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function submitSalesChatbotMessage(payload: { message: string; history: { role: string; text: string }[] }): Promise<{ reply: string | null; fallback?: boolean }> {
+  return apiRequest<{ reply: string | null; fallback?: boolean }>("/api/sales-chatbot.php", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -455,6 +465,39 @@ export async function uploadAdminPaymentDocument(file: File): Promise<string> {
 export async function getAdminFinanceSummary(): Promise<AdminFinanceSummaryResponse> {
   return apiRequest<AdminFinanceSummaryResponse>("/api/admin/finance-summary.php", {
     method: "GET",
+    credentials: "include",
+  });
+}
+
+export async function getAdminFinancialStatement(kind: AdminFinancialStatementKind, id: string): Promise<AdminFinancialStatementResponse> {
+  const params = new URLSearchParams({ kind, id });
+  return apiRequest<AdminFinancialStatementResponse>(`/api/admin/financial-statement.php?${params.toString()}`, {
+    method: "GET",
+    credentials: "include",
+  });
+}
+
+export async function createAdminFinancialEntry(payload: Partial<AdminFinancialEntry>): Promise<AdminFinancialEntry> {
+  const data = await apiRequest<{ entry: AdminFinancialEntry }>("/api/admin/financial-statement.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.entry;
+}
+
+export async function updateAdminFinancialEntry(payload: Partial<AdminFinancialEntry> & { id: string }): Promise<AdminFinancialEntry> {
+  const data = await apiRequest<{ entry: AdminFinancialEntry }>("/api/admin/financial-statement.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.entry;
+}
+
+export async function deleteAdminFinancialEntry(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/financial-statement.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
     credentials: "include",
   });
 }

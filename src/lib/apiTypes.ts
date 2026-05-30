@@ -1,3 +1,5 @@
+import type { CardType, CurrencyTag, EntryDirection, EntryStatus, GroupTag } from "@/lib/finance";
+
 export interface SiteSettings {
   id: string;
   company_name: string | null;
@@ -221,20 +223,38 @@ export interface AdminFinancialEntry {
   id: string;
   project_id: string | null;
   entry_date: string;
-  card_type: string;
+  card_type: CardType;
   customer_id: string | null;
   employee_id: string | null;
   expense_card_id: string | null;
   title: string;
   description: string | null;
   amount: number | string;
-  currency_tag: string;
-  group_tag: string;
-  direction: string;
-  status: string;
+  currency_tag: CurrencyTag;
+  group_tag: GroupTag;
+  direction: EntryDirection;
+  status: EntryStatus;
   document_url: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+}
+
+export type AdminFinancialStatementKind = "project" | "customer" | "employee" | "expense";
+
+export type AdminProjectLookup = Pick<PublicProject, "id" | "title" | "location" | "project_status">;
+
+export type AdminCustomerLookup = Pick<
+  AdminCustomer,
+  "id" | "customer_type" | "full_name" | "company_name" | "phone" | "email" | "tax_or_identity_number" | "status"
+>;
+
+export interface AdminFinancialStatementResponse {
+  entity: AdminProjectLookup | AdminCustomerLookup | AdminEmployee | AdminExpenseCard | null;
+  entries: AdminFinancialEntry[];
+  projects: AdminProjectLookup[];
+  customers: AdminCustomerLookup[];
+  employees: AdminEmployee[];
+  expense_cards: AdminExpenseCard[];
 }
 
 export interface AdminCustomerNote {

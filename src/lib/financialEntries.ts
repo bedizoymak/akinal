@@ -1,20 +1,20 @@
 import { CURRENCIES, formatMoney, type CardType, type CurrencyTag } from "@/lib/finance";
-import type { CustomerLookup, EmployeeRow, ExpenseCardRow, FinancialEntryRow, ProjectLookup } from "@/lib/financialTypes";
+import type { AdminCustomerLookup, AdminEmployee, AdminExpenseCard, AdminFinancialEntry, AdminProjectLookup } from "@/lib/apiTypes";
 
 export type CurrencyTotals = Record<CurrencyTag, number>;
 
 export type FinanceLookups = {
-  projects: Map<string, ProjectLookup>;
-  customers: Map<string, CustomerLookup>;
-  employees: Map<string, EmployeeRow>;
-  expenseCards: Map<string, ExpenseCardRow>;
+  projects: Map<string, AdminProjectLookup>;
+  customers: Map<string, AdminCustomerLookup>;
+  employees: Map<string, AdminEmployee>;
+  expenseCards: Map<string, AdminExpenseCard>;
 };
 
 export function createCurrencyTotals(): CurrencyTotals {
   return { TRY: 0, USD: 0, EUR: 0 };
 }
 
-export function signedEntryAmount(entry: FinancialEntryRow): number {
+export function signedEntryAmount(entry: AdminFinancialEntry): number {
   return entry.direction === "Gelir" ? Number(entry.amount) : -Number(entry.amount);
 }
 
@@ -22,7 +22,7 @@ export function addToCurrencyTotals(totals: CurrencyTotals, currency: CurrencyTa
   totals[currency] += amount;
 }
 
-export function sumEntriesByCurrency(entries: FinancialEntryRow[], signed = false): CurrencyTotals {
+export function sumEntriesByCurrency(entries: AdminFinancialEntry[], signed = false): CurrencyTotals {
   return entries.reduce<CurrencyTotals>((totals, entry) => {
     addToCurrencyTotals(totals, entry.currency_tag, signed ? signedEntryAmount(entry) : Number(entry.amount));
     return totals;
@@ -51,7 +51,7 @@ export function formatCurrencyTotalLines(totals: CurrencyTotals): string[] {
   return CURRENCIES.filter((currency) => Math.abs(totals[currency]) > 0).map((currency) => formatMoney(totals[currency], currency));
 }
 
-export function getCustomerName(customer: CustomerLookup | null | undefined): string {
+export function getCustomerName(customer: AdminCustomerLookup | null | undefined): string {
   if (!customer) return "Bilinmeyen kayıt";
   if (customer.customer_type === "Firma" && customer.company_name) return customer.company_name;
   return customer.full_name || customer.company_name || "İsimsiz müşteri";
@@ -63,7 +63,7 @@ export function getCardTypeLabel(type: CardType): string {
   return "Gider Kartı";
 }
 
-export function getEntryCardName(entry: FinancialEntryRow, lookups: FinanceLookups): string {
+export function getEntryCardName(entry: AdminFinancialEntry, lookups: FinanceLookups): string {
   if (entry.card_type === "customer") {
     if (!entry.customer_id) return "Silinmiş kart";
     return getCustomerName(lookups.customers.get(entry.customer_id)) || "Bilinmeyen kayıt";
@@ -81,7 +81,7 @@ export function getProjectName(projectId: string | null | undefined, lookups: Fi
   return lookups.projects.get(projectId)?.title || "Bilinmeyen kayıt";
 }
 
-export function chooseChartCurrency(entries: FinancialEntryRow[]): CurrencyTag {
+export function chooseChartCurrency(entries: AdminFinancialEntry[]): CurrencyTag {
   const volume = entries.reduce<CurrencyTotals>((totals, entry) => {
     totals[entry.currency_tag] += Math.abs(Number(entry.amount));
     return totals;
