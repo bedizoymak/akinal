@@ -17,7 +17,18 @@ export default function AdminMedia() {
   }
   useEffect(() => { load(); }, []);
 
-  const filtered = items.filter((i) => !q || (i.title || i.image_url || "").toLowerCase().includes(q.toLowerCase()));
+  const filtered = items.filter((i) => {
+    if (!q) return true;
+    const haystack = [
+      i.title,
+      i.alt_text,
+      i.file_name,
+      i.image_url,
+      i.project_title,
+      i.projects?.title,
+    ].filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(q.toLowerCase());
+  });
 
   async function remove(img: any) {
     if (!confirm("Bu görseli silmek istediğinize emin misiniz?")) return;
@@ -49,7 +60,7 @@ export default function AdminMedia() {
               </div>
               <div className="absolute inset-0 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
                 <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={() => { navigator.clipboard.writeText(img.image_url); toast({ title: "URL kopyalandı" }); }}><Copy className="h-3 w-3 mr-1" /> Kopyala</Button>
-                <Button size="sm" variant="destructive" className="h-7 w-7 p-0" onClick={() => remove(img)}><Trash2 className="h-3 w-3" /></Button>
+                {img.can_delete !== false && <Button size="sm" variant="destructive" className="h-7 w-7 p-0" onClick={() => remove(img)}><Trash2 className="h-3 w-3" /></Button>}
               </div>
             </div>
           ))}
