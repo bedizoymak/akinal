@@ -1,75 +1,55 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Session, User } from "@supabase/supabase-js";
+import { useCallback, useEffect, useState } from "react";
+import { getCurrentAdmin, loginAdmin, logoutAdmin } from "@/lib/apiClient";
+import type { AdminUser } from "@/lib/apiTypes";
 
-async function checkAdmin(user: User) {
-  const { data: role, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .eq("role", "admin")
-    .maybeSingle();
-
-  if (error) {
-    console.error("Admin role validation failed", {
-      userId: user.id,
-      code: error.code,
-      message: error.message,
-    });
-    throw error;
-  }
-  return !!role;
-}
+type AdminSession = {
+  user: AdminUser;
+};
 
 export function useAuth() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<AdminSession | null>(null);
+  const [user, setUser] = useState<AdminUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  async function applySession(sess: Session | null) {
-    setSession(sess);
-    setUser(sess?.user ?? null);
+  const applyAdmin = useCallback((admin: AdminUser | null) => {
+    setUser(admin);
+    setSession(admin ? { user: admin } : null);
+    setIsAdmin(admin?.role === "admin");
+  }, []);
+
+  const refreshAdmin = useCallback(async () => {
+    setLoading(true);
     setAuthError(null);
-
-    if (!sess?.user) {
-      setIsAdmin(false);
-      setLoading(false);
-      return;
-    }
-
     try {
-      setIsAdmin(await checkAdmin(sess.user));
+      const admin = await getCurrentAdmin();
+      applyAdmin(admin);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Admin rolü doğrulanamadı.";
-      setIsAdmin(false);
-      setAuthError(message);
+      applyAdmin(null);
+      if (error instanceof Error && !error.message.includes("Authentication required")) {
+        setAuthError(error.message);
+      }
     } finally {
       setLoading(false);
     }
+  }, [applyAdmin]);
+
+  async function signIn(email: string, password: string) {
+    const admin = await loginAdmin(email, password);
+    applyAdmin(admin);
+    setAuthError(null);
+    return admin;
+  }
+
+  async function signOut() {
+    await logoutAdmin();
+    applyAdmin(null);
   }
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, sess) => {
-      setTimeout(() => {
-        void applySession(sess);
-      }, 0);
-    });
+    void refreshAdmin();
+  }, [refreshAdmin]);
 
-    supabase.auth.getSession().then(({ data: { session: sess }, error }) => {
-      if (error) {
-        console.error("Supabase session lookup failed", error);
-        setAuthError(error.message);
-        setIsAdmin(false);
-        setLoading(false);
-        return;
-      }
-      void applySession(sess);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  return { session, user, isAdmin, loading, authError };
+  return { session, user, isAdmin, loading, authError, signIn, signOut, refreshAdmin };
 }

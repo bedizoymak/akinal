@@ -9,6 +9,10 @@ if (!is_file($configPath)) {
     json_error('API configuration file is missing. Copy config.example.php to config.php on the server.', 500);
 }
 
+if (!defined('AK_API_INTERNAL')) {
+    define('AK_API_INTERNAL', true);
+}
+
 require_once $configPath;
 
 function db(): PDO

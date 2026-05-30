@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Cookie, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { supabase } from "@/integrations/supabase/client";
+import { submitCookieConsent } from "@/lib/apiClient";
 
 const STORAGE_KEY = "akinal_cookie_consent_v1";
 
@@ -36,7 +36,11 @@ export default function CookieConsent() {
     setVisible(false);
     setManageOpen(false);
 
-    await supabase.from("cookie_consents").insert(payload);
+    try {
+      await submitCookieConsent(choice);
+    } catch (error) {
+      console.error("Cookie consent could not be stored", error);
+    }
   }
 
   if (!visible) return null;

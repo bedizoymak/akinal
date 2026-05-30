@@ -8,9 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings, getWhatsAppLink, getTelLink, getMapsLink } from "@/hooks/useSiteSettings";
 import { SERVICE_OPTIONS } from "@/lib/projects";
+import { submitContactRequest } from "@/lib/apiClient";
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 const isTurnstileConfigured = Boolean(TURNSTILE_SITE_KEY);
@@ -107,21 +107,21 @@ export default function Contact() {
       return;
     }
     setSubmitting(true);
-    const { error } = await supabase.functions.invoke("submit-contact-request", {
-      body: {
+    try {
+      await submitContactRequest({
         ...parsed.data,
         email: parsed.data.email || null,
         turnstileToken: captchaToken,
-      },
-    });
-    setSubmitting(false);
-    if (error) {
+      });
+    } catch {
+      setSubmitting(false);
       setCaptchaToken("");
       setCaptchaError("Güvenlik doğrulaması yenilenmelidir. Lütfen tekrar doğrulayın.");
       window.turnstile?.reset(widgetIdRef.current);
       toast({ title: "Hata", description: "Talebiniz gönderilemedi. Lütfen tekrar deneyin.", variant: "destructive" });
       return;
     }
+    setSubmitting(false);
     toast({ title: "Talebiniz alındı", description: "Talebiniz başarıyla alındı. En kısa sürede sizinle iletişime geçeceğiz." });
     setForm({ full_name: "", phone: "", email: "", service_type: "", message: "" });
     setCaptchaToken("");

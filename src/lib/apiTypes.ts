@@ -61,3 +61,28 @@ export interface ProjectDetailResponse {
   project: PublicProject;
   images: ProjectImage[];
 }
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  full_name?: string | null;
+  role: string;
+}
+
+export interface ContactRequestPayload {
+  full_name: string;
+  phone: string;
+  email?: string | null;
+  service_type?: string | null;
+  message: string;
+  turnstileToken: string;
+}
+
+export type ConsentStatus = "accepted" | "rejected" | "managed";
+
+export interface CookieConsentPayload {
+  consent_status: ConsentStatus;
+  necessary: true;
+  analytics: boolean;
+  marketing: boolean;
+}

@@ -23,7 +23,6 @@ import {
 import NotificationBell from "@/components/admin/NotificationBell";
 import logoImg from "@/assets/logo.png";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -119,7 +118,7 @@ function findPageMeta(pathname: string) {
 }
 
 export default function AdminLayout() {
-  const { session, isAdmin, loading, authError } = useAuth();
+  const { session, isAdmin, loading, authError, signOut } = useAuth();
   const nav = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -147,7 +146,7 @@ export default function AdminLayout() {
   if (!isAdmin) return <Navigate to="/admin/giris" replace />;
 
   async function logout() {
-    await supabase.auth.signOut();
+    await signOut();
     nav("/admin/giris", { replace: true });
   }
 

@@ -9,7 +9,7 @@ function start_secure_session(): void
         return;
     }
 
-    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    $secure = is_https_request();
 
     session_set_cookie_params([
         'lifetime' => 0,
@@ -27,7 +27,7 @@ function is_admin_logged_in(): bool
 {
     start_secure_session();
 
-    return !empty($_SESSION['admin']) && is_array($_SESSION['admin']);
+    return !empty($_SESSION['admin']) && is_array($_SESSION['admin']) && !empty($_SESSION['admin']['id']);
 }
 
 function current_admin(): ?array
@@ -48,11 +48,44 @@ function require_admin(): array
     return $admin;
 }
 
-/*
- * Phase 3 will implement login/logout against ak_admin_users.
- * Expected flow:
- * - Look up ak_admin_users by email_lower = strtolower(email).
- * - Require is_active = 1.
- * - Verify submitted password with password_verify() against password_hash.
- * - Store only safe admin identity/session fields in $_SESSION['admin'].
- */
+function set_current_admin(array $admin): void
+{
+    start_secure_session();
+    session_regenerate_id(true);
+
+    $_SESSION['admin'] = [
+        'id' => (string) ($admin['id'] ?? ''),
+        'email' => (string) ($admin['email'] ?? ''),
+        'full_name' => $admin['full_name'] ?? null,
+        'role' => (string) ($admin['role'] ?? 'admin'),
+    ];
+}
+
+function logout_admin_session(): void
+{
+    start_secure_session();
+    $_SESSION = [];
+
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', [
+            'expires' => time() - 42000,
+            'path' => $params['path'],
+            'domain' => $params['domain'],
+            'secure' => (bool) $params['secure'],
+            'httponly' => (bool) $params['httponly'],
+            'samesite' => $params['samesite'] ?? 'Lax',
+        ]);
+    }
+
+    session_destroy();
+}
+
+function is_https_request(): bool
+{
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        return true;
+    }
+
+    return strtolower($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+}

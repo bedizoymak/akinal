@@ -3,7 +3,6 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import logoImg from "@/assets/logo.png";
@@ -13,7 +12,7 @@ type LocationState = {
 };
 
 export default function AdminAuth() {
-  const { session, isAdmin, loading } = useAuth();
+  const { session, isAdmin, loading, signIn, signOut } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
   const { toast } = useToast();
@@ -30,7 +29,7 @@ export default function AdminAuth() {
         <div className="max-w-md text-center bg-card border border-border rounded-lg p-8">
           <h1 className="font-display text-2xl font-bold mb-3">Yetkisiz Erişim</h1>
           <p className="text-muted-foreground mb-5">Bu hesabın admin paneline erişim yetkisi bulunmuyor.</p>
-          <Button onClick={async () => { await supabase.auth.signOut(); nav(0); }}>Çıkış Yap</Button>
+          <Button onClick={async () => { await signOut(); nav(0); }}>Çıkış Yap</Button>
         </div>
       </div>
     );
@@ -40,14 +39,13 @@ export default function AdminAuth() {
     e.preventDefault();
     setBusy(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      await signIn(email, password);
       nav("/admin", { replace: true });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "İşlem başarısız.";
       toast({
         title: "Hata",
-        description: message.includes("Invalid login") ? "E-posta veya şifre hatalı." : message,
+        description: message.includes("Invalid email or password") ? "E-posta veya şifre hatalı." : message,
         variant: "destructive",
       });
     } finally {

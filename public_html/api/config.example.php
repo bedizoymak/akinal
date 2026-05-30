@@ -8,7 +8,14 @@ declare(strict_types=1);
  * placeholder values there. Do not commit config.php or real credentials.
  */
 
+if (!defined('AK_API_INTERNAL')) {
+    http_response_code(403);
+    exit('Forbidden');
+}
+
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'akinalin_wp282');
 define('DB_USER', 'MYSQL_USERNAME_HERE');
 define('DB_PASS', 'MYSQL_PASSWORD_HERE');
+
+define('TURNSTILE_SECRET_KEY', 'TURNSTILE_SECRET_KEY_HERE');
