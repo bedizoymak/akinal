@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CUSTOMER_TYPES, CUSTOMER_STATUSES, customerDisplayName, displayLabel, formatTRY, statusBadgeClass, exportCSV, whatsappLink } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
+import { deleteAdminCustomer, getAdminCustomersData } from "@/lib/apiClient";
 
 export default function AdminCustomers() {
   const [customers, setCustomers] = useState<any[]>([]);
@@ -26,19 +26,18 @@ export default function AdminCustomers() {
 
   async function load() {
     setLoading(true);
-    const [c, p, py, l, pr] = await Promise.all([
-      (supabase.from("customers" as any).select("*").order("created_at", { ascending: false })) as any,
-      (supabase.from("payment_plans" as any).select("customer_id,amount")) as any,
-      (supabase.from("payments" as any).select("customer_id,amount")) as any,
-      (supabase.from("customer_projects" as any).select("customer_id,project_id")) as any,
-      supabase.from("projects").select("id,title").order("sort_order"),
-    ]);
-    setCustomers((c.data as any[]) || []);
-    setPlans((p.data as any[]) || []);
-    setPays((py.data as any[]) || []);
-    setLinks((l.data as any[]) || []);
-    setProjects((pr.data as any[]) || []);
-    setLoading(false);
+    try {
+      const data = await getAdminCustomersData();
+      setCustomers(data.customers || []);
+      setPlans(data.payment_plans || []);
+      setPays(data.payments || []);
+      setLinks(data.customer_projects || []);
+      setProjects(data.projects || []);
+    } catch (error) {
+      toast({ title: "Müşteri verileri alınamadı", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   }
   useEffect(() => { load(); }, []);
 
@@ -72,7 +71,7 @@ export default function AdminCustomers() {
 
   async function remove(id: string, name: string) {
     if (!confirm(`"${name}" müşteri kaydını silmek istediğinize emin misiniz? Bu işlem bağlı ödeme planlarını ve tahsilatları da etkileyebilir.`)) return;
-    await (supabase.from("customers" as any).delete().eq("id", id) as any);
+    await deleteAdminCustomer(id);
     toast({ title: "Müşteri silindi" });
     load();
   }

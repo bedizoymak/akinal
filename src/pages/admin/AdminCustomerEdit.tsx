@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CUSTOMER_TYPES, CUSTOMER_STATUSES } from "@/lib/finance";
 import { ArrowLeft, Save } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPage";
+import { createAdminCustomer, getAdminCustomerDetail, getAdminCustomersData, updateAdminCustomer } from "@/lib/apiClient";
 
 const empty = {
   customer_type: "Bireysel", full_name: "", company_name: "",
@@ -30,16 +30,21 @@ export default function AdminCustomerEdit() {
 
   useEffect(() => {
     (async () => {
-      const { data: prs } = await supabase.from("projects").select("id,title").order("sort_order");
-      setProjects(prs || []);
-      if (id) {
-        const { data: c } = await (supabase.from("customers" as any).select("*").eq("id", id).maybeSingle()) as any;
-        if (c) setForm(c);
-        const { data: links } = await (supabase.from("customer_projects" as any).select("project_id").eq("customer_id", id)) as any;
-        setLinkedIds(((links as any[]) || []).map((l) => l.project_id));
+      try {
+        if (id) {
+          const data = await getAdminCustomerDetail(id);
+          setProjects(data.projects || []);
+          if (data.customer) setForm(data.customer);
+          setLinkedIds((data.links || []).map((l) => l.project_id));
+        } else {
+          const data = await getAdminCustomersData();
+          setProjects(data.projects || []);
+        }
+      } catch (error) {
+        toast({ title: "Müşteri bilgileri alınamadı", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });
       }
     })();
-  }, [id]);
+  }, [id, toast]);
 
   function set(k: string, v: any) { setForm((f: any) => ({ ...f, [k]: v })); }
 
@@ -48,23 +53,16 @@ export default function AdminCustomerEdit() {
     if (form.customer_type === "Firma" && !form.company_name) { toast({ title: "Firma adı zorunludur", variant: "destructive" }); return; }
     if (form.customer_type !== "Firma" && !form.full_name) { toast({ title: "Ad Soyad zorunludur", variant: "destructive" }); return; }
     setLoading(true);
-    let customerId = id;
-    if (isNew) {
-      const { data, error } = await (supabase.from("customers" as any).insert(form).select("id").single()) as any;
-      if (error) { toast({ title: "Müşteri kaydedilemedi", description: "Müşteri bilgileri kaydedilirken bir problem oluştu. Lütfen alanları kontrol edip tekrar deneyin.", variant: "destructive" }); setLoading(false); return; }
-      customerId = data.id;
-    } else {
-      const { error } = await (supabase.from("customers" as any).update(form).eq("id", id)) as any;
-      if (error) { toast({ title: "Müşteri kaydedilemedi", description: "Müşteri bilgileri kaydedilirken bir problem oluştu. Lütfen alanları kontrol edip tekrar deneyin.", variant: "destructive" }); setLoading(false); return; }
+    try {
+      const payload = { ...form, project_ids: linkedIds };
+      const customer = isNew ? await createAdminCustomer(payload) : await updateAdminCustomer({ ...payload, id: id || "" });
+      toast({ title: isNew ? "Müşteri eklendi" : "Müşteri güncellendi" });
+      nav(`/admin/musteriler/${customer.id}`);
+    } catch (error) {
+      toast({ title: "Müşteri kaydedilemedi", description: error instanceof Error ? error.message : "Müşteri bilgileri kaydedilirken bir problem oluştu. Lütfen alanları kontrol edip tekrar deneyin.", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
-    // Update project links
-    await (supabase.from("customer_projects" as any).delete().eq("customer_id", customerId)) as any;
-    if (linkedIds.length) {
-      await (supabase.from("customer_projects" as any).insert(linkedIds.map((pid) => ({ customer_id: customerId, project_id: pid })))) as any;
-    }
-    toast({ title: isNew ? "Müşteri eklendi" : "Müşteri güncellendi" });
-    setLoading(false);
-    nav(`/admin/musteriler/${customerId}`);
   }
 
   function toggleProject(pid: string, on: boolean) {

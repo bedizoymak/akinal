@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { AdminPageHeader } from "@/components/admin/AdminPage";
+import { createAdminCustomerNote, deleteAdminCustomerNote, getAdminCustomerDetail } from "@/lib/apiClient";
 
 function Stat({ label, value, color }: any) {
   return (
@@ -34,25 +34,21 @@ export default function AdminCustomerDetail() {
   const { toast } = useToast();
 
   async function load() {
-    const [c, links, pr, pl, py, ex, nt, dc] = await Promise.all([
-      (supabase.from("customers" as any).select("*").eq("id", id).maybeSingle()) as any,
-      (supabase.from("customer_projects" as any).select("project_id").eq("customer_id", id)) as any,
-      supabase.from("projects").select("id,title,slug"),
-      (supabase.from("payment_plans" as any).select("*").eq("customer_id", id).order("due_date")) as any,
-      (supabase.from("payments" as any).select("*").eq("customer_id", id).order("payment_date", { ascending: false })) as any,
-      (supabase.from("expenses" as any).select("*").eq("customer_id", id).order("expense_date", { ascending: false })) as any,
-      (supabase.from("customer_notes" as any).select("*").eq("customer_id", id).order("created_at", { ascending: false })) as any,
-      (supabase.from("documents" as any).select("*").eq("customer_id", id).order("created_at", { ascending: false })) as any,
-    ]);
-    setCustomer(c.data);
-    setAllProjects((pr.data as any[]) || []);
-    const linkedIds = ((links.data as any[]) || []).map((l) => l.project_id);
-    setProjects(((pr.data as any[]) || []).filter((p) => linkedIds.includes(p.id)));
-    setPlans((pl.data as any[]) || []);
-    setPays((py.data as any[]) || []);
-    setExpenses((ex.data as any[]) || []);
-    setNotes((nt.data as any[]) || []);
-    setDocs((dc.data as any[]) || []);
+    if (!id) return;
+    try {
+      const data = await getAdminCustomerDetail(id);
+      setCustomer(data.customer);
+      setAllProjects(data.projects || []);
+      const linkedIds = (data.links || []).map((l) => l.project_id);
+      setProjects((data.projects || []).filter((p) => linkedIds.includes(p.id)));
+      setPlans(data.payment_plans || []);
+      setPays(data.payments || []);
+      setExpenses(data.expenses || []);
+      setNotes(data.notes || []);
+      setDocs(data.documents || []);
+    } catch (error) {
+      toast({ title: "Müşteri bilgileri alınamadı", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });
+    }
   }
   useEffect(() => { load(); }, [id]);
 
@@ -79,13 +75,13 @@ export default function AdminCustomerDetail() {
   ].filter((d) => d.value > 0);
 
   async function addNote() {
-    if (!newNote.trim()) return;
-    await (supabase.from("customer_notes" as any).insert({ customer_id: id, note: newNote.trim() })) as any;
+    if (!id || !newNote.trim()) return;
+    await createAdminCustomerNote(id, newNote.trim());
     setNewNote(""); toast({ title: "Not eklendi" }); load();
   }
   async function deleteNote(nid: string) {
     if (!confirm("Bu müşteri notunu silmek istediğinize emin misiniz?")) return;
-    await (supabase.from("customer_notes" as any).delete().eq("id", nid)) as any;
+    await deleteAdminCustomerNote(nid);
     load();
   }
 

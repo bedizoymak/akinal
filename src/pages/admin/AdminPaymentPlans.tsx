@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +11,7 @@ import { PAYMENT_PLAN_STATUSES, formatTRY, formatDate, statusBadgeClass, custome
 import { cn } from "@/lib/utils";
 import { Plus, Edit, Trash2, Download, MessageCircle, CalendarClock, AlertTriangle, Wallet, CheckCircle2, Loader2 } from "lucide-react";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
+import { createAdminPaymentPlan, deleteAdminPaymentPlan, getAdminPaymentPlansData, updateAdminPaymentPlan } from "@/lib/apiClient";
 
 const empty = { customer_id: "", project_id: "", title: "", description: "", amount: "", due_date: "", status: "Bekliyor", notes: "" };
 
@@ -35,17 +35,17 @@ export default function AdminPaymentPlans() {
 
   async function load() {
     setLoading(true);
-    const [pl, c, pr, py] = await Promise.all([
-      (supabase.from("payment_plans" as any).select("*").order("due_date")) as any,
-      (supabase.from("customers" as any).select("*").order("created_at", { ascending: false })) as any,
-      supabase.from("projects").select("id,title").order("sort_order"),
-      (supabase.from("payments" as any).select("payment_plan_id,amount")) as any,
-    ]);
-    setPlans((pl.data as any[]) || []);
-    setCustomers((c.data as any[]) || []);
-    setProjects((pr.data as any[]) || []);
-    setPays((py.data as any[]) || []);
-    setLoading(false);
+    try {
+      const data = await getAdminPaymentPlansData();
+      setPlans(data.payment_plans || []);
+      setCustomers(data.customers || []);
+      setProjects(data.projects || []);
+      setPays(data.payments || []);
+    } catch (error) {
+      toast({ title: "Ödeme planı verileri alınamadı", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   }
   useEffect(() => { load(); }, []);
   useEffect(() => { if (preCustomer) { setForm((f: any) => ({ ...f, customer_id: preCustomer })); setOpen(true); } }, [preCustomer]);
@@ -61,10 +61,10 @@ export default function AdminPaymentPlans() {
     const payload: any = { ...form, amount: Number(form.amount), project_id: form.project_id || null };
     try {
       if (editId) {
-        await (supabase.from("payment_plans" as any).update(payload).eq("id", editId)) as any;
+        await updateAdminPaymentPlan({ ...payload, id: editId });
         toast({ title: "Ödeme planı güncellendi" });
       } else {
-        await (supabase.from("payment_plans" as any).insert(payload)) as any;
+        await createAdminPaymentPlan(payload);
         toast({ title: "Ödeme planı eklendi" });
       }
       setOpen(false); load();
@@ -75,7 +75,7 @@ export default function AdminPaymentPlans() {
 
   async function remove(id: string) {
     if (!confirm("Bu ödeme planını silmek istediğinize emin misiniz? Bağlı tahsilat takibi etkilenebilir.")) return;
-    await (supabase.from("payment_plans" as any).delete().eq("id", id)) as any;
+    await deleteAdminPaymentPlan(id);
     toast({ title: "Silindi" }); load();
   }
 

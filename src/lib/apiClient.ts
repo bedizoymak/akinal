@@ -1,7 +1,15 @@
 import type {
   AdminUser,
   AdminContactRequest,
+  AdminCustomer,
+  AdminCustomerDetailResponse,
+  AdminCustomerListResponse,
   AdminDashboardResponse,
+  AdminPayment,
+  AdminPaymentPlan,
+  AdminPaymentPlansResponse,
+  AdminPaymentsResponse,
+  AdminCustomerNote,
   ContactRequestPayload,
   CookieConsentPayload,
   ProjectDetailResponse,
@@ -300,4 +308,136 @@ export async function getAdminDashboard(): Promise<AdminDashboardResponse> {
     method: "GET",
     credentials: "include",
   });
+}
+
+export async function getAdminCustomersData(): Promise<AdminCustomerListResponse> {
+  return apiRequest<AdminCustomerListResponse>("/api/admin/customers.php", {
+    method: "GET",
+    credentials: "include",
+  });
+}
+
+export async function getAdminCustomerDetail(id: string): Promise<AdminCustomerDetailResponse> {
+  return apiRequest<AdminCustomerDetailResponse>(`/api/admin/customers.php?id=${encodeURIComponent(id)}`, {
+    method: "GET",
+    credentials: "include",
+  });
+}
+
+export async function createAdminCustomer(payload: Partial<AdminCustomer> & { project_ids?: string[] }): Promise<AdminCustomer> {
+  const data = await apiRequest<{ customer: AdminCustomer }>("/api/admin/customers.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.customer;
+}
+
+export async function updateAdminCustomer(payload: Partial<AdminCustomer> & { id: string; project_ids?: string[] }): Promise<AdminCustomer> {
+  const data = await apiRequest<{ customer: AdminCustomer }>("/api/admin/customers.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.customer;
+}
+
+export async function deleteAdminCustomer(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/customers.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+export async function createAdminCustomerNote(customerId: string, note: string): Promise<AdminCustomerNote> {
+  const data = await apiRequest<{ note: AdminCustomerNote }>("/api/admin/customers.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify({ action: "note", customer_id: customerId, note }),
+  });
+  return data.note;
+}
+
+export async function deleteAdminCustomerNote(noteId: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/customers.php?note_id=${encodeURIComponent(noteId)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+export async function getAdminPaymentPlansData(): Promise<AdminPaymentPlansResponse> {
+  return apiRequest<AdminPaymentPlansResponse>("/api/admin/payment-plans.php", {
+    method: "GET",
+    credentials: "include",
+  });
+}
+
+export async function createAdminPaymentPlan(payload: Partial<AdminPaymentPlan>): Promise<AdminPaymentPlan> {
+  const data = await apiRequest<{ payment_plan: AdminPaymentPlan }>("/api/admin/payment-plans.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.payment_plan;
+}
+
+export async function updateAdminPaymentPlan(payload: Partial<AdminPaymentPlan> & { id: string }): Promise<AdminPaymentPlan> {
+  const data = await apiRequest<{ payment_plan: AdminPaymentPlan }>("/api/admin/payment-plans.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.payment_plan;
+}
+
+export async function deleteAdminPaymentPlan(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/payment-plans.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+export async function getAdminPaymentsData(): Promise<AdminPaymentsResponse> {
+  return apiRequest<AdminPaymentsResponse>("/api/admin/payments.php", {
+    method: "GET",
+    credentials: "include",
+  });
+}
+
+export async function createAdminPayment(payload: Partial<AdminPayment>): Promise<AdminPayment> {
+  const data = await apiRequest<{ payment: AdminPayment }>("/api/admin/payments.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.payment;
+}
+
+export async function updateAdminPayment(payload: Partial<AdminPayment> & { id: string }): Promise<AdminPayment> {
+  const data = await apiRequest<{ payment: AdminPayment }>("/api/admin/payments.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.payment;
+}
+
+export async function deleteAdminPayment(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/payments.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+export async function uploadAdminPaymentDocument(file: File): Promise<string> {
+  const form = new FormData();
+  form.append("file", file, file.name);
+
+  const data = await apiRequest<{ url: string }>("/api/admin/upload-payment-document.php", {
+    method: "POST",
+    credentials: "include",
+    body: form,
+    headers: {},
+  });
+  return data.url;
 }

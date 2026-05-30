@@ -118,6 +118,97 @@ export interface AdminDashboardResponse {
   active_projects_list: AdminDashboardProject[];
 }
 
+export interface AdminCustomer {
+  id: string;
+  customer_type: string | null;
+  full_name: string | null;
+  company_name: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  tax_or_identity_number: string | null;
+  address: string | null;
+  city: string | null;
+  district: string | null;
+  status: string | null;
+  notes: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AdminCustomerProjectLink {
+  customer_id?: string;
+  project_id: string;
+}
+
+export interface AdminPaymentPlan {
+  id: string;
+  customer_id: string | null;
+  project_id: string | null;
+  title: string | null;
+  description: string | null;
+  amount: number | string;
+  due_date: string | null;
+  status: string | null;
+  notes?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AdminPayment {
+  id: string;
+  customer_id: string | null;
+  project_id: string | null;
+  payment_plan_id: string | null;
+  amount: number | string;
+  payment_date: string | null;
+  payment_method: string | null;
+  description: string | null;
+  document_url: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AdminCustomerNote {
+  id: string;
+  customer_id: string;
+  note: string;
+  created_at: string;
+}
+
+export interface AdminCustomerListResponse {
+  customers: AdminCustomer[];
+  payment_plans: Pick<AdminPaymentPlan, "customer_id" | "amount">[];
+  payments: Pick<AdminPayment, "customer_id" | "amount">[];
+  customer_projects: AdminCustomerProjectLink[];
+  projects: Pick<PublicProject, "id" | "title">[];
+}
+
+export interface AdminCustomerDetailResponse {
+  customer: AdminCustomer | null;
+  links: AdminCustomerProjectLink[];
+  projects: Pick<PublicProject, "id" | "title" | "slug">[];
+  payment_plans: AdminPaymentPlan[];
+  payments: AdminPayment[];
+  expenses: Record<string, unknown>[];
+  notes: AdminCustomerNote[];
+  documents: Record<string, unknown>[];
+}
+
+export interface AdminPaymentPlansResponse {
+  payment_plans: AdminPaymentPlan[];
+  customers: AdminCustomer[];
+  projects: Pick<PublicProject, "id" | "title">[];
+  payments: Pick<AdminPayment, "payment_plan_id" | "amount">[];
+}
+
+export interface AdminPaymentsResponse {
+  payments: AdminPayment[];
+  customers: AdminCustomer[];
+  projects: Pick<PublicProject, "id" | "title">[];
+  payment_plans: Pick<AdminPaymentPlan, "id" | "title" | "customer_id" | "project_id" | "amount" | "due_date" | "status">[];
+}
+
 export type ConsentStatus = "accepted" | "rejected" | "managed";
 
 export interface CookieConsentPayload {
