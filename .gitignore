@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+full_export.json
 supabase/.temp/
 public_html/api/config.php
 public_html/import-data/*.json

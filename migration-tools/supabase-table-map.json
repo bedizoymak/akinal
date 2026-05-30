@@ -1,4 +1,5 @@
 {
+  "admin_users": "ak_admin_users",
   "projects": "ak_projects",
   "project_images": "ak_project_images",
   "media_library": "ak_media_library",
