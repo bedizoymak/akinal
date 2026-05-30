@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Trash2, Phone, Mail, Search, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/AdminPage";
+import { deleteAdminContactRequest, getAdminContactRequests, updateAdminContactRequestStatus } from "@/lib/apiClient";
+import type { AdminContactRequest } from "@/lib/apiTypes";
 
 const STATUSES = ["Yeni", "Arandı", "Teklif Verildi", "Tamamlandı"];
 const COLORS: Record<string, string> = {
@@ -17,35 +18,30 @@ const COLORS: Record<string, string> = {
 };
 
 export default function AdminContacts() {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<AdminContactRequest[]>([]);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("all");
   const [open, setOpen] = useState<string | null>(null);
   const { toast } = useToast();
 
   async function load() {
-    const { data } = await supabase.from("contact_requests").select("*").order("created_at", { ascending: false });
-    setItems(data || []);
+    setItems(await getAdminContactRequests({ q, status: filter }));
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [q, filter]);
 
   async function updateStatus(id: string, status: string) {
-    await supabase.from("contact_requests").update({ status }).eq("id", id);
+    await updateAdminContactRequestStatus(id, status);
     toast({ title: "Durum güncellendi" });
     load();
   }
   async function remove(id: string) {
     if (!confirm("Talebi silmek istediğinize emin misiniz?")) return;
-    await supabase.from("contact_requests").delete().eq("id", id);
+    await deleteAdminContactRequest(id);
     toast({ title: "Talep silindi" });
     load();
   }
 
-  const filtered = items.filter((r) => {
-    if (filter !== "all" && r.status !== filter) return false;
-    if (q && !`${r.full_name} ${r.phone} ${r.email || ""}`.toLowerCase().includes(q.toLowerCase())) return false;
-    return true;
-  });
+  const filtered = items;
 
   return (
     <div>

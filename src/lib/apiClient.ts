@@ -1,5 +1,6 @@
 import type {
   AdminUser,
+  AdminContactRequest,
   ContactRequestPayload,
   CookieConsentPayload,
   ProjectDetailResponse,
@@ -263,4 +264,32 @@ export async function uploadAdminProjectImage(file: Blob, filename: string): Pro
     headers: {},
   });
   return data.url;
+}
+
+export async function getAdminContactRequests(filters: { q?: string; status?: string } = {}): Promise<AdminContactRequest[]> {
+  const params = new URLSearchParams();
+  if (filters.q) params.set("q", filters.q);
+  if (filters.status && filters.status !== "all") params.set("status", filters.status);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const data = await apiRequest<{ requests: AdminContactRequest[] }>(`/api/admin/contact-requests.php${suffix}`, {
+    method: "GET",
+    credentials: "include",
+  });
+  return data.requests || [];
+}
+
+export async function updateAdminContactRequestStatus(id: string, status: string): Promise<AdminContactRequest> {
+  const data = await apiRequest<{ request: AdminContactRequest }>("/api/admin/contact-requests.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify({ id, status }),
+  });
+  return data.request;
+}
+
+export async function deleteAdminContactRequest(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/contact-requests.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
 }

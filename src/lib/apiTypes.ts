@@ -78,6 +78,17 @@ export interface ContactRequestPayload {
   turnstileToken: string;
 }
 
+export interface AdminContactRequest {
+  id: string;
+  full_name: string;
+  phone: string;
+  email: string | null;
+  service_type: string | null;
+  message: string;
+  status: string;
+  created_at: string;
+}
+
 export type ConsentStatus = "accepted" | "rejected" | "managed";
 
 export interface CookieConsentPayload {
