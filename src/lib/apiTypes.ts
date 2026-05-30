@@ -89,6 +89,35 @@ export interface AdminContactRequest {
   created_at: string;
 }
 
+export interface AdminDashboardSummary {
+  total_projects: number;
+  active_projects: number;
+  published_projects: number;
+  draft_projects: number;
+  total_contact_requests: number;
+  new_contact_requests: number;
+  unread_notifications: number;
+  total_customers: number;
+  total_payments: number;
+  total_expenses: number;
+  basic_net_balance: number;
+}
+
+export interface AdminDashboardProject {
+  id: string;
+  title: string;
+  project_status: string | null;
+  location: string | null;
+  is_published: boolean | number | null;
+  slug: string;
+  sort_order: number | null;
+}
+
+export interface AdminDashboardResponse {
+  summary: AdminDashboardSummary;
+  active_projects_list: AdminDashboardProject[];
+}
+
 export type ConsentStatus = "accepted" | "rejected" | "managed";
 
 export interface CookieConsentPayload {

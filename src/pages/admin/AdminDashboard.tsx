@@ -22,38 +22,20 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { supabase } from "@/integrations/supabase/client";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader, AdminSection } from "@/components/admin/AdminPage";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  formatTRY,
   formatDate,
-  customerDisplayName,
   displayLabel,
-  daysUntil,
-  derivePlanStatus,
-  isCanceledStatus,
-  isPaidStatus,
-  paymentPlanRemainingFromPayments,
-  paidForPlan,
-  safeNumber,
-  summarizeLedgerFinance,
   type CurrencyTag,
   type EntryDirection,
   type GroupTag,
 } from "@/lib/finance";
 import { statusBadgeVariant } from "@/lib/projects";
 import { cn } from "@/lib/utils";
-import type { Database } from "@/integrations/supabase/types";
-
-type ProjectRow = Pick<Database["public"]["Tables"]["projects"]["Row"], "id" | "title" | "project_status" | "location" | "is_published" | "slug" | "sort_order">;
-type CustomerRow = Database["public"]["Tables"]["customers"]["Row"];
-type PaymentPlanRow = Database["public"]["Tables"]["payment_plans"]["Row"];
-type PaymentRow = Database["public"]["Tables"]["payments"]["Row"];
-type ExpenseRow = Database["public"]["Tables"]["expenses"]["Row"];
-type FinancialEntryRow = Database["public"]["Tables"]["financial_entries"]["Row"];
-type ContactRequestRow = Database["public"]["Tables"]["contact_requests"]["Row"];
+import { getAdminDashboard } from "@/lib/apiClient";
+import type { AdminDashboardProject, AdminDashboardSummary } from "@/lib/apiTypes";
 
 type RecentMovement = {
   id: string;
@@ -68,23 +50,25 @@ type RecentMovement = {
 };
 
 type DashboardData = {
-  projects: ProjectRow[];
-  customers: CustomerRow[];
-  plans: PaymentPlanRow[];
-  payments: PaymentRow[];
-  expenses: ExpenseRow[];
-  financialEntries: FinancialEntryRow[];
-  requests: ContactRequestRow[];
+  summary: AdminDashboardSummary;
+  activeProjects: AdminDashboardProject[];
 };
 
 const initialData: DashboardData = {
-  projects: [],
-  customers: [],
-  plans: [],
-  payments: [],
-  expenses: [],
-  financialEntries: [],
-  requests: [],
+  summary: {
+    total_projects: 0,
+    active_projects: 0,
+    published_projects: 0,
+    draft_projects: 0,
+    total_contact_requests: 0,
+    new_contact_requests: 0,
+    unread_notifications: 0,
+    total_customers: 0,
+    total_payments: 0,
+    total_expenses: 0,
+    basic_net_balance: 0,
+  },
+  activeProjects: [],
 };
 
 const chartColors = {
@@ -101,11 +85,6 @@ const dashboardCurrencyFormatter = new Intl.NumberFormat("tr-TR", {
 
 function formatDashboardTRY(value: number) {
   return dashboardCurrencyFormatter.format(value);
-}
-
-function isThisMonth(date: string | null | undefined, monthStart: string, monthEnd: string) {
-  if (!date) return false;
-  return date >= monthStart && date <= monthEnd;
 }
 
 function toMonthKey(date: Date) {
@@ -161,27 +140,10 @@ export default function AdminDashboard() {
       setLoading(true);
       setLoadError(false);
       try {
-        const [projects, customers, plans, payments, expenses, financialEntries, requests] = await Promise.all([
-          supabase.from("projects").select("id,title,project_status,location,is_published,slug,sort_order").order("sort_order"),
-          supabase.from("customers").select("id,customer_type,full_name,company_name,phone,email,status,created_at,updated_at,tax_or_identity_number,whatsapp,address,city,district,notes").order("created_at", { ascending: false }),
-          supabase.from("payment_plans").select("id,customer_id,project_id,title,amount,due_date,status,description,notes,created_at,updated_at").order("due_date"),
-          supabase.from("payments").select("id,customer_id,project_id,payment_plan_id,amount,payment_date,payment_method,description,document_url,created_at,updated_at").order("payment_date", { ascending: false }),
-          supabase.from("expenses").select("id,project_id,customer_id,title,category,amount,expense_date,description,document_url,created_at,updated_at").order("expense_date", { ascending: false }),
-          supabase.from("financial_entries").select("id,project_id,entry_date,card_type,customer_id,employee_id,expense_card_id,title,description,amount,currency_tag,group_tag,direction,status,document_url,created_at,updated_at").order("entry_date", { ascending: false }),
-          supabase.from("contact_requests").select("id,full_name,email,phone,service_type,message,status,created_at").order("created_at", { ascending: false }),
-        ]);
-
-        const firstError = [projects.error, customers.error, plans.error, payments.error, expenses.error, financialEntries.error, requests.error].find(Boolean);
-        if (firstError) throw firstError;
-
+        const dashboard = await getAdminDashboard();
         setData({
-          projects: projects.data || [],
-          customers: customers.data || [],
-          plans: plans.data || [],
-          payments: payments.data || [],
-          expenses: expenses.data || [],
-          financialEntries: financialEntries.data || [],
-          requests: requests.data || [],
+          summary: dashboard.summary,
+          activeProjects: dashboard.active_projects_list || [],
         });
       } catch {
         setLoadError(true);
@@ -192,108 +154,27 @@ export default function AdminDashboard() {
   }, []);
 
   const dashboard = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
-
-    const overallFinance = summarizeLedgerFinance({
-      financialEntries: data.financialEntries,
-    });
-    const monthFinance = summarizeLedgerFinance({
-      financialEntries: data.financialEntries,
-      from: monthStart,
-      to: monthEnd,
-    });
-    const activeProjects = data.projects.filter((project) => displayLabel(project.project_status) !== "Tamamlandı");
-
-    const planRows = data.plans.map((plan) => {
-      const paid = paidForPlan(plan.id, data.payments);
-      const remaining = paymentPlanRemainingFromPayments(plan, data.payments);
-      const status = derivePlanStatus(plan, paid);
-      const customer = data.customers.find((item) => item.id === plan.customer_id);
-      const project = data.projects.find((item) => item.id === plan.project_id);
-      const days = daysUntil(plan.due_date);
-      return { ...plan, paid, remaining, status, customer, project, days };
-    });
-
-    const overduePlans = planRows.filter((plan) => plan.days < 0 && plan.remaining > 0 && !isPaidStatus(plan.status) && !isCanceledStatus(plan.status));
-    const upcomingPlans = planRows
-      .filter((plan) => plan.days >= 0 && plan.days <= 30 && plan.remaining > 0 && !isPaidStatus(plan.status) && !isCanceledStatus(plan.status))
-      .sort((a, b) => a.days - b.days);
-
     const months = lastSixMonths();
-    const monthlyFinancials = months.map((month) => {
-      const from = `${month.key}-01`;
-      const monthDate = new Date(from);
-      const to = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).toISOString().slice(0, 10);
-      const summary = summarizeLedgerFinance({
-        financialEntries: data.financialEntries,
-        from,
-        to,
-      });
-      return { month: month.month, income: summary.totalIncome, expenses: summary.totalExpense, net: summary.netBalance };
-    });
-
-    const recentMovements: RecentMovement[] = [
-      ...data.payments.map((payment) => ({
-        id: `payment-${payment.id}`,
-        label: data.customers.find((item) => item.id === payment.customer_id)
-          ? customerDisplayName(data.customers.find((item) => item.id === payment.customer_id)!)
-          : "Tahsilat",
-        date: payment.payment_date ?? "",
-        amount: safeNumber(payment.amount),
-        direction: "Gelir" as const,
-        source: "Tahsilat",
-        currency: "TRY" as const,
-        group: "Resmi" as const,
-        projectTitle: data.projects.find((item) => item.id === payment.project_id)?.title,
-      })),
-      ...data.expenses.map((expense) => ({
-        id: `expense-${expense.id}`,
-        label: expense.title,
-        date: expense.expense_date ?? "",
-        amount: safeNumber(expense.amount),
-        direction: "Gider" as const,
-        source: "Gider",
-        currency: "TRY" as const,
-        group: "Resmi" as const,
-        projectTitle: data.projects.find((item) => item.id === expense.project_id)?.title,
-      })),
-      ...data.financialEntries
-        .filter((entry) => entry.currency_tag === "TRY")
-        .map((entry) => ({
-          id: `entry-${entry.id}`,
-          label: entry.title,
-          date: entry.entry_date,
-          amount: safeNumber(entry.amount),
-          direction: entry.direction as EntryDirection,
-          source: entry.direction === "Gelir" ? "Finans Geliri" : "Finans Gideri",
-          currency: entry.currency_tag as CurrencyTag,
-          group: entry.group_tag as GroupTag,
-          projectTitle: data.projects.find((item) => item.id === entry.project_id)?.title,
-        })),
-    ]
-      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
-      .slice(0, 6);
+    const monthlyFinancials = months.map((month) => ({ month: month.month, income: 0, expenses: 0, net: 0 }));
+    const recentMovements: RecentMovement[] = [];
 
     return {
-      totalIncome: overallFinance.totalIncome,
-      totalExpenses: overallFinance.totalExpense,
-      netStatus: overallFinance.netBalance,
-      monthIncome: monthFinance.totalIncome,
-      monthExpenses: monthFinance.totalExpense,
-      monthNet: monthFinance.netBalance,
-      activeProjects,
-      pendingCollections: overallFinance.receivable,
-      expectedPayments: overallFinance.payable,
-      overdueCollections: overduePlans.reduce((sum, plan) => sum + plan.remaining, 0),
-      overduePlans,
-      upcomingPlans,
+      totalIncome: Number(data.summary.total_payments || 0),
+      totalExpenses: Number(data.summary.total_expenses || 0),
+      netStatus: Number(data.summary.basic_net_balance || 0),
+      monthIncome: 0,
+      monthExpenses: 0,
+      monthNet: 0,
+      activeProjects: data.activeProjects,
+      pendingCollections: 0,
+      expectedPayments: 0,
+      overdueCollections: 0,
+      overduePlans: [],
+      upcomingPlans: [],
       recentMovements,
-      newRequests: data.requests.filter((request) => request.status === "Yeni"),
+      newRequests: Array.from({ length: Number(data.summary.new_contact_requests || 0) }),
       monthlyFinancials,
-      hasFinancialData: data.financialEntries.length > 0,
+      hasFinancialData: false,
     };
   }, [data]);
 
@@ -329,7 +210,7 @@ export default function AdminDashboard() {
       ) : (
         <>
           <div className="grid w-full max-w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <AdminMetricCard label="Aktif Projeler" value={dashboard.activeProjects.length} description={`${data.projects.length} toplam proje`} icon={FolderKanban} tone="accent" />
+            <AdminMetricCard label="Aktif Projeler" value={data.summary.active_projects} description={`${data.summary.total_projects} toplam proje`} icon={FolderKanban} tone="accent" />
             <AdminMetricCard label="Toplam Tahsilat" value={formatDashboardTRY(dashboard.totalIncome)} description="Gerçekleşen gelen ödemeler" icon={Wallet} tone="success" />
             <AdminMetricCard label="Toplam Gider" value={formatDashboardTRY(dashboard.totalExpenses)} description="Yapılan masraflar" icon={Receipt} tone="danger" />
             <AdminMetricCard label="Net Durum" value={formatDashboardTRY(dashboard.netStatus)} description="Gerçekleşen gelir eksi gider" icon={dashboard.netStatus >= 0 ? TrendingUp : TrendingDown} tone={dashboard.netStatus >= 0 ? "success" : "danger"} />
@@ -349,7 +230,7 @@ export default function AdminDashboard() {
             <AdminSection title="Takip Gerektirenler" description="Bugün bakılması faydalı olan kısa liste." className="xl:col-span-1" contentClassName="space-y-3">
               <Link to="/admin/odeme-planlari" className="block rounded-md border border-border p-3 hover:border-accent/50 hover:bg-accent/5">
                 <div className="text-sm font-semibold">Vadesi Geçen Alacak</div>
-                <div className={cn("mt-1 text-lg font-bold", dashboard.overdueCollections > 0 ? "text-red-700" : "text-emerald-700")}>{formatTRY(dashboard.overdueCollections)}</div>
+                <div className={cn("mt-1 text-lg font-bold", dashboard.overdueCollections > 0 ? "text-red-700" : "text-emerald-700")}>{formatDashboardTRY(dashboard.overdueCollections)}</div>
                 <div className="mt-1 text-xs text-muted-foreground">{dashboard.overduePlans.length} ödeme planı takip bekliyor.</div>
               </Link>
               <Link to="/admin/odeme-planlari" className="block rounded-md border border-border p-3 hover:border-accent/50 hover:bg-accent/5">
@@ -383,7 +264,7 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       <div className={cn("max-w-full shrink-0 self-end whitespace-nowrap text-right text-lg font-extrabold tabular-nums sm:self-auto", isIncome ? "text-emerald-700" : "text-red-600")}>
-                        {isIncome ? "+" : "-"}{formatTRY(movement.amount)}
+                        {isIncome ? "+" : "-"}{formatDashboardTRY(movement.amount)}
                       </div>
                     </div>
                   );
@@ -425,7 +306,7 @@ export default function AdminDashboard() {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                     <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
                     <YAxis tickLine={false} axisLine={false} tickFormatter={chartCurrency} tick={{ fontSize: 12 }} width={56} />
-                    <Tooltip formatter={(value: number) => formatTRY(value)} />
+                    <Tooltip formatter={(value: number) => formatDashboardTRY(value)} />
                     <Legend />
                     <Bar dataKey="income" name="Toplam Tahsilat" fill={chartColors.income} radius={[4, 4, 0, 0]} />
                     <Bar dataKey="expenses" name="Toplam Gider" fill={chartColors.expenses} radius={[4, 4, 0, 0]} />

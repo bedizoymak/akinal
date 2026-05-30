@@ -1,6 +1,7 @@
 import type {
   AdminUser,
   AdminContactRequest,
+  AdminDashboardResponse,
   ContactRequestPayload,
   CookieConsentPayload,
   ProjectDetailResponse,
@@ -290,6 +291,13 @@ export async function updateAdminContactRequestStatus(id: string, status: string
 export async function deleteAdminContactRequest(id: string): Promise<void> {
   await apiRequest<{ deleted: boolean }>(`/api/admin/contact-requests.php?id=${encodeURIComponent(id)}`, {
     method: "DELETE",
+    credentials: "include",
+  });
+}
+
+export async function getAdminDashboard(): Promise<AdminDashboardResponse> {
+  return apiRequest<AdminDashboardResponse>("/api/admin/dashboard.php", {
+    method: "GET",
     credentials: "include",
   });
 }
