@@ -8,6 +8,8 @@ require_admin();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 try {
+    ensure_site_settings_favicon_column();
+
     if ($method === 'GET') {
         $statement = db()->query('SELECT * FROM ak_site_settings ORDER BY updated_at DESC LIMIT 1');
         json_success(['settings' => $statement->fetch() ?: null]);
@@ -33,6 +35,7 @@ try {
         'footer_description',
         'hero_title',
         'hero_subtitle',
+        'favicon_url',
         'whatsapp_message',
         'seo_title',
         'seo_description',
@@ -62,4 +65,14 @@ try {
     json_success(['settings' => $statement->fetch() ?: null]);
 } catch (Throwable $exception) {
     json_error('Site ayarları işlenemedi.', 500);
+}
+
+function ensure_site_settings_favicon_column(): void
+{
+    $statement = db()->query("SHOW COLUMNS FROM ak_site_settings LIKE 'favicon_url'");
+    if ($statement->fetch()) {
+        return;
+    }
+
+    db()->exec('ALTER TABLE ak_site_settings ADD COLUMN favicon_url VARCHAR(500) NULL AFTER hero_subtitle');
 }

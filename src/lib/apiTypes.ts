@@ -14,6 +14,7 @@ export interface SiteSettings {
   footer_description: string | null;
   hero_title: string | null;
   hero_subtitle: string | null;
+  favicon_url: string | null;
   whatsapp_message: string | null;
   seo_title: string | null;
   seo_description: string | null;

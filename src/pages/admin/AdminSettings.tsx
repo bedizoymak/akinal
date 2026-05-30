@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertCircle,
@@ -13,6 +13,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  UploadCloud,
   type LucideIcon,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/AdminPage";
 import { getWhatsAppLink, type SiteSettings } from "@/hooks/useSiteSettings";
-import { getAdminSiteSettings, updateAdminSiteSettings } from "@/lib/apiClient";
+import { getAdminSiteSettings, updateAdminSiteSettings, uploadAdminSiteAsset } from "@/lib/apiClient";
+import { resolveImageUrl } from "@/lib/projects";
 import { cn } from "@/lib/utils";
 
 type EditableSiteSettings = SiteSettings & {
@@ -44,6 +46,7 @@ const FIELD_HELPERS: Record<keyof Omit<SiteSettings, "id">, string> = {
   footer_description: "Sitenin alt bölümünde firma logosunun yanında görünür.",
   hero_title: "Ana sayfanın ilk ekranındaki büyük başlıkta görünür.",
   hero_subtitle: "Ana sayfanın ilk ekranındaki açıklama metninde görünür.",
+  favicon_url: "Tarayıcı sekmesi, Google ve kısayol ikonlarında kullanılır.",
   whatsapp_message: "WhatsApp yönlendirmelerinde otomatik hazır mesaj olarak kullanılır.",
   seo_title: "Ana sayfanın tarayıcı başlığı ve Google sonuç görünümünde kullanılır.",
   seo_description: "Ana sayfa meta description ve Google sonuç önizlemesinde kullanılır.",
@@ -150,6 +153,8 @@ export default function AdminSettings() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -204,6 +209,11 @@ export default function AdminSettings() {
         warnings[field] = "Bağlantı http:// veya https:// ile başlamalıdır.";
       }
     });
+
+    const favicon = textValue(data.favicon_url);
+    if (favicon && !/^\/|https?:\/\//i.test(favicon)) {
+      warnings.favicon_url = "Favicon yolu / veya http:// ya da https:// ile başlamalıdır.";
+    }
 
     if (textValue(data.seo_title).length > 0 && textValue(data.seo_title).length < 30) warnings.seo_title = "SEO başlığı biraz kısa görünüyor.";
     if (textValue(data.seo_title).length > 60) warnings.seo_title = "SEO başlığı Google sonuçlarında kesilebilir.";
@@ -325,6 +335,20 @@ export default function AdminSettings() {
     }
   }
 
+  async function uploadFavicon(file: File) {
+    setUploadingFavicon(true);
+    try {
+      const url = await uploadAdminSiteAsset(file);
+      up("favicon_url", url);
+      toast({ title: "Favicon yüklendi", description: "Kaydettiğinizde site ayarlarına uygulanacak." });
+    } catch {
+      toast({ title: "Favicon yüklenemedi", description: "ICO, PNG, SVG veya WEBP dosyası seçtiğinizden emin olun.", variant: "destructive" });
+    } finally {
+      setUploadingFavicon(false);
+      if (faviconInputRef.current) faviconInputRef.current.value = "";
+    }
+  }
+
   return (
     <div className="space-y-6">
       <AdminPageHeader
@@ -386,6 +410,35 @@ export default function AdminSettings() {
           <SettingsSection title="Firma Bilgileri" description="Marka adı ve site alt bölümünde kullanılan kurumsal açıklama.">
             <SettingField label="Firma Adı" field="company_name" value={data.company_name || ""} onChange={(value) => up("company_name", value)} />
             <SettingField label="Footer Açıklaması" field="footer_description" value={data.footer_description || ""} onChange={(value) => up("footer_description", value)} textarea count />
+            <div>
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <Label>Favicon</Label>
+                <span className="text-xs text-muted-foreground">ICO, PNG, SVG, WEBP</span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-[72px_minmax(0,1fr)]">
+                <div className="flex h-[72px] w-[72px] items-center justify-center rounded-md border border-border bg-surface-light">
+                  <img src={resolveImageUrl(data.favicon_url || "/favicon.png")} alt="Favicon önizleme" className="h-10 w-10 object-contain" />
+                </div>
+                <div className="space-y-2">
+                  <Input value={data.favicon_url || ""} onChange={(event) => up("favicon_url", event.target.value)} placeholder="/favicon.png veya /uploads/site/favicon.png" />
+                  <div className="flex flex-wrap gap-2">
+                    <input ref={faviconInputRef} type="file" accept=".ico,image/png,image/svg+xml,image/webp" className="hidden" onChange={(event) => event.target.files?.[0] && uploadFavicon(event.target.files[0])} />
+                    <Button type="button" variant="outline" onClick={() => faviconInputRef.current?.click()} disabled={uploadingFavicon}>
+                      <UploadCloud className="h-4 w-4" />
+                      {uploadingFavicon ? "Yükleniyor..." : "Favicon Yükle"}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => up("favicon_url", "/favicon.png")}>Varsayılana Dön</Button>
+                  </div>
+                </div>
+              </div>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{FIELD_HELPERS.favicon_url}</p>
+              {validation.warnings.favicon_url && (
+                <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>{validation.warnings.favicon_url}</span>
+                </div>
+              )}
+            </div>
           </SettingsSection>
 
           <SettingsSection title="İletişim ve Satış Kanalları" description="Ziyaretçilerin size ulaşmasını sağlayan telefon, WhatsApp, e-posta ve adres bilgileri.">

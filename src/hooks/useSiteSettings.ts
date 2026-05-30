@@ -18,6 +18,7 @@ export interface SiteSettings {
   footer_description: string;
   hero_title: string;
   hero_subtitle: string;
+  favicon_url: string | null;
   whatsapp_message: string;
   seo_title: string;
   seo_description: string;
@@ -37,6 +38,7 @@ const defaults: SiteSettings = {
   footer_description: "",
   hero_title: "",
   hero_subtitle: "",
+  favicon_url: "/favicon.png",
   whatsapp_message: "",
   seo_title: "İnşaat ve Kentsel Dönüşüm",
   seo_description: "İnşaat, kentsel dönüşüm ve proje geliştirme hizmetleri.",
@@ -53,7 +55,7 @@ export function useSiteSettings() {
       .then((data) => {
         if (!alive) return;
         if (data) {
-          setSettings({
+          const nextSettings = {
             ...defaults,
             ...(data as ApiSiteSettings),
             company_name: data.company_name || defaults.company_name,
@@ -64,10 +66,13 @@ export function useSiteSettings() {
             footer_description: data.footer_description || defaults.footer_description,
             hero_title: data.hero_title || defaults.hero_title,
             hero_subtitle: data.hero_subtitle || defaults.hero_subtitle,
+            favicon_url: data.favicon_url || defaults.favicon_url,
             whatsapp_message: data.whatsapp_message || defaults.whatsapp_message,
             seo_title: data.seo_title || defaults.seo_title,
             seo_description: data.seo_description || defaults.seo_description,
-          });
+          };
+          setSettings(nextSettings);
+          applyFavicon(nextSettings.favicon_url);
         }
       })
       .catch((error) => {
@@ -93,6 +98,22 @@ export function getWhatsAppLink(num: string, message: string) {
 
 export function getTelLink(num: string) {
   return `tel:${(num || "").replace(/\s/g, "")}`;
+}
+
+function applyFavicon(faviconUrl: string | null) {
+  if (typeof document === "undefined") return;
+  const href = faviconUrl || "/favicon.png";
+  const extension = href.split("?")[0].split(".").pop()?.toLowerCase();
+  const type = extension === "svg" ? "image/svg+xml" : extension === "ico" ? "image/x-icon" : extension === "webp" ? "image/webp" : "image/png";
+  const selectors = ['link[rel="icon"]', 'link[rel="shortcut icon"]'];
+  let link = document.querySelector<HTMLLinkElement>(selectors.join(", "));
+  if (!link) {
+    link = document.createElement("link");
+    link.rel = "icon";
+    document.head.appendChild(link);
+  }
+  link.type = type;
+  link.href = href;
 }
 
 export function getMapsLink(address: string) {

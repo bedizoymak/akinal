@@ -180,6 +180,19 @@ export async function updateAdminSiteSettings(payload: SiteSettings): Promise<Si
   return data.settings || null;
 }
 
+export async function uploadAdminSiteAsset(file: File): Promise<string> {
+  const form = new FormData();
+  form.append("file", file, file.name);
+
+  const data = await apiRequest<{ url: string }>("/api/admin/upload-site-asset.php", {
+    method: "POST",
+    credentials: "include",
+    body: form,
+    headers: {},
+  });
+  return data.url;
+}
+
 export async function getAdminProjects(): Promise<PublicProject[]> {
   const data = await apiRequest<{ projects: PublicProject[] }>("/api/admin/projects.php", {
     method: "GET",
