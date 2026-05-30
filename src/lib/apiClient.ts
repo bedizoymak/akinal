@@ -258,6 +258,10 @@ export async function deleteAdminProjectImage(id: string): Promise<void> {
 export type AdminMediaImage = ProjectImage & {
   project_title?: string | null;
   project_slug?: string | null;
+  file_name?: string | null;
+  source_type?: string | null;
+  source_label?: string | null;
+  can_delete?: boolean;
   projects?: { title?: string | null; slug?: string | null };
 };
 
@@ -280,6 +284,26 @@ export async function deleteAdminMediaImage(id: string): Promise<void> {
     method: "DELETE",
     credentials: "include",
   });
+}
+
+export async function deleteAdminMediaPath(path: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/media.php?path=${encodeURIComponent(path)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+export async function uploadAdminMediaImage(file: File): Promise<AdminMediaImage> {
+  const form = new FormData();
+  form.append("file", file, file.name);
+
+  const data = await apiRequest<{ image: AdminMediaImage }>("/api/admin/media-upload.php", {
+    method: "POST",
+    credentials: "include",
+    body: form,
+    headers: {},
+  });
+  return data.image;
 }
 
 export async function uploadAdminProjectImage(file: Blob, filename: string): Promise<string> {

@@ -14,9 +14,20 @@ try {
 
     if ($method === 'DELETE') {
         $id = trim((string) ($_GET['id'] ?? ''));
-        if ($id === '') {
+        $path = trim((string) ($_GET['path'] ?? ''));
+        if ($id === '' && $path === '') {
             $input = read_admin_json_body();
-            $id = require_non_empty($input, 'id', 'Görsel bulunamadı.');
+            $id = nullable_string($input, 'id') ?? '';
+            $path = nullable_string($input, 'path') ?? '';
+        }
+
+        if ($id === '' && $path === '') {
+            json_error('Görsel bulunamadı.');
+        }
+
+        if ($path !== '') {
+            delete_media_by_path($path);
+            json_success(['deleted' => true]);
         }
 
         if (substr($id, 0, 3) === 'fs:') {
@@ -24,7 +35,11 @@ try {
             json_success(['deleted' => true]);
         }
 
-        db()->prepare('DELETE FROM ak_project_images WHERE id = :id')->execute(['id' => $id]);
+        $deletedPath = delete_db_media($id);
+        if ($deletedPath !== null && is_safe_project_upload_url($deletedPath)) {
+            delete_upload_file_by_url($deletedPath, false);
+        }
+
         json_success(['deleted' => true]);
     }
 
@@ -100,6 +115,7 @@ function add_media_image(array &$images, array &$seen, array $row): void
     $seen[$key] = true;
     $row['file_name'] = $row['file_name'] ?? basename(parse_url($url, PHP_URL_PATH) ?: $url);
     $row['source_type'] = $row['source_type'] ?? 'project_image';
+    $row['source_label'] = $row['source_label'] ?? media_source_label((string) $row['source_type']);
     $row['can_delete'] = $row['can_delete'] ?? true;
     $images[] = $row;
 }
@@ -154,6 +170,7 @@ function site_setting_image_rows(): array
             'project_title' => 'Site Ayarları',
             'project_slug' => null,
             'source_type' => 'site_setting',
+            'source_label' => 'Site ayarı',
             'can_delete' => false,
         ];
     }
@@ -195,6 +212,7 @@ function filesystem_project_images(): array
             'project_title' => 'Yüklenen Dosyalar',
             'project_slug' => null,
             'source_type' => 'filesystem',
+            'source_label' => 'Yükleme',
             'can_delete' => true,
         ];
     }
@@ -204,28 +222,90 @@ function filesystem_project_images(): array
 
 function delete_filesystem_media(string $id): void
 {
-    $baseDir = dirname(__DIR__, 2) . '/uploads/project-images';
-    if (!is_dir($baseDir)) {
-        json_error('Dosya bulunamadı.', 404);
-    }
-
     foreach (filesystem_project_images() as $image) {
         if (($image['id'] ?? '') !== $id) {
             continue;
         }
-
-        $file = realpath($baseDir . '/' . basename((string) $image['file_name']));
-        $base = realpath($baseDir);
-        if ($file === false || $base === false || substr($file, 0, strlen($base . DIRECTORY_SEPARATOR)) !== $base . DIRECTORY_SEPARATOR) {
-            json_error('Dosya yolu doğrulanamadı.', 400);
-        }
-
-        if (is_file($file) && !unlink($file)) {
-            json_error('Dosya silinemedi.', 500);
-        }
-
+        delete_upload_file_by_url((string) $image['image_url'], true);
         return;
     }
 
     json_error('Dosya bulunamadı.', 404);
+}
+
+function delete_media_by_path(string $path): void
+{
+    $normalized = '/' . ltrim($path, '/');
+    delete_db_media_by_url($normalized);
+    delete_upload_file_by_url($normalized, true);
+}
+
+function delete_db_media(string $id): ?string
+{
+    $stmt = db()->prepare('SELECT image_url FROM ak_project_images WHERE id = :id LIMIT 1');
+    $stmt->execute(['id' => $id]);
+    $row = $stmt->fetch();
+    if (!is_array($row)) {
+        return null;
+    }
+
+    db()->prepare('DELETE FROM ak_project_images WHERE id = :id')->execute(['id' => $id]);
+    return (string) ($row['image_url'] ?? '');
+}
+
+function delete_db_media_by_url(string $url): void
+{
+    db()->prepare('DELETE FROM ak_project_images WHERE image_url = :url')->execute(['url' => $url]);
+}
+
+function delete_upload_file_by_url(string $url, bool $missingIsError): void
+{
+    if (!is_safe_project_upload_url($url)) {
+        if ($missingIsError) {
+            json_error('Dosya yolu doğrulanamadı.', 400);
+        }
+        return;
+    }
+
+    $baseDir = dirname(__DIR__, 2) . '/uploads/project-images';
+    $base = realpath($baseDir);
+    if ($base === false) {
+        if ($missingIsError) {
+            json_error('Dosya bulunamadı.', 404);
+        }
+        return;
+    }
+
+    $path = parse_url($url, PHP_URL_PATH) ?: $url;
+    $file = realpath($baseDir . '/' . basename($path));
+    if ($file === false || substr($file, 0, strlen($base . DIRECTORY_SEPARATOR)) !== $base . DIRECTORY_SEPARATOR) {
+        if ($missingIsError) {
+            json_error('Dosya bulunamadı.', 404);
+        }
+        return;
+    }
+
+    if (is_file($file) && !unlink($file)) {
+        json_error('Dosya silinemedi.', 500);
+    }
+}
+
+function is_safe_project_upload_url(string $url): bool
+{
+    $path = parse_url($url, PHP_URL_PATH) ?: $url;
+    return preg_match('#^/uploads/project-images/[^/]+\.(jpe?g|png|webp|gif)$#i', $path) === 1;
+}
+
+function media_source_label(string $sourceType): string
+{
+    if ($sourceType === 'project_cover') {
+        return 'Proje';
+    }
+    if ($sourceType === 'site_setting') {
+        return 'Site ayarı';
+    }
+    if ($sourceType === 'filesystem') {
+        return 'Yükleme';
+    }
+    return 'Proje';
 }
