@@ -165,14 +165,19 @@ function push_http_post(string $endpoint, array $headers, string $body): array
         ]);
         $response = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $headerSize = (int) curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         $error = curl_error($ch);
         curl_close($ch);
+        $rawResponse = is_string($response) ? $response : '';
+        $responseHeaders = $headerSize > 0 ? substr($rawResponse, 0, $headerSize) : '';
+        $responseBody = $headerSize > 0 ? substr($rawResponse, $headerSize) : $rawResponse;
 
         return [
             'success' => $status >= 200 && $status < 300,
             'status' => $status,
             'error' => $error ?: null,
-            'response' => extract_http_response_body(is_string($response) ? $response : ''),
+            'response' => substr(trim($responseBody), 0, 2000),
+            'response_headers' => substr(trim($responseHeaders), 0, 2000),
         ];
     }
 
@@ -199,27 +204,13 @@ function push_http_post(string $endpoint, array $headers, string $body): array
         'status' => $status,
         'error' => $response === false ? 'request_failed' : null,
         'response' => is_string($response) ? substr($response, 0, 1000) : null,
+        'response_headers' => implode("\n", $http_response_header ?? []),
     ];
-}
-
-function extract_http_response_body(string $response): string
-{
-    if ($response === '') {
-        return '';
-    }
-
-    $parts = preg_split("/\r\n\r\n/", $response);
-    $body = $parts ? (string) end($parts) : $response;
-    return substr(trim($body), 0, 1000);
 }
 
 function create_vapid_jwt(string $endpoint): string
 {
-    $origin = parse_url($endpoint, PHP_URL_SCHEME) . '://' . parse_url($endpoint, PHP_URL_HOST);
-    $port = parse_url($endpoint, PHP_URL_PORT);
-    if ($port) {
-        $origin .= ':' . $port;
-    }
+    $origin = vapid_audience_from_endpoint($endpoint);
 
     $header = base64url_encode(json_encode(['typ' => 'JWT', 'alg' => 'ES256'], JSON_UNESCAPED_SLASHES));
     $claims = base64url_encode(json_encode([
@@ -247,18 +238,51 @@ function ec_public_key_to_pem(string $rawPublicKey): string
 
 function ecdsa_der_to_raw(string $der, int $partLength): string
 {
-    $offset = 3;
-    if (ord($der[1]) > 0x80) {
-        $offset += ord($der[1]) - 0x80;
+    $offset = 0;
+    if (ord($der[$offset++]) !== 0x30) {
+        throw new RuntimeException('Invalid ECDSA signature sequence.');
     }
-    $rLength = ord($der[$offset + 1]);
-    $r = substr($der, $offset + 2, $rLength);
-    $offset += 2 + $rLength;
-    $sLength = ord($der[$offset + 1]);
-    $s = substr($der, $offset + 2, $sLength);
+    read_der_length($der, $offset);
 
-    return str_pad(ltrim($r, "\x00"), $partLength / 2, "\x00", STR_PAD_LEFT)
-        . str_pad(ltrim($s, "\x00"), $partLength / 2, "\x00", STR_PAD_LEFT);
+    if (ord($der[$offset++]) !== 0x02) {
+        throw new RuntimeException('Invalid ECDSA signature R integer.');
+    }
+    $rLength = read_der_length($der, $offset);
+    $r = substr($der, $offset, $rLength);
+    $offset += $rLength;
+
+    if (ord($der[$offset++]) !== 0x02) {
+        throw new RuntimeException('Invalid ECDSA signature S integer.');
+    }
+    $sLength = read_der_length($der, $offset);
+    $s = substr($der, $offset, $sLength);
+
+    return left_pad_signature_part($r, (int) ($partLength / 2))
+        . left_pad_signature_part($s, (int) ($partLength / 2));
+}
+
+function read_der_length(string $der, int &$offset): int
+{
+    $length = ord($der[$offset++]);
+    if ($length < 0x80) {
+        return $length;
+    }
+
+    $bytes = $length & 0x7f;
+    $length = 0;
+    for ($index = 0; $index < $bytes; $index++) {
+        $length = ($length << 8) + ord($der[$offset++]);
+    }
+    return $length;
+}
+
+function left_pad_signature_part(string $value, int $length): string
+{
+    $value = ltrim($value, "\x00");
+    if (strlen($value) > $length) {
+        $value = substr($value, -$length);
+    }
+    return str_pad($value, $length, "\x00", STR_PAD_LEFT);
 }
 
 function hkdf_sha256(string $inputKey, int $length, string $info = '', string $salt = ''): string
@@ -293,11 +317,13 @@ function normalize_push_error(array $subscription, array $result): array
     return [
         'subscription_id' => (string) ($subscription['id'] ?? ''),
         'endpoint_host' => parse_url((string) ($subscription['endpoint'] ?? ''), PHP_URL_HOST) ?: null,
+        'audience' => vapid_audience_from_endpoint((string) ($subscription['endpoint'] ?? '')),
         'endpoint_hash' => (string) ($subscription['endpoint_hash'] ?? ''),
         'status' => (int) ($result['status'] ?? 0),
         'error' => $result['error'] ?? null,
         'message' => $result['message'] ?? null,
         'response' => $result['response'] ?? null,
+        'response_headers' => $result['response_headers'] ?? null,
     ];
 }
 
@@ -368,6 +394,7 @@ function push_subscription_diagnostics(?string $adminId = null): array
         return [
             'id' => $row['id'] ?? null,
             'endpoint_host' => parse_url((string) ($row['endpoint'] ?? ''), PHP_URL_HOST) ?: null,
+            'audience' => vapid_audience_from_endpoint((string) ($row['endpoint'] ?? '')),
             'endpoint_hash' => $row['endpoint_hash'] ?? null,
             'has_p256dh' => trim((string) ($row['p256dh'] ?? '')) !== '',
             'has_auth' => trim((string) ($row['auth'] ?? '')) !== '',
@@ -399,8 +426,34 @@ function vapid_diagnostics(): array
         'private_key_present' => $privateKey !== '' && strpos($privateKey, 'VAPID_PRIVATE_KEY_PEM_HERE') === false,
         'subject_present' => configured_vapid_subject() !== '',
         'public_key_length' => strlen($publicKey),
+        'vapid_public_fingerprint' => vapid_public_fingerprint(),
         'private_key_valid' => (bool) $privateResource,
         'public_private_key_match' => $privatePublicKey !== '' && hash_equals($privatePublicKey, $publicKey),
         'subject' => configured_vapid_subject(),
     ];
+}
+
+function vapid_audience_from_endpoint(string $endpoint): string
+{
+    $scheme = parse_url($endpoint, PHP_URL_SCHEME);
+    $host = parse_url($endpoint, PHP_URL_HOST);
+    if (!$scheme || !$host) {
+        return '';
+    }
+
+    $origin = $scheme . '://' . $host;
+    $port = parse_url($endpoint, PHP_URL_PORT);
+    if ($port) {
+        $origin .= ':' . $port;
+    }
+    return $origin;
+}
+
+function vapid_public_fingerprint(): ?string
+{
+    $publicKey = configured_vapid_public_key();
+    if ($publicKey === '' || $publicKey === 'VAPID_PUBLIC_KEY_HERE') {
+        return null;
+    }
+    return substr(hash('sha256', $publicKey), 0, 16);
 }
