@@ -12,9 +12,11 @@ import { useSiteSettings, getWhatsAppLink, getTelLink, getMapsLink } from "@/hoo
 import { SERVICE_OPTIONS } from "@/lib/projects";
 import { submitContactRequest } from "@/lib/apiClient";
 
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
-const isTurnstileConfigured = Boolean(TURNSTILE_SITE_KEY);
+const TURNSTILE_SITE_KEY = ((import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined) || "").trim();
+const isTurnstileConfigured = Boolean(TURNSTILE_SITE_KEY && TURNSTILE_SITE_KEY !== "VITE_TURNSTILE_SITE_KEY_HERE");
 const showTurnstileDevMessage = !isTurnstileConfigured && import.meta.env.DEV;
+const TURNSTILE_SCRIPT_ID = "cloudflare-turnstile-script";
+const TURNSTILE_SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&hl=tr";
 
 type TurnstileRenderOptions = {
   sitekey: string;
@@ -30,6 +32,7 @@ declare global {
     turnstile?: {
       render: (element: HTMLElement, options: TurnstileRenderOptions) => string;
       reset: (widgetId?: string) => void;
+      ready?: (callback: () => void) => void;
     };
   }
 }
@@ -50,44 +53,95 @@ export default function Contact() {
   const [submitting, setSubmitting] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaError, setCaptchaError] = useState("");
+  const [captchaLoading, setCaptchaLoading] = useState(isTurnstileConfigured);
   const turnstileRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string>();
 
   useEffect(() => {
-    if (!TURNSTILE_SITE_KEY || !turnstileRef.current || widgetIdRef.current) return;
+    if (!isTurnstileConfigured) {
+      setCaptchaLoading(false);
+      setCaptchaError("Güvenlik doğrulaması yapılandırılmamış. Lütfen site yöneticisiyle iletişime geçin.");
+      return;
+    }
+    if (!turnstileRef.current || widgetIdRef.current) return;
+
+    let cancelled = false;
+    const timeout = window.setTimeout(() => {
+      if (!widgetIdRef.current && !cancelled) {
+        setCaptchaLoading(false);
+        setCaptchaError("Güvenlik doğrulaması yüklenemedi. Lütfen sayfayı yenileyin veya tarayıcı eklentilerinizi kontrol edin.");
+      }
+    }, 10000);
 
     const renderWidget = () => {
-      if (!window.turnstile || !turnstileRef.current || widgetIdRef.current) return;
-      widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
-        sitekey: TURNSTILE_SITE_KEY,
-        theme: "light",
-        language: "tr",
-        callback: (token) => {
-          setCaptchaToken(token);
-          setCaptchaError("");
-        },
-        "expired-callback": () => {
-          setCaptchaToken("");
-          setCaptchaError("Güvenlik doğrulamasının süresi doldu. Lütfen tekrar doğrulayın.");
-        },
-        "error-callback": () => {
-          setCaptchaToken("");
-          setCaptchaError("Güvenlik doğrulaması tamamlanamadı. Lütfen tekrar deneyin.");
-        },
-      });
+      if (cancelled || !window.turnstile || !turnstileRef.current || widgetIdRef.current) return;
+      try {
+        const widgetId = window.turnstile.render(turnstileRef.current, {
+          sitekey: TURNSTILE_SITE_KEY,
+          theme: "light",
+          language: "tr",
+          callback: (token) => {
+            setCaptchaToken(token);
+            setCaptchaError("");
+            setCaptchaLoading(false);
+          },
+          "expired-callback": () => {
+            setCaptchaToken("");
+            setCaptchaLoading(false);
+            setCaptchaError("Güvenlik doğrulamasının süresi doldu. Lütfen tekrar doğrulayın.");
+          },
+          "error-callback": () => {
+            setCaptchaToken("");
+            setCaptchaLoading(false);
+            setCaptchaError("Güvenlik doğrulaması tamamlanamadı. Lütfen tekrar deneyin.");
+          },
+        });
+        if (!widgetId) {
+          setCaptchaLoading(false);
+          setCaptchaError("Güvenlik doğrulaması başlatılamadı. Lütfen sayfayı yenileyin.");
+          return;
+        }
+        widgetIdRef.current = widgetId;
+        setCaptchaLoading(false);
+        setCaptchaError("");
+      } catch {
+        setCaptchaLoading(false);
+        setCaptchaError("Güvenlik doğrulaması başlatılamadı. Lütfen sayfayı yenileyin.");
+      } finally {
+        window.clearTimeout(timeout);
+      }
     };
 
     if (window.turnstile) {
-      renderWidget();
-      return;
+      if (window.turnstile.ready) window.turnstile.ready(renderWidget);
+      else renderWidget();
+      return () => {
+        cancelled = true;
+        window.clearTimeout(timeout);
+      };
     }
 
-    const script = document.createElement("script");
-    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&hl=tr";
+    const existingScript = document.getElementById(TURNSTILE_SCRIPT_ID) as HTMLScriptElement | null;
+    const script = existingScript || document.createElement("script");
+    script.id = TURNSTILE_SCRIPT_ID;
+    script.src = TURNSTILE_SCRIPT_SRC;
     script.async = true;
     script.defer = true;
-    script.onload = renderWidget;
-    document.head.appendChild(script);
+    script.onload = () => {
+      if (window.turnstile?.ready) window.turnstile.ready(renderWidget);
+      else renderWidget();
+    };
+    script.onerror = () => {
+      window.clearTimeout(timeout);
+      setCaptchaLoading(false);
+      setCaptchaError("Güvenlik doğrulaması yüklenemedi. Lütfen bağlantınızı veya tarayıcı güvenlik ayarlarınızı kontrol edin.");
+    };
+    if (!existingScript) document.head.appendChild(script);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
   }, []);
 
   async function onSubmit(e: React.FormEvent) {
@@ -216,11 +270,14 @@ export default function Contact() {
                 <Label>Güvenlik Doğrulaması *</Label>
                 <div className="mt-2 rounded-lg border border-border bg-background p-3">
                   {isTurnstileConfigured ? (
-                    <div ref={turnstileRef} className="min-h-[65px]" />
+                    <div className="min-h-[65px]">
+                      <div ref={turnstileRef} />
+                      {captchaLoading && !captchaToken && !captchaError && <p className="text-sm text-muted-foreground">Güvenlik doğrulaması yükleniyor...</p>}
+                    </div>
                   ) : showTurnstileDevMessage ? (
                     <p className="text-sm text-muted-foreground">Dev: VITE_TURNSTILE_SITE_KEY tanımlanmadığı için Turnstile gösterilemiyor.</p>
                   ) : (
-                    <div className="min-h-[65px]" aria-hidden="true" />
+                    <p className="text-sm text-destructive">Güvenlik doğrulaması yapılandırılmamış. Form şu anda gönderilemiyor.</p>
                   )}
                 </div>
                 {captchaError && <p className="mt-2 text-sm text-destructive">{captchaError}</p>}
