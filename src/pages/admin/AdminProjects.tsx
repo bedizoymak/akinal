@@ -1,19 +1,19 @@
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart3, Edit, Eye, EyeOff, Copy, Trash2, ExternalLink, GripVertical, Star, Search, Plus, FolderKanban, Download, Upload, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { displayLabel } from "@/lib/finance";
-import { resolveImageUrl, statusBadgeVariant, PROJECT_STATUSES, PROJECT_TYPES, turkishSlugify } from "@/lib/projects";
+import { resolveImageUrl, statusBadgeVariant, PROJECT_STATUSES, PROJECT_TYPES } from "@/lib/projects";
 import { cn } from "@/lib/utils";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { downloadJsonFile, exportProjectsWithImages, importProjectsWithImages } from "@/features/admin/projects/projectImportExport";
+import { createAdminProject, deleteAdminProject, getAdminProjects, updateAdminProject } from "@/lib/apiClient";
 
 function Row({ p, onChange }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
@@ -66,24 +66,26 @@ export default function AdminProjects() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from("projects").select("*").order("sort_order").order("created_at", { ascending: false });
-    setItems(data || []);
-    setLoading(false);
+    try {
+      setItems(await getAdminProjects());
+    } finally {
+      setLoading(false);
+    }
   }
   useEffect(() => { load(); }, []);
 
   async function onChange(action: string, p: any) {
     if (action === "toggle") {
-      await supabase.from("projects").update({ is_published: !p.is_published }).eq("id", p.id);
+      await updateAdminProject({ id: p.id, is_published: !p.is_published });
       toast({ title: p.is_published ? "Yayından kaldırıldı" : "Yayınlandı" });
     } else if (action === "duplicate") {
       const { id, created_at, updated_at, ...rest } = p;
       const newSlug = `${p.slug}-kopya-${Date.now().toString(36)}`;
-      await supabase.from("projects").insert({ ...rest, title: `${p.title} (Kopya)`, slug: newSlug, is_published: false });
+      await createAdminProject({ ...rest, title: `${p.title} (Kopya)`, slug: newSlug, is_published: false });
       toast({ title: "Proje çoğaltıldı" });
     } else if (action === "delete") {
       if (!confirm(`"${p.title}" projesini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
-      await supabase.from("projects").delete().eq("id", p.id);
+      await deleteAdminProject(p.id);
       toast({ title: "Proje silindi" });
     }
     load();
@@ -95,7 +97,7 @@ export default function AdminProjects() {
     const newI = items.findIndex((i) => i.id === e.over!.id);
     const reordered = arrayMove(items, oldI, newI);
     setItems(reordered);
-    await Promise.all(reordered.map((it, idx) => supabase.from("projects").update({ sort_order: idx + 1 }).eq("id", it.id)));
+    await Promise.all(reordered.map((it, idx) => updateAdminProject({ id: it.id, sort_order: idx + 1 })));
     toast({ title: "Sıralama kaydedildi" });
   }
 

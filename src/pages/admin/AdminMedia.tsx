@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, Trash2, Search, Image as ImageIcon } from "lucide-react";
 import { resolveImageUrl } from "@/lib/projects";
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/AdminPage";
+import { deleteAdminMediaImage, getAdminMedia } from "@/lib/apiClient";
 
 export default function AdminMedia() {
   const [items, setItems] = useState<any[]>([]);
@@ -13,8 +13,7 @@ export default function AdminMedia() {
   const { toast } = useToast();
 
   async function load() {
-    const { data } = await supabase.from("project_images").select("*, projects(title,slug)").order("created_at", { ascending: false });
-    setItems(data || []);
+    setItems(await getAdminMedia());
   }
   useEffect(() => { load(); }, []);
 
@@ -22,7 +21,7 @@ export default function AdminMedia() {
 
   async function remove(img: any) {
     if (!confirm("Bu görseli silmek istediğinize emin misiniz?")) return;
-    await supabase.from("project_images").delete().eq("id", img.id);
+    await deleteAdminMediaImage(img.id);
     toast({ title: "Görsel silindi" });
     load();
   }

@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +15,16 @@ import { AdminPageHeader } from "@/components/admin/AdminPage";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import {
+  createAdminProject,
+  createAdminProjectImage,
+  deleteAdminProjectImage,
+  getAdminProject,
+  getAdminProjectImages,
+  updateAdminProject,
+  updateAdminProjectImage,
+  uploadAdminProjectImage,
+} from "@/lib/apiClient";
 
 const empty = {
   title: "", slug: "", short_description: "", detailed_description: "",
@@ -60,9 +69,9 @@ export default function AdminProjectEdit() {
   useEffect(() => {
     if (isNew) return;
     (async () => {
-      const { data: p } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
+      const p = await getAdminProject(id);
       if (p) setData(p);
-      const { data: imgs } = await supabase.from("project_images").select("*").eq("project_id", id).order("sort_order");
+      const imgs = await getAdminProjectImages(id);
       setImages(imgs || []);
       setLoading(false);
     })();
@@ -74,10 +83,7 @@ export default function AdminProjectEdit() {
   }
 
   async function uploadBlob(blob: Blob, name: string): Promise<string> {
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${name}`;
-    const { error } = await supabase.storage.from("project-images").upload(path, blob, { contentType: blob.type || "image/jpeg" });
-    if (error) throw error;
-    return supabase.storage.from("project-images").getPublicUrl(path).data.publicUrl;
+    return uploadAdminProjectImage(blob, name);
   }
 
   function onFiles(files: FileList | null) {
@@ -115,17 +121,17 @@ export default function AdminProjectEdit() {
       setImages((arr) => [...arr, { id: `tmp-${Date.now()}-${Math.random()}`, image_url: url, sort_order: arr.length, _new: true }]);
       if (!data.cover_image_url) setData((d: any) => ({ ...d, cover_image_url: url }));
     } else {
-      const { data: row } = await supabase.from("project_images").insert({ project_id: id, image_url: url, sort_order: images.length }).select().single();
-      if (row) setImages((arr) => [...arr, row]);
+      const row = await createAdminProjectImage({ project_id: id, image_url: url, sort_order: images.length });
+      setImages((arr) => [...arr, row]);
       if (!data.cover_image_url) {
-        await supabase.from("projects").update({ cover_image_url: url }).eq("id", id);
+        await updateAdminProject({ id, cover_image_url: url });
         setData((d: any) => ({ ...d, cover_image_url: url }));
       }
     }
   }
 
   async function reloadImages() {
-    const { data: imgs } = await supabase.from("project_images").select("*").eq("project_id", id).order("sort_order");
+    const imgs = await getAdminProjectImages(id);
     setImages(imgs || []);
   }
 
@@ -150,7 +156,7 @@ export default function AdminProjectEdit() {
       setImages((a) => a.filter((i) => i.id !== img.id));
       return;
     }
-    await supabase.from("project_images").delete().eq("id", img.id);
+    await deleteAdminProjectImage(img.id);
     setImages((a) => a.filter((i) => i.id !== img.id));
     toast({ title: "Görsel silindi" });
   }
@@ -158,7 +164,7 @@ export default function AdminProjectEdit() {
   async function setCover(img: any) {
     update("cover_image_url", img.image_url);
     if (!isNew) {
-      await supabase.from("projects").update({ cover_image_url: img.image_url }).eq("id", id);
+      await updateAdminProject({ id, cover_image_url: img.image_url });
     }
     toast({ title: "Ana görsel güncellendi" });
   }
@@ -170,7 +176,7 @@ export default function AdminProjectEdit() {
     const reordered = arrayMove(images, oldI, newI);
     setImages(reordered);
     if (!isNew) {
-      await Promise.all(reordered.map((it, idx) => supabase.from("project_images").update({ sort_order: idx }).eq("id", it.id)));
+      await Promise.all(reordered.map((it, idx) => updateAdminProjectImage({ id: it.id, sort_order: idx })));
     }
   }
 
@@ -188,18 +194,16 @@ export default function AdminProjectEdit() {
     setSaving(true);
     try {
       if (isNew) {
-        const { data: created, error } = await supabase.from("projects").insert(payload).select().single();
-        if (error) throw error;
+        const created = await createAdminProject(payload);
         // Save staged images
         const newImgs = images.filter((i) => i._new);
         if (newImgs.length > 0) {
-          await supabase.from("project_images").insert(newImgs.map((i, idx) => ({ project_id: created.id, image_url: i.image_url, sort_order: idx })));
+          await Promise.all(newImgs.map((i, idx) => createAdminProjectImage({ project_id: created.id, image_url: i.image_url, sort_order: idx })));
         }
         toast({ title: "Proje oluşturuldu" });
         nav(`/admin/projeler/${created.id}`);
       } else {
-        const { error } = await supabase.from("projects").update(payload).eq("id", id);
-        if (error) throw error;
+        await updateAdminProject({ ...payload, id });
         toast({ title: "Kaydedildi" });
         setData(payload);
       }

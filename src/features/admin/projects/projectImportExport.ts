@@ -1,10 +1,17 @@
-import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
+import {
+  createAdminProject,
+  createAdminProjectImage,
+  getAdminProjectImages,
+  getAdminProjects,
+  updateAdminProject,
+  updateAdminProjectImage,
+} from "@/lib/apiClient";
+import type { ProjectImage, PublicProject } from "@/lib/apiTypes";
 
-type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
-type ProjectInsert = Database["public"]["Tables"]["projects"]["Insert"];
-type ProjectImageRow = Database["public"]["Tables"]["project_images"]["Row"];
-type ProjectImageInsert = Database["public"]["Tables"]["project_images"]["Insert"];
+type ProjectRow = PublicProject;
+type ProjectInsert = Partial<PublicProject>;
+type ProjectImageRow = ProjectImage;
+type ProjectImageInsert = Partial<ProjectImage> & { project_id?: string; image_url?: string };
 
 export type ProjectExportItem = {
   project: ProjectRow;
@@ -91,22 +98,14 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-function shouldRetryWithoutTimestamps(message: string) {
-  const lower = message.toLowerCase();
-  return lower.includes("created_at") || lower.includes("updated_at") || lower.includes("generated");
-}
-
 export async function exportProjectsWithImages(): Promise<ProjectExportJson> {
-  const [{ data: projects, error: projectError }, { data: images, error: imageError }] = await Promise.all([
-    supabase.from("projects").select("*").order("sort_order").order("created_at", { ascending: false }),
-    supabase.from("project_images").select("*").order("sort_order").order("created_at", { ascending: false }),
+  const [projects, images] = await Promise.all([
+    getAdminProjects(),
+    getAdminProjectImages(),
   ]);
 
-  if (projectError) throw projectError;
-  if (imageError) throw imageError;
-
-  const allProjects = projects ?? [];
-  const allImages = images ?? [];
+  const allProjects = projects;
+  const allImages = images;
   const imagesByProject = allImages.reduce<Record<string, ProjectImageRow[]>>((acc, image) => {
     acc[image.project_id] = [...(acc[image.project_id] ?? []), image];
     return acc;
@@ -163,61 +162,26 @@ export function validateProjectExportJson(value: unknown): ProjectExportJson {
 }
 
 async function upsertProject(row: ProjectInsert) {
-  if (row.id) {
-    const { error } = await supabase.from("projects").upsert(row, { onConflict: "id" });
-    if (!error) return;
-
-    if (shouldRetryWithoutTimestamps(error.message)) {
-      const retry = await supabase.from("projects").upsert(stripGeneratedTimestamps(row), { onConflict: "id" });
-      if (!retry.error) return;
-    }
-
-    if (row.slug) {
-      const { id, created_at, updated_at, ...slugUpdate } = row;
-      const retryBySlug = await supabase.from("projects").upsert(slugUpdate, { onConflict: "slug" });
-      if (!retryBySlug.error) return;
-    }
-
-    throw error;
+  const cleaned = stripGeneratedTimestamps(row);
+  const existing = (await getAdminProjects()).find((project) => (row.id && project.id === row.id) || (row.slug && project.slug === row.slug));
+  if (existing) {
+    await updateAdminProject({ ...cleaned, id: existing.id });
+    return;
   }
-
-  if (!row.slug) throw new Error("Proje id veya slug alanı olmadan içe aktarılamaz.");
-  const { error } = await supabase.from("projects").upsert(row, { onConflict: "slug" });
-  if (!error) return;
-
-  if (shouldRetryWithoutTimestamps(error.message)) {
-    const retry = await supabase.from("projects").upsert(stripGeneratedTimestamps(row), { onConflict: "slug" });
-    if (!retry.error) return;
-  }
-
-  throw error;
+  await createAdminProject(cleaned);
 }
 
 async function upsertImage(row: ProjectImageInsert) {
   if (!row.project_id) throw new Error("Görsel project_id alanı olmadan içe aktarılamaz.");
   if (!row.image_url) throw new Error("Görsel image_url alanı olmadan içe aktarılamaz.");
 
-  if (row.id) {
-    const { error } = await supabase.from("project_images").upsert(row, { onConflict: "id" });
-    if (!error) return;
-
-    if (shouldRetryWithoutTimestamps(error.message)) {
-      const retry = await supabase.from("project_images").upsert(stripGeneratedTimestamps(row), { onConflict: "id" });
-      if (!retry.error) return;
-    }
-
-    throw error;
+  const cleaned = stripGeneratedTimestamps(row);
+  const existing = row.id ? (await getAdminProjectImages()).find((image) => image.id === row.id) : null;
+  if (existing) {
+    await updateAdminProjectImage({ ...cleaned, id: existing.id });
+    return;
   }
-
-  const { error } = await supabase.from("project_images").insert(row);
-  if (!error) return;
-
-  if (shouldRetryWithoutTimestamps(error.message)) {
-    const retry = await supabase.from("project_images").insert(stripGeneratedTimestamps(row));
-    if (!retry.error) return;
-  }
-
-  throw error;
+  await createAdminProjectImage({ ...cleaned, project_id: row.project_id, image_url: row.image_url });
 }
 
 export async function importProjectsWithImages(file: File): Promise<ImportResult> {

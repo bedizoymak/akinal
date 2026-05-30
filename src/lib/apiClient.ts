@@ -48,13 +48,14 @@ async function apiGet<T>(path: string): Promise<T> {
 
 async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   let response: Response;
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
 
   try {
     response = await fetch(path, {
       ...options,
       headers: {
         Accept: "application/json",
-        ...(options.body ? { "Content-Type": "application/json" } : {}),
+        ...(options.body && !isFormData ? { "Content-Type": "application/json" } : {}),
         ...options.headers,
       },
     });
@@ -130,4 +131,136 @@ export async function submitCookieConsent(payload: CookieConsentPayload): Promis
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function getAdminSiteSettings(): Promise<SiteSettings | null> {
+  const data = await apiRequest<{ settings: SiteSettings | null }>("/api/admin/site-settings.php", {
+    method: "GET",
+    credentials: "include",
+  });
+  return data.settings || null;
+}
+
+export async function updateAdminSiteSettings(payload: SiteSettings): Promise<SiteSettings | null> {
+  const data = await apiRequest<{ settings: SiteSettings | null }>("/api/admin/site-settings.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.settings || null;
+}
+
+export async function getAdminProjects(): Promise<PublicProject[]> {
+  const data = await apiRequest<{ projects: PublicProject[] }>("/api/admin/projects.php", {
+    method: "GET",
+    credentials: "include",
+  });
+  return data.projects || [];
+}
+
+export async function getAdminProject(id: string): Promise<PublicProject | null> {
+  const data = await apiRequest<{ project: PublicProject | null }>(`/api/admin/projects.php?id=${encodeURIComponent(id)}`, {
+    method: "GET",
+    credentials: "include",
+  });
+  return data.project || null;
+}
+
+export async function createAdminProject(payload: Partial<PublicProject>): Promise<PublicProject> {
+  const data = await apiRequest<{ project: PublicProject }>("/api/admin/projects.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.project;
+}
+
+export async function updateAdminProject(payload: Partial<PublicProject> & { id: string }): Promise<PublicProject> {
+  const data = await apiRequest<{ project: PublicProject }>("/api/admin/projects.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.project;
+}
+
+export async function deleteAdminProject(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/projects.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+export async function getAdminProjectImages(projectId?: string): Promise<ProjectImage[]> {
+  const path = projectId ? `/api/admin/project-images.php?project_id=${encodeURIComponent(projectId)}` : "/api/admin/project-images.php";
+  const data = await apiRequest<{ images: ProjectImage[] }>(path, {
+    method: "GET",
+    credentials: "include",
+  });
+  return data.images || [];
+}
+
+export async function createAdminProjectImage(payload: Partial<ProjectImage> & { project_id: string; image_url: string }): Promise<ProjectImage> {
+  const data = await apiRequest<{ image: ProjectImage }>("/api/admin/project-images.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.image;
+}
+
+export async function updateAdminProjectImage(payload: Partial<ProjectImage> & { id: string }): Promise<ProjectImage> {
+  const data = await apiRequest<{ image: ProjectImage }>("/api/admin/project-images.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.image;
+}
+
+export async function deleteAdminProjectImage(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/project-images.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+export type AdminMediaImage = ProjectImage & {
+  project_title?: string | null;
+  project_slug?: string | null;
+  projects?: { title?: string | null; slug?: string | null };
+};
+
+export async function getAdminMedia(): Promise<AdminMediaImage[]> {
+  const data = await apiRequest<{ images: AdminMediaImage[] }>("/api/admin/media.php", {
+    method: "GET",
+    credentials: "include",
+  });
+  return (data.images || []).map((image) => ({
+    ...image,
+    projects: {
+      title: image.project_title || null,
+      slug: image.project_slug || null,
+    },
+  }));
+}
+
+export async function deleteAdminMediaImage(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/media.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+export async function uploadAdminProjectImage(file: Blob, filename: string): Promise<string> {
+  const form = new FormData();
+  form.append("file", file, filename);
+
+  const data = await apiRequest<{ url: string }>("/api/admin/upload-project-image.php", {
+    method: "POST",
+    credentials: "include",
+    body: form,
+    headers: {},
+  });
+  return data.url;
 }

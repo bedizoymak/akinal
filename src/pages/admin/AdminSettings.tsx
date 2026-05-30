@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -23,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/AdminPage";
 import { getWhatsAppLink, type SiteSettings } from "@/hooks/useSiteSettings";
+import { getAdminSiteSettings, updateAdminSiteSettings } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
 
 type EditableSiteSettings = SiteSettings & {
@@ -157,24 +157,15 @@ export default function AdminSettings() {
 
     async function loadSettings() {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("site_settings")
-        .select("*")
-        .limit(1)
-        .maybeSingle();
-
-      if (!active) return;
-
       try {
-        if (error) {
-          setLoadError(error.message);
-          return;
-        }
-        const settings = data as EditableSiteSettings | null;
+        const settings = await getAdminSiteSettings() as EditableSiteSettings | null;
+        if (!active) return;
         setData(settings);
         setOriginalData(settings);
+      } catch (error) {
+        if (active) setLoadError(error instanceof Error ? error.message : "Site ayarları yüklenemedi.");
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
 
@@ -322,17 +313,16 @@ export default function AdminSettings() {
     }
 
     setSaving(true);
-    const { id, updated_at, ...rest } = data;
-    const { error } = await supabase.from("site_settings").update(rest).eq("id", id);
-    setSaving(false);
-
-    if (error) {
+    try {
+      const saved = await updateAdminSiteSettings(data);
+      setOriginalData((saved || data) as EditableSiteSettings);
+      setData((saved || data) as EditableSiteSettings);
+      toast({ title: "Site ayarları kaydedildi", description: "Web sitesi ayarları güncellendi." });
+    } catch {
       toast({ title: "Site ayarları kaydedilemedi", description: "Ayarlar kaydedilirken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
-      return;
+    } finally {
+      setSaving(false);
     }
-
-    setOriginalData(data);
-    toast({ title: "Site ayarları kaydedildi", description: "Web sitesi ayarları güncellendi." });
   }
 
   return (
