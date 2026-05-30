@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/admin/push-utils.php';
 
 require_method('POST');
 
@@ -72,6 +73,17 @@ try {
     ]);
 
     $pdo->commit();
+
+    try {
+        send_push_to_all_admins([
+            'title' => 'Yeni İletişim Talebi',
+            'body' => $fullName . ' tarafından yeni bir iletişim talebi gönderildi.',
+            'url' => '/admin/talepler',
+            'icon' => '/favicon.png',
+        ]);
+    } catch (Throwable $pushException) {
+        // Contact requests must remain reliable even if browser push delivery is unavailable.
+    }
 
     json_success(['id' => $contactId]);
 } catch (Throwable $exception) {

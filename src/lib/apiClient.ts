@@ -193,6 +193,38 @@ export async function uploadAdminSiteAsset(file: File): Promise<string> {
   return data.url;
 }
 
+export async function getAdminPushConfig(): Promise<{ public_key: string; configured: boolean }> {
+  return apiRequest<{ public_key: string; configured: boolean }>("/api/admin/push-subscribe.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify({ action: "config" }),
+  });
+}
+
+export async function subscribeAdminPush(subscription: PushSubscriptionJSON): Promise<void> {
+  await apiRequest<{ subscribed: boolean }>("/api/admin/push-subscribe.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify({ subscription }),
+  });
+}
+
+export async function unsubscribeAdminPush(endpoint: string): Promise<void> {
+  await apiRequest<{ unsubscribed: boolean }>("/api/admin/push-unsubscribe.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify({ endpoint }),
+  });
+}
+
+export async function sendAdminPushTest(): Promise<{ sent: number; failed: number; skipped?: boolean; reason?: string }> {
+  return apiRequest<{ sent: number; failed: number; skipped?: boolean; reason?: string }>("/api/admin/send-push-test.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify({}),
+  });
+}
+
 export async function getAdminProjects(): Promise<PublicProject[]> {
   const data = await apiRequest<{ projects: PublicProject[] }>("/api/admin/projects.php", {
     method: "GET",

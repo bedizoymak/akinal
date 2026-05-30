@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/AdminPage";
+import AdminPushNotificationsPanel from "@/components/admin/AdminPushNotificationsPanel";
 import { getWhatsAppLink, type SiteSettings } from "@/hooks/useSiteSettings";
 import { getAdminSiteSettings, updateAdminSiteSettings, uploadAdminSiteAsset } from "@/lib/apiClient";
 import { resolveImageUrl } from "@/lib/projects";
@@ -510,6 +511,10 @@ export default function AdminSettings() {
                 </p>
               </div>
             </PreviewPanel>
+          </SettingsSection>
+
+          <SettingsSection title="Admin Bildirimleri" description="Bu cihaza özel yönetim paneli tarayıcı bildirimleri.">
+            <AdminPushNotificationsPanel />
           </SettingsSection>
         </div>
 
