@@ -217,8 +217,8 @@ export async function unsubscribeAdminPush(endpoint: string): Promise<void> {
   });
 }
 
-export async function sendAdminPushTest(): Promise<{ sent: number; failed: number; skipped?: boolean; reason?: string }> {
-  return apiRequest<{ sent: number; failed: number; skipped?: boolean; reason?: string }>("/api/admin/send-push-test.php", {
+export async function sendAdminPushTest(): Promise<{ sent: number; failed: number; skipped?: boolean; reason?: string; errors?: Array<{ status?: number; error?: string | null; message?: string | null; response?: string | null }> }> {
+  return apiRequest<{ sent: number; failed: number; skipped?: boolean; reason?: string; errors?: Array<{ status?: number; error?: string | null; message?: string | null; response?: string | null }> }>("/api/admin/send-push-test.php", {
     method: "POST",
     credentials: "include",
     body: JSON.stringify({}),

@@ -49,9 +49,12 @@ function push_is_configured(): bool
 function send_push_to_all_admins(array $payload, ?string $adminId = null): array
 {
     ensure_push_subscriptions_table();
+    clear_last_push_error();
 
     if (!push_is_configured()) {
-        return ['sent' => 0, 'failed' => 0, 'skipped' => true, 'reason' => 'vapid_not_configured'];
+        $error = ['reason' => 'vapid_not_configured', 'message' => 'VAPID public/private keys are missing or still use placeholders.'];
+        record_last_push_error($error);
+        return ['sent' => 0, 'failed' => 0, 'skipped' => true, 'reason' => 'vapid_not_configured', 'errors' => [$error]];
     }
 
     if ($adminId !== null && $adminId !== '') {
@@ -63,9 +66,20 @@ function send_push_to_all_admins(array $payload, ?string $adminId = null): array
     $subscriptions = $statement->fetchAll() ?: [];
     $sent = 0;
     $failed = 0;
+    $errors = [];
 
     foreach ($subscriptions as $subscription) {
-        $result = send_web_push($subscription, $payload);
+        try {
+            $result = send_web_push($subscription, $payload);
+        } catch (Throwable $exception) {
+            $result = [
+                'success' => false,
+                'status' => 0,
+                'error' => 'exception',
+                'message' => $exception->getMessage(),
+            ];
+        }
+
         if ($result['success']) {
             $sent++;
             db()->prepare('UPDATE ak_push_subscriptions SET last_used_at = NOW() WHERE id = :id')->execute(['id' => $subscription['id']]);
@@ -73,12 +87,16 @@ function send_push_to_all_admins(array $payload, ?string $adminId = null): array
         }
 
         $failed++;
+        $error = normalize_push_error($subscription, $result);
+        $errors[] = $error;
+        record_last_push_error($error);
+
         if (in_array((int) ($result['status'] ?? 0), [404, 410], true)) {
             db()->prepare('DELETE FROM ak_push_subscriptions WHERE id = :id')->execute(['id' => $subscription['id']]);
         }
     }
 
-    return ['sent' => $sent, 'failed' => $failed, 'skipped' => false];
+    return ['sent' => $sent, 'failed' => $failed, 'skipped' => false, 'errors' => $errors];
 }
 
 function send_web_push(array $subscription, array $payload): array
@@ -150,7 +168,12 @@ function push_http_post(string $endpoint, array $headers, string $body): array
         $error = curl_error($ch);
         curl_close($ch);
 
-        return ['success' => $status >= 200 && $status < 300, 'status' => $status, 'error' => $error ?: null, 'response' => is_string($response) ? substr($response, 0, 500) : null];
+        return [
+            'success' => $status >= 200 && $status < 300,
+            'status' => $status,
+            'error' => $error ?: null,
+            'response' => extract_http_response_body(is_string($response) ? $response : ''),
+        ];
     }
 
     $context = stream_context_create([
@@ -171,7 +194,23 @@ function push_http_post(string $endpoint, array $headers, string $body): array
         }
     }
 
-    return ['success' => $status >= 200 && $status < 300, 'status' => $status, 'error' => $response === false ? 'request_failed' : null];
+    return [
+        'success' => $status >= 200 && $status < 300,
+        'status' => $status,
+        'error' => $response === false ? 'request_failed' : null,
+        'response' => is_string($response) ? substr($response, 0, 1000) : null,
+    ];
+}
+
+function extract_http_response_body(string $response): string
+{
+    if ($response === '') {
+        return '';
+    }
+
+    $parts = preg_split("/\r\n\r\n/", $response);
+    $body = $parts ? (string) end($parts) : $response;
+    return substr(trim($body), 0, 1000);
 }
 
 function create_vapid_jwt(string $endpoint): string
@@ -247,4 +286,121 @@ function base64url_decode(string $data): string
         $data .= str_repeat('=', 4 - $remainder);
     }
     return base64_decode(strtr($data, '-_', '+/')) ?: '';
+}
+
+function normalize_push_error(array $subscription, array $result): array
+{
+    return [
+        'subscription_id' => (string) ($subscription['id'] ?? ''),
+        'endpoint_host' => parse_url((string) ($subscription['endpoint'] ?? ''), PHP_URL_HOST) ?: null,
+        'endpoint_hash' => (string) ($subscription['endpoint_hash'] ?? ''),
+        'status' => (int) ($result['status'] ?? 0),
+        'error' => $result['error'] ?? null,
+        'message' => $result['message'] ?? null,
+        'response' => $result['response'] ?? null,
+    ];
+}
+
+function record_last_push_error(array $error): void
+{
+    $payload = [
+        'created_at' => gmdate('c'),
+        'error' => $error,
+    ];
+    $path = last_push_error_path();
+    @file_put_contents($path, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+    error_log('Admin web push failure: ' . json_encode($error, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+}
+
+function clear_last_push_error(): void
+{
+    $path = last_push_error_path();
+    if (is_file($path)) {
+        @unlink($path);
+    }
+}
+
+function read_last_push_error(): ?array
+{
+    $path = last_push_error_path();
+    if (!is_readable($path)) {
+        return null;
+    }
+
+    $data = json_decode((string) file_get_contents($path), true);
+    return is_array($data) ? $data : null;
+}
+
+function last_push_error_path(): string
+{
+    return sys_get_temp_dir() . '/akinal-admin-last-push-error.json';
+}
+
+function service_worker_detected(): bool
+{
+    $serverRootPath = dirname(__DIR__, 2) . '/admin-push-sw.js';
+    $sourcePublicPath = dirname(__DIR__, 3) . '/public/admin-push-sw.js';
+    return is_readable($serverRootPath) || is_readable($sourcePublicPath);
+}
+
+function push_subscription_count(?string $adminId = null): int
+{
+    ensure_push_subscriptions_table();
+    if ($adminId !== null && $adminId !== '') {
+        $stmt = db()->prepare('SELECT COUNT(*) FROM ak_push_subscriptions WHERE admin_id = :admin_id');
+        $stmt->execute(['admin_id' => $adminId]);
+        return (int) $stmt->fetchColumn();
+    }
+    return (int) db()->query('SELECT COUNT(*) FROM ak_push_subscriptions')->fetchColumn();
+}
+
+function push_subscription_diagnostics(?string $adminId = null): array
+{
+    ensure_push_subscriptions_table();
+    if ($adminId !== null && $adminId !== '') {
+        $stmt = db()->prepare('SELECT id, endpoint, endpoint_hash, p256dh, auth, user_agent, created_at, updated_at, last_used_at FROM ak_push_subscriptions WHERE admin_id = :admin_id ORDER BY updated_at DESC LIMIT 10');
+        $stmt->execute(['admin_id' => $adminId]);
+    } else {
+        $stmt = db()->query('SELECT id, endpoint, endpoint_hash, p256dh, auth, user_agent, created_at, updated_at, last_used_at FROM ak_push_subscriptions ORDER BY updated_at DESC LIMIT 10');
+    }
+
+    return array_map(static function (array $row): array {
+        return [
+            'id' => $row['id'] ?? null,
+            'endpoint_host' => parse_url((string) ($row['endpoint'] ?? ''), PHP_URL_HOST) ?: null,
+            'endpoint_hash' => $row['endpoint_hash'] ?? null,
+            'has_p256dh' => trim((string) ($row['p256dh'] ?? '')) !== '',
+            'has_auth' => trim((string) ($row['auth'] ?? '')) !== '',
+            'p256dh_length' => strlen((string) ($row['p256dh'] ?? '')),
+            'auth_length' => strlen((string) ($row['auth'] ?? '')),
+            'user_agent' => $row['user_agent'] ?? null,
+            'created_at' => $row['created_at'] ?? null,
+            'updated_at' => $row['updated_at'] ?? null,
+            'last_used_at' => $row['last_used_at'] ?? null,
+        ];
+    }, $stmt->fetchAll() ?: []);
+}
+
+function vapid_diagnostics(): array
+{
+    $publicKey = configured_vapid_public_key();
+    $privateKey = configured_vapid_private_key();
+    $privateResource = $privateKey !== '' ? openssl_pkey_get_private($privateKey) : false;
+    $privateDetails = $privateResource ? openssl_pkey_get_details($privateResource) : false;
+    $privatePublicKey = '';
+
+    if (is_array($privateDetails) && isset($privateDetails['ec']['x'], $privateDetails['ec']['y'])) {
+        $privatePublicKey = base64url_encode("\x04" . $privateDetails['ec']['x'] . $privateDetails['ec']['y']);
+    }
+
+    return [
+        'configured' => push_is_configured(),
+        'public_key_present' => $publicKey !== '' && $publicKey !== 'VAPID_PUBLIC_KEY_HERE',
+        'private_key_present' => $privateKey !== '' && strpos($privateKey, 'VAPID_PRIVATE_KEY_PEM_HERE') === false,
+        'subject_present' => configured_vapid_subject() !== '',
+        'public_key_length' => strlen($publicKey),
+        'private_key_valid' => (bool) $privateResource,
+        'public_private_key_match' => $privatePublicKey !== '' && hash_equals($privatePublicKey, $publicKey),
+        'subject' => configured_vapid_subject(),
+    ];
 }

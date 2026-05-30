@@ -122,6 +122,15 @@ export default function AdminPushNotificationsPanel() {
         toast({ title: "Test gönderilemedi", description: "Sunucuda VAPID anahtarları yapılandırılmamış.", variant: "destructive" });
         return;
       }
+      if ((result.failed || 0) > 0) {
+        const firstError = result.errors?.[0];
+        toast({
+          title: "Test bildirimi başarısız",
+          description: firstError?.response || firstError?.message || firstError?.error || `${result.failed} cihaz başarısız.`,
+          variant: "destructive",
+        });
+        return;
+      }
       toast({ title: "Test bildirimi gönderildi", description: `${result.sent || 0} cihaz başarılı, ${result.failed || 0} cihaz başarısız.` });
     } catch (error) {
       toast({ title: "Test bildirimi gönderilemedi", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });

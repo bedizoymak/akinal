@@ -17,5 +17,10 @@ try {
 
     json_success($result);
 } catch (Throwable $exception) {
+    record_last_push_error([
+        'status' => 0,
+        'error' => 'exception',
+        'message' => $exception->getMessage(),
+    ]);
     json_error('Test bildirimi gönderilemedi.', 500, ['reason' => $exception->getMessage()]);
 }
