@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/AdminPage";
 import { useToast } from "@/hooks/use-toast";
 import { deleteAdminMediaImage, deleteAdminMediaPath, getAdminMedia, type AdminMediaImage, uploadAdminMediaImage } from "@/lib/apiClient";
@@ -20,9 +21,10 @@ import { cn } from "@/lib/utils";
 
 function sourceLabel(image: AdminMediaImage) {
   if (image.source_label) return image.source_label;
-  if (image.source_type === "filesystem") return "Yükleme";
-  if (image.source_type === "site_setting") return "Site ayarı";
-  return "Proje";
+  if (image.source_type === "filesystem") return "Uploaded file";
+  if (image.source_type === "site_setting") return "Site setting";
+  if (image.source_type === "project_cover") return "Project cover";
+  return "Project gallery";
 }
 
 function displayName(image: AdminMediaImage) {
@@ -169,37 +171,51 @@ export default function AdminMedia() {
           action={<Button onClick={() => fileInputRef.current?.click()}><UploadCloud className="h-4 w-4" /> Yeni Görsel Yükle</Button>}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-          {filtered.map((image) => (
-            <div key={image.id || image.image_url} className="overflow-hidden rounded-md border border-border bg-card shadow-card-soft">
-              <div className="relative aspect-square bg-muted">
-                <img src={resolveImageUrl(image.image_url)} alt={image.alt_text || image.title || ""} className="h-full w-full object-cover" loading="lazy" />
-                <div className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-1 text-[11px] font-semibold text-white">
-                  {sourceLabel(image)}
-                </div>
-              </div>
-              <div className="space-y-3 p-3">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold" title={displayName(image)}>{displayName(image)}</div>
-                  <div className="mt-1 truncate text-xs text-muted-foreground" title={image.projects?.title || image.project_title || image.image_url}>
-                    {image.projects?.title || image.project_title || image.image_url}
+        <TooltipProvider>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            {filtered.map((image) => (
+              <div key={image.id || image.image_url} className="overflow-hidden rounded-md border border-border bg-card shadow-card-soft">
+                <div className="relative aspect-square bg-muted">
+                  <img src={resolveImageUrl(image.image_url)} alt={image.alt_text || image.title || ""} className="h-full w-full object-cover" loading="lazy" />
+                  <div className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-1 text-[11px] font-semibold text-white">
+                    {sourceLabel(image)}
                   </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="min-w-0 flex-1" onClick={() => { navigator.clipboard.writeText(image.image_url); toast({ title: "URL kopyalandı" }); }}>
-                    <Copy className="h-3.5 w-3.5" />
-                    Kopyala
-                  </Button>
-                  {image.can_delete !== false && (
-                    <Button size="sm" variant="destructive" className="h-9 w-9 p-0" onClick={() => setDeleteTarget(image)} title="Sil">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                  {image.is_protected && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="absolute right-2 top-2 rounded-md bg-amber-500 px-2 py-1 text-[11px] font-semibold text-white">
+                          Kullanımda
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {image.protected_reason || "Bu görsel önce ilgili ayardan/projeden kaldırılmalı"}
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
+                <div className="space-y-3 p-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold" title={displayName(image)}>{displayName(image)}</div>
+                    <div className="mt-1 truncate text-xs text-muted-foreground" title={image.projects?.title || image.project_title || image.image_url}>
+                      {image.projects?.title || image.project_title || image.image_url}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="min-w-0 flex-1" onClick={() => { navigator.clipboard.writeText(image.image_url); toast({ title: "URL kopyalandı" }); }}>
+                      <Copy className="h-3.5 w-3.5" />
+                      Kopyala
+                    </Button>
+                    {image.can_delete !== false && !image.is_protected && (
+                      <Button size="sm" variant="destructive" className="h-9 w-9 p-0" onClick={() => setDeleteTarget(image)} title="Sil">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </TooltipProvider>
       )}
 
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>

@@ -26,6 +26,7 @@ try {
         }
 
         if ($path !== '') {
+            ensure_media_not_protected($path);
             delete_media_by_path($path);
             json_success(['deleted' => true]);
         }
@@ -35,6 +36,10 @@ try {
             json_success(['deleted' => true]);
         }
 
+        $deletedPath = media_path_for_db_id($id);
+        if ($deletedPath !== null) {
+            ensure_media_not_protected($deletedPath);
+        }
         $deletedPath = delete_db_media($id);
         if ($deletedPath !== null && is_safe_project_upload_url($deletedPath)) {
             delete_upload_file_by_url($deletedPath, false);
@@ -62,6 +67,10 @@ function collect_media_images(): array
     );
 
     foreach ($statement->fetchAll() ?: [] as $row) {
+        $row['source_type'] = 'project_gallery';
+        $row['source_label'] = 'Project gallery';
+        $row['can_delete'] = true;
+        $row['is_protected'] = false;
         add_media_image($images, $seen, $row);
     }
 
@@ -85,7 +94,10 @@ function collect_media_images(): array
             'project_title' => $project['project_title'],
             'project_slug' => $project['project_slug'],
             'source_type' => 'project_cover',
+            'source_label' => 'Project cover',
             'can_delete' => false,
+            'is_protected' => true,
+            'protected_reason' => 'Bu görsel önce ilgili ayardan/projeden kaldırılmalı',
         ]);
     }
 
@@ -109,14 +121,27 @@ function add_media_image(array &$images, array &$seen, array $row): void
 
     $key = normalize_media_url($url);
     if (isset($seen[$key])) {
+        $index = $seen[$key];
+        if (($row['can_delete'] ?? true) === false) {
+            $images[$index]['can_delete'] = false;
+            $images[$index]['is_protected'] = true;
+            $images[$index]['protected_reason'] = $row['protected_reason'] ?? 'Bu görsel önce ilgili ayardan/projeden kaldırılmalı';
+        }
+        $labels = array_filter(array_unique(array_merge(
+            explode(', ', (string) ($images[$index]['source_label'] ?? '')),
+            [(string) ($row['source_label'] ?? media_source_label((string) ($row['source_type'] ?? '')))]
+        )));
+        $images[$index]['source_label'] = implode(', ', $labels);
         return;
     }
 
-    $seen[$key] = true;
+    $seen[$key] = count($images);
     $row['file_name'] = $row['file_name'] ?? basename(parse_url($url, PHP_URL_PATH) ?: $url);
-    $row['source_type'] = $row['source_type'] ?? 'project_image';
+    $row['source_type'] = $row['source_type'] ?? 'project_gallery';
     $row['source_label'] = $row['source_label'] ?? media_source_label((string) $row['source_type']);
     $row['can_delete'] = $row['can_delete'] ?? true;
+    $row['is_protected'] = $row['is_protected'] ?? ($row['can_delete'] === false);
+    $row['protected_reason'] = $row['protected_reason'] ?? ($row['is_protected'] ? 'Bu görsel önce ilgili ayardan/projeden kaldırılmalı' : null);
     $images[] = $row;
 }
 
@@ -137,7 +162,7 @@ function site_setting_image_rows(): array
     $imageColumns = [];
     foreach ($columns as $column) {
         $field = (string) ($column['Field'] ?? '');
-        if (preg_match('/(image|logo|favicon|og_|photo|picture)/i', $field)) {
+        if (preg_match('/(image|logo|favicon|og_|photo|picture|hero|home|homepage|about)/i', $field)) {
             $imageColumns[] = $field;
         }
     }
@@ -155,7 +180,7 @@ function site_setting_image_rows(): array
     $images = [];
     foreach ($imageColumns as $field) {
         $url = trim((string) ($row[$field] ?? ''));
-        if ($url === '') {
+        if ($url === '' || !looks_like_image_reference($url)) {
             continue;
         }
         $images[] = [
@@ -170,8 +195,10 @@ function site_setting_image_rows(): array
             'project_title' => 'Site Ayarları',
             'project_slug' => null,
             'source_type' => 'site_setting',
-            'source_label' => 'Site ayarı',
+            'source_label' => 'Site setting',
             'can_delete' => false,
+            'is_protected' => true,
+            'protected_reason' => 'Bu görsel önce ilgili ayardan/projeden kaldırılmalı',
         ];
     }
 
@@ -212,8 +239,9 @@ function filesystem_project_images(): array
             'project_title' => 'Yüklenen Dosyalar',
             'project_slug' => null,
             'source_type' => 'filesystem',
-            'source_label' => 'Yükleme',
+            'source_label' => 'Uploaded file',
             'can_delete' => true,
+            'is_protected' => false,
         ];
     }
 
@@ -226,6 +254,7 @@ function delete_filesystem_media(string $id): void
         if (($image['id'] ?? '') !== $id) {
             continue;
         }
+        ensure_media_not_protected((string) $image['image_url']);
         delete_upload_file_by_url((string) $image['image_url'], true);
         return;
     }
@@ -238,6 +267,14 @@ function delete_media_by_path(string $path): void
     $normalized = '/' . ltrim($path, '/');
     delete_db_media_by_url($normalized);
     delete_upload_file_by_url($normalized, true);
+}
+
+function media_path_for_db_id(string $id): ?string
+{
+    $stmt = db()->prepare('SELECT image_url FROM ak_project_images WHERE id = :id LIMIT 1');
+    $stmt->execute(['id' => $id]);
+    $row = $stmt->fetch();
+    return is_array($row) ? (string) ($row['image_url'] ?? '') : null;
 }
 
 function delete_db_media(string $id): ?string
@@ -256,6 +293,23 @@ function delete_db_media(string $id): ?string
 function delete_db_media_by_url(string $url): void
 {
     db()->prepare('DELETE FROM ak_project_images WHERE image_url = :url')->execute(['url' => $url]);
+}
+
+function ensure_media_not_protected(string $url): void
+{
+    $normalized = normalize_media_url($url);
+
+    $cover = db()->prepare('SELECT id FROM ak_projects WHERE cover_image_url = :url OR cover_image_url = :path LIMIT 1');
+    $cover->execute(['url' => $url, 'path' => '/' . ltrim($url, '/')]);
+    if ($cover->fetch()) {
+        json_error('Bu görsel önce ilgili ayardan/projeden kaldırılmalı.', 409);
+    }
+
+    foreach (site_setting_image_rows() as $row) {
+        if (normalize_media_url((string) ($row['image_url'] ?? '')) === $normalized) {
+            json_error('Bu görsel önce ilgili ayardan/projeden kaldırılmalı.', 409);
+        }
+    }
 }
 
 function delete_upload_file_by_url(string $url, bool $missingIsError): void
@@ -299,13 +353,31 @@ function is_safe_project_upload_url(string $url): bool
 function media_source_label(string $sourceType): string
 {
     if ($sourceType === 'project_cover') {
-        return 'Proje';
+        return 'Project cover';
+    }
+    if ($sourceType === 'project_gallery') {
+        return 'Project gallery';
     }
     if ($sourceType === 'site_setting') {
-        return 'Site ayarı';
+        return 'Site setting';
     }
     if ($sourceType === 'filesystem') {
-        return 'Yükleme';
+        return 'Uploaded file';
     }
-    return 'Proje';
+    return 'Project gallery';
+}
+
+function looks_like_image_reference(string $value): bool
+{
+    $trimmed = trim($value);
+    if ($trimmed === '') {
+        return false;
+    }
+
+    $path = parse_url($trimmed, PHP_URL_PATH) ?: $trimmed;
+    if (preg_match('/\.(jpe?g|png|webp|gif|svg|ico)$/i', $path)) {
+        return true;
+    }
+
+    return preg_match('#^/(uploads|assets|public)/#i', $path) === 1;
 }

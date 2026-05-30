@@ -262,6 +262,8 @@ export type AdminMediaImage = ProjectImage & {
   source_type?: string | null;
   source_label?: string | null;
   can_delete?: boolean;
+  is_protected?: boolean;
+  protected_reason?: string | null;
   projects?: { title?: string | null; slug?: string | null };
 };
 
