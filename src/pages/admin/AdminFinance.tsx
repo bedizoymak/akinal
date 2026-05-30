@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Download, MessageCircle } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
@@ -22,6 +21,7 @@ import {
 } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/AdminPage";
+import { getAdminFinanceSummary } from "@/lib/apiClient";
 
 function Stat({ label, value, color, sub }: any) {
   return (
@@ -66,24 +66,16 @@ export default function AdminFinance() {
   async function load() {
     setLoading(true);
     setLoadError(false);
-    const [pl, py, ex, fe, c, pr] = await Promise.all([
-      (supabase.from("payment_plans" as any).select("*")) as any,
-      (supabase.from("payments" as any).select("*")) as any,
-      (supabase.from("expenses" as any).select("*")) as any,
-      (supabase.from("financial_entries").select("*")) as any,
-      (supabase.from("customers" as any).select("*")) as any,
-      supabase.from("projects").select("id,title,slug").order("sort_order"),
-    ]);
-    const firstError = [pl.error, py.error, ex.error, fe.error, c.error, pr.error].find(Boolean);
-    if (firstError) {
+    try {
+      const data = await getAdminFinanceSummary();
+      setPlans(data.payment_plans || []); setPays(data.payments || []);
+      setExps(data.expenses || []); setFinancialEntries(data.financial_entries || []);
+      setCustomers(data.customers || []); setProjects(data.projects || []);
+    } catch {
       setLoadError(true);
+    } finally {
       setLoading(false);
-      return;
     }
-    setPlans((pl.data as any[]) || []); setPays((py.data as any[]) || []);
-    setExps((ex.data as any[]) || []); setFinancialEntries((fe.data as any[]) || []);
-    setCustomers((c.data as any[]) || []); setProjects((pr.data as any[]) || []);
-    setLoading(false);
   }
   useEffect(() => { load(); }, []);
 

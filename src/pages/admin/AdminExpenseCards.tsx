@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { displayLabel } from "@/lib/finance";
-import { financeSupabase, type ExpenseCardInsert, type ExpenseCardRow, type ExpenseCardUpdate } from "@/lib/financialTypes";
+import { createAdminExpenseCard, deleteAdminExpenseCard, getAdminExpenseCards, updateAdminExpenseCard } from "@/lib/apiClient";
+import type { AdminExpenseCard } from "@/lib/apiTypes";
 import { cn } from "@/lib/utils";
 
 const EXPENSE_CARD_STATUSES = ["Aktif", "Pasif"] as const;
@@ -45,7 +46,7 @@ const emptyForm: ExpenseCardForm = {
   status: "Aktif",
 };
 
-function formFromCard(card: ExpenseCardRow): ExpenseCardForm {
+function formFromCard(card: AdminExpenseCard): ExpenseCardForm {
   return {
     id: card.id,
     name: card.name,
@@ -57,7 +58,7 @@ function formFromCard(card: ExpenseCardRow): ExpenseCardForm {
 
 export default function AdminExpenseCards() {
   const { toast } = useToast();
-  const [items, setItems] = useState<ExpenseCardRow[]>([]);
+  const [items, setItems] = useState<AdminExpenseCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -68,14 +69,14 @@ export default function AdminExpenseCards() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await financeSupabase.from("expense_cards").select("*").order("name", { ascending: true });
-    if (error) {
+    try {
+      const data = await getAdminExpenseCards();
+      setItems(data);
+    } catch (error) {
       toast({ title: "Gider kartları alınamadı.", description: "Veriler alınırken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
+    } finally {
       setLoading(false);
-      return;
     }
-    setItems(data ?? []);
-    setLoading(false);
   }, [toast]);
 
   useEffect(() => {
@@ -103,7 +104,7 @@ export default function AdminExpenseCards() {
     setDialogOpen(true);
   }
 
-  function openEdit(card: ExpenseCardRow) {
+  function openEdit(card: AdminExpenseCard) {
     setForm(formFromCard(card));
     setFormError("");
     setDialogOpen(true);
@@ -122,34 +123,34 @@ export default function AdminExpenseCards() {
     setSaving(true);
     setFormError("");
 
-    const payload: ExpenseCardInsert = {
+    const payload: Partial<AdminExpenseCard> = {
       name: form.name.trim(),
       category: form.category.trim() || null,
       description: form.description.trim() || null,
       status: form.status,
     };
 
-    const result = form.id
-      ? await financeSupabase.from("expense_cards").update(payload as ExpenseCardUpdate).eq("id", form.id)
-      : await financeSupabase.from("expense_cards").insert(payload);
-
-    setSaving(false);
-
-    if (result.error) {
+    try {
+      if (form.id) await updateAdminExpenseCard({ ...payload, id: form.id });
+      else await createAdminExpenseCard(payload);
+    } catch (error) {
+      setSaving(false);
       toast({ title: "Gider kartı kaydedilemedi.", description: "Gider kartı kaydedilirken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
       return;
     }
 
+    setSaving(false);
     toast({ title: form.id ? "Gider kartı güncellendi." : "Gider kartı oluşturuldu." });
     setDialogOpen(false);
     await load();
   }
 
-  async function deleteCard(card: ExpenseCardRow) {
+  async function deleteCard(card: AdminExpenseCard) {
     if (!confirm(`"${card.name}" gider kartını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
 
-    const { error } = await financeSupabase.from("expense_cards").delete().eq("id", card.id);
-    if (error) {
+    try {
+      await deleteAdminExpenseCard(card.id);
+    } catch (error) {
       toast({ title: "Gider kartı silinemedi.", description: "Gider kartı silinirken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
       return;
     }

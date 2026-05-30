@@ -169,6 +169,50 @@ export interface AdminPayment {
   updated_at?: string | null;
 }
 
+export interface AdminExpense {
+  id: string;
+  project_id: string | null;
+  customer_id: string | null;
+  title: string | null;
+  category: string | null;
+  amount: number | string;
+  expense_date: string | null;
+  description: string | null;
+  document_url: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AdminExpenseCard {
+  id: string;
+  name: string;
+  category: string | null;
+  description: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminFinancialEntry {
+  id: string;
+  project_id: string | null;
+  entry_date: string;
+  card_type: string;
+  customer_id: string | null;
+  employee_id: string | null;
+  expense_card_id: string | null;
+  title: string;
+  description: string | null;
+  amount: number | string;
+  currency_tag: string;
+  group_tag: string;
+  direction: string;
+  status: string;
+  document_url: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
 export interface AdminCustomerNote {
   id: string;
   customer_id: string;
@@ -207,6 +251,25 @@ export interface AdminPaymentsResponse {
   customers: AdminCustomer[];
   projects: Pick<PublicProject, "id" | "title">[];
   payment_plans: Pick<AdminPaymentPlan, "id" | "title" | "customer_id" | "project_id" | "amount" | "due_date" | "status">[];
+}
+
+export interface AdminFinanceSummaryResponse {
+  payment_plans: AdminPaymentPlan[];
+  payments: AdminPayment[];
+  expenses: AdminExpense[];
+  financial_entries: AdminFinancialEntry[];
+  customers: AdminCustomer[];
+  projects: Pick<PublicProject, "id" | "title" | "slug">[];
+}
+
+export interface AdminExpensesResponse {
+  expenses: AdminExpense[];
+  customers: AdminCustomer[];
+  projects: Pick<PublicProject, "id" | "title">[];
+}
+
+export interface AdminExpenseCardsResponse {
+  expense_cards: AdminExpenseCard[];
 }
 
 export type ConsentStatus = "accepted" | "rejected" | "managed";

@@ -10,6 +10,11 @@ import type {
   AdminPaymentPlansResponse,
   AdminPaymentsResponse,
   AdminCustomerNote,
+  AdminExpense,
+  AdminExpenseCard,
+  AdminExpenseCardsResponse,
+  AdminExpensesResponse,
+  AdminFinanceSummaryResponse,
   ContactRequestPayload,
   CookieConsentPayload,
   ProjectDetailResponse,
@@ -440,4 +445,89 @@ export async function uploadAdminPaymentDocument(file: File): Promise<string> {
     headers: {},
   });
   return data.url;
+}
+
+export async function getAdminFinanceSummary(): Promise<AdminFinanceSummaryResponse> {
+  return apiRequest<AdminFinanceSummaryResponse>("/api/admin/finance-summary.php", {
+    method: "GET",
+    credentials: "include",
+  });
+}
+
+export async function getAdminExpensesData(): Promise<AdminExpensesResponse> {
+  return apiRequest<AdminExpensesResponse>("/api/admin/expenses.php", {
+    method: "GET",
+    credentials: "include",
+  });
+}
+
+export async function createAdminExpense(payload: Partial<AdminExpense>): Promise<AdminExpense> {
+  const data = await apiRequest<{ expense: AdminExpense }>("/api/admin/expenses.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.expense;
+}
+
+export async function updateAdminExpense(payload: Partial<AdminExpense> & { id: string }): Promise<AdminExpense> {
+  const data = await apiRequest<{ expense: AdminExpense }>("/api/admin/expenses.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.expense;
+}
+
+export async function deleteAdminExpense(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/expenses.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+export async function uploadAdminExpenseDocument(file: File): Promise<string> {
+  const form = new FormData();
+  form.append("file", file, file.name);
+
+  const data = await apiRequest<{ url: string }>("/api/admin/upload-expense-document.php", {
+    method: "POST",
+    credentials: "include",
+    body: form,
+    headers: {},
+  });
+  return data.url;
+}
+
+export async function getAdminExpenseCards(): Promise<AdminExpenseCard[]> {
+  const data = await apiRequest<AdminExpenseCardsResponse>("/api/admin/expense-cards.php", {
+    method: "GET",
+    credentials: "include",
+  });
+  return data.expense_cards || [];
+}
+
+export async function createAdminExpenseCard(payload: Partial<AdminExpenseCard>): Promise<AdminExpenseCard> {
+  const data = await apiRequest<{ expense_card: AdminExpenseCard }>("/api/admin/expense-cards.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.expense_card;
+}
+
+export async function updateAdminExpenseCard(payload: Partial<AdminExpenseCard> & { id: string }): Promise<AdminExpenseCard> {
+  const data = await apiRequest<{ expense_card: AdminExpenseCard }>("/api/admin/expense-cards.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.expense_card;
+}
+
+export async function deleteAdminExpenseCard(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/expense-cards.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
 }

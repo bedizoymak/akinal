@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { EXPENSE_CATEGORIES, formatTRY, formatDate, customerDisplayName, exportCSV } from "@/lib/finance";
 import { Plus, Edit, Trash2, Download, Receipt, FolderKanban, Tags, CalendarDays, Loader2 } from "lucide-react";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
+import { createAdminExpense, deleteAdminExpense, getAdminExpensesData, updateAdminExpense, uploadAdminExpenseDocument } from "@/lib/apiClient";
 
 const empty = { project_id: "", customer_id: "", title: "", category: "Malzeme", amount: "", expense_date: new Date().toISOString().slice(0, 10), description: "", document_url: "" };
 
@@ -30,13 +30,14 @@ export default function AdminExpenses() {
 
   async function load() {
     setLoading(true);
-    const [it, c, pr] = await Promise.all([
-      (supabase.from("expenses" as any).select("*").order("expense_date", { ascending: false })) as any,
-      (supabase.from("customers" as any).select("*")) as any,
-      supabase.from("projects").select("id,title"),
-    ]);
-    setItems((it.data as any[]) || []); setCustomers((c.data as any[]) || []); setProjects((pr.data as any[]) || []);
-    setLoading(false);
+    try {
+      const data = await getAdminExpensesData();
+      setItems(data.expenses || []); setCustomers(data.customers || []); setProjects(data.projects || []);
+    } catch (error) {
+      toast({ title: "Gider verileri alınamadı", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   }
   useEffect(() => { load(); }, []);
 
@@ -45,13 +46,15 @@ export default function AdminExpenses() {
 
   async function uploadDoc(file: File) {
     setUploading(true);
-    const ext = file.name.split(".").pop();
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from("expense-documents").upload(path, file);
-    if (error) { toast({ title: "Belge yüklenemedi", description: "Belge yüklenirken bir problem oluştu. Lütfen dosyayı kontrol edip tekrar deneyin.", variant: "destructive" }); setUploading(false); return; }
-    const { data } = await supabase.storage.from("expense-documents").createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
-    setForm((f: any) => ({ ...f, document_url: data?.signedUrl || "" }));
-    setUploading(false); toast({ title: "Belge yüklendi" });
+    try {
+      const url = await uploadAdminExpenseDocument(file);
+      setForm((f: any) => ({ ...f, document_url: url }));
+      toast({ title: "Belge yüklendi" });
+    } catch (error) {
+      toast({ title: "Belge yüklenemedi", description: error instanceof Error ? error.message : "Belge yüklenirken bir problem oluştu. Lütfen dosyayı kontrol edip tekrar deneyin.", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function save() {
@@ -59,8 +62,8 @@ export default function AdminExpenses() {
     setSaving(true);
     const payload: any = { ...form, amount: Number(form.amount), project_id: form.project_id || null, customer_id: form.customer_id || null };
     try {
-      if (editId) await (supabase.from("expenses" as any).update(payload).eq("id", editId)) as any;
-      else await (supabase.from("expenses" as any).insert(payload)) as any;
+      if (editId) await updateAdminExpense({ ...payload, id: editId });
+      else await createAdminExpense(payload);
       toast({ title: editId ? "Gider güncellendi" : "Gider eklendi" });
       setOpen(false); load();
     } finally {
@@ -70,7 +73,7 @@ export default function AdminExpenses() {
 
   async function remove(id: string) {
     if (!confirm("Bu gider kaydını silmek istediğinize emin misiniz?")) return;
-    await (supabase.from("expenses" as any).delete().eq("id", id)) as any;
+    await deleteAdminExpense(id);
     toast({ title: "Silindi" }); load();
   }
 
