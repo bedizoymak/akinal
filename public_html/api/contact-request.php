@@ -13,26 +13,30 @@ $serviceType = trim((string) ($input['service_type'] ?? ''));
 $message = trim((string) ($input['message'] ?? ''));
 $turnstileToken = trim((string) ($input['turnstileToken'] ?? $input['turnstile_token'] ?? ''));
 
-if ($fullName === '' || strlen($fullName) < 2 || strlen($fullName) > 100) {
+if ($fullName === '' || text_length($fullName) < 2 || text_length($fullName) > 100) {
     json_error('Ad Soyad zorunludur.');
 }
-if ($phone === '' || strlen($phone) < 7 || strlen($phone) > 30) {
+if ($phone === '' || text_length($phone) < 7 || text_length($phone) > 30) {
     json_error('Telefon numarası zorunludur.');
 }
 if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
     json_error('Geçerli bir e-posta giriniz.');
 }
-if ($message === '' || strlen($message) < 5 || strlen($message) > 2000) {
+if ($serviceType === '') {
+    json_error('Lütfen bir hizmet seçin.');
+}
+if ($message === '' || text_length($message) < 5 || text_length($message) > 2000) {
     json_error('Mesajınızı yazınız.');
 }
 if ($turnstileToken === '') {
     json_error('Güvenlik doğrulaması gerekli.');
 }
 if (!defined('TURNSTILE_SECRET_KEY') || TURNSTILE_SECRET_KEY === '' || TURNSTILE_SECRET_KEY === 'TURNSTILE_SECRET_KEY_HERE') {
-    json_error('Güvenlik doğrulaması sunucuda yapılandırılmamış.', 500);
+    json_error('Güvenlik doğrulaması sunucuda yapılandırılmamış. public_html/api/config.php içinde TURNSTILE_SECRET_KEY tanımlanmalıdır.', 500);
 }
-if (!verify_turnstile($turnstileToken)) {
-    json_error('Güvenlik doğrulaması başarısız.');
+$turnstile = verify_turnstile($turnstileToken);
+if (!$turnstile['success']) {
+    json_error('Güvenlik doğrulaması başarısız.', 400, $turnstile['details']);
 }
 
 try {
@@ -79,11 +83,15 @@ try {
 
 function read_json_body(): array
 {
-    $data = json_decode(file_get_contents('php://input') ?: '{}', true);
+    $body = file_get_contents('php://input') ?: '{}';
+    $data = json_decode($body, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        json_error('Geçersiz JSON gövdesi.');
+    }
     return is_array($data) ? $data : [];
 }
 
-function verify_turnstile(string $token): bool
+function verify_turnstile(string $token): array
 {
     $payload = http_build_query([
         'secret' => TURNSTILE_SECRET_KEY,
@@ -102,7 +110,14 @@ function verify_turnstile(string $token): bool
             CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
         ]);
         $response = curl_exec($ch);
+        $curlError = curl_error($ch);
         curl_close($ch);
+        if ($response === false) {
+            return [
+                'success' => false,
+                'details' => ['provider' => 'turnstile', 'reason' => $curlError ?: 'request_failed'],
+            ];
+        }
     } else {
         $context = stream_context_create([
             'http' => [
@@ -116,11 +131,32 @@ function verify_turnstile(string $token): bool
     }
 
     if (!is_string($response)) {
-        return false;
+        return [
+            'success' => false,
+            'details' => ['provider' => 'turnstile', 'reason' => 'request_failed'],
+        ];
     }
 
     $decoded = json_decode($response, true);
-    return is_array($decoded) && ($decoded['success'] ?? false) === true;
+    if (!is_array($decoded)) {
+        return [
+            'success' => false,
+            'details' => ['provider' => 'turnstile', 'reason' => 'invalid_provider_response'],
+        ];
+    }
+
+    return [
+        'success' => ($decoded['success'] ?? false) === true,
+        'details' => [
+            'provider' => 'turnstile',
+            'error_codes' => $decoded['error-codes'] ?? [],
+        ],
+    ];
+}
+
+function text_length(string $value): int
+{
+    return function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
 }
 
 function uuid_v4(): string
