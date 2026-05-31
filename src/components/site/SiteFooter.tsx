@@ -85,7 +85,7 @@ export default function SiteFooter() {
             {settings.address && (
               <li className="flex items-start gap-3">
                 <MapPin className="h-4 w-4 mt-0.5 text-accent shrink-0" />
-                <a href={getMapsLink(settings.address)} target="_blank" rel="noreferrer" className="min-w-0 leading-relaxed hover:text-white">
+                <a href={settings.map_embed_url && !settings.map_embed_url.includes("/dir/") && !settings.map_embed_url.includes("destination=") ? settings.map_embed_url : getMapsLink(settings.address)} target="_blank" rel="noreferrer" className="min-w-0 leading-relaxed hover:text-white">
                   <span>
                     {footerAddressLines.map((line, index) => (
                       <span key={line}>
