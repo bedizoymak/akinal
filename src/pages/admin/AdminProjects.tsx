@@ -77,10 +77,14 @@ export default function AdminProjects() {
   async function onChange(action: string, p: any) {
     if (action === "toggle") {
       const newPublished = !p.is_published;
+      // optimistic UI update for responsiveness
       setItems((prev) => prev.map((it) => (it.id === p.id ? { ...it, is_published: newPublished } : it)));
       try {
-        await updateAdminProject({ id: p.id, is_published: newPublished });
-        toast({ title: newPublished ? "Yayınlandı" : "Yayından kaldırıldı" });
+        const updated = await updateAdminProject({ id: p.id, is_published: newPublished });
+        // After server confirms, refetch fresh list to ensure UI matches server state
+        await load();
+        const serverPublished = Boolean(updated?.is_published);
+        toast({ title: serverPublished ? "Yayınlandı" : "Yayından kaldırıldı" });
       } catch (err) {
         // Revert local state on error
         setItems((prev) => prev.map((it) => (it.id === p.id ? { ...it, is_published: p.is_published } : it)));
