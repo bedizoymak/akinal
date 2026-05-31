@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { Phone, MessageCircle, Mail, MapPin } from "lucide-react";
 import Seo from "@/components/site/Seo";
@@ -11,6 +11,22 @@ import { useToast } from "@/hooks/use-toast";
 import { useSiteSettings, getWhatsAppLink, getTelLink, getMapsLink } from "@/hooks/useSiteSettings";
 import { SERVICE_OPTIONS } from "@/lib/projects";
 import { submitContactRequest } from "@/lib/apiClient";
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (element: HTMLElement, options: {
+        sitekey: string;
+        callback: (token: string) => void;
+        "error-callback"?: () => void;
+        "expired-callback"?: () => void;
+        theme?: string;
+        [key: string]: unknown;
+      }) => number;
+      reset: (widgetId: number) => void;
+    };
+  }
+}
 
 const schema = z.object({
   full_name: z.string().trim().min(2, "Ad Soyad zorunludur.").max(100),
@@ -26,9 +42,76 @@ export default function Contact() {
   const experienceYears = new Date().getFullYear() - 2011;
   const [form, setForm] = useState({ full_name: "", phone: "", email: "", service_type: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileError, setTurnstileError] = useState<string | null>(null);
+  const [turnstileReady, setTurnstileReady] = useState(false);
+  const turnstileRef = useRef<HTMLDivElement | null>(null);
+  const widgetId = useRef<number | null>(null);
+  const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+
+  useEffect(() => {
+    if (!siteKey) {
+      setTurnstileError("Turnstile site anahtarı yapılandırılmamış.");
+      return;
+    }
+
+    function renderTurnstile() {
+      if (!turnstileRef.current || !window.turnstile) {
+        return;
+      }
+      try {
+        widgetId.current = window.turnstile.render(turnstileRef.current, {
+          sitekey: siteKey,
+          callback: (token: string) => {
+            setTurnstileToken(token);
+            setTurnstileError(null);
+          },
+          "error-callback": () => {
+            setTurnstileToken("");
+            setTurnstileError("Turnstile doğrulaması başarısız oldu. Lütfen tekrar deneyin.");
+          },
+          "expired-callback": () => {
+            setTurnstileToken("");
+            setTurnstileError("Turnstile oturumu süresi doldu. Lütfen tekrar doğrulayın.");
+          },
+        });
+        setTurnstileReady(true);
+      } catch {
+        setTurnstileError("Turnstile widget yüklenemedi. Lütfen sayfayı yenileyin.");
+      }
+    }
+
+    if (window.turnstile) {
+      renderTurnstile();
+      return;
+    }
+
+    const existingScript = document.querySelector('script[src="https://challenges.cloudflare.com/turnstile/v0/api.js"]');
+    if (existingScript) {
+      existingScript.addEventListener("load", renderTurnstile);
+      existingScript.addEventListener("error", () => setTurnstileError("Turnstile yüklenemedi. Lütfen sayfayı yenileyin."));
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+    script.async = true;
+    script.defer = true;
+    script.onload = renderTurnstile;
+    script.onerror = () => setTurnstileError("Turnstile yüklenemedi. Lütfen sayfayı yenileyin.");
+    document.body.appendChild(script);
+  }, [siteKey]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!siteKey) {
+      toast({ title: "Hata", description: "Turnstile yapılandırılması eksik. Lütfen yönetici ile iletişime geçin.", variant: "destructive" });
+      return;
+    }
+    if (!turnstileToken) {
+      toast({ title: "Hata", description: "Lütfen bot doğrulamasını tamamlayın.", variant: "destructive" });
+      return;
+    }
     const parsed = schema.safeParse(form);
     if (!parsed.success) {
       toast({ title: "Form eksik", description: parsed.error.errors[0].message, variant: "destructive" });
@@ -39,6 +122,7 @@ export default function Contact() {
       await submitContactRequest({
         ...parsed.data,
         email: parsed.data.email || null,
+        turnstile_token: turnstileToken,
       });
     } catch {
       setSubmitting(false);
@@ -48,6 +132,10 @@ export default function Contact() {
     setSubmitting(false);
     toast({ title: "Talebiniz alındı", description: "Talebiniz başarıyla alındı. En kısa sürede sizinle iletişime geçeceğiz." });
     setForm({ full_name: "", phone: "", email: "", service_type: "", message: "" });
+    setTurnstileToken("");
+    if (widgetId.current !== null && window.turnstile) {
+      window.turnstile.reset(widgetId.current);
+    }
   }
 
   const cards = [
@@ -135,7 +223,12 @@ export default function Contact() {
                 <Textarea id="message" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={5} required maxLength={2000} />
               </div>
             </div>
-            <Button type="submit" disabled={submitting} aria-busy={submitting} className="mt-5 w-full bg-accent hover:bg-accent-glow text-accent-foreground font-semibold">
+            <div className="mt-5">
+              <div ref={turnstileRef} />
+              {turnstileError && <p className="mt-3 text-sm text-destructive">{turnstileError}</p>}
+              {!turnstileError && !turnstileReady && <p className="mt-3 text-sm text-muted-foreground">Bot koruması yükleniyor...</p>}
+            </div>
+            <Button type="submit" disabled={submitting || !siteKey} aria-busy={submitting} className="mt-5 w-full bg-accent hover:bg-accent-glow text-accent-foreground font-semibold">
               {submitting ? "Gönderiliyor..." : "Gönder"}
             </Button>
           </form>

@@ -12,6 +12,14 @@ $phone = trim((string) ($input['phone'] ?? ''));
 $email = trim((string) ($input['email'] ?? ''));
 $serviceType = trim((string) ($input['service_type'] ?? ''));
 $message = trim((string) ($input['message'] ?? ''));
+$token = trim((string) ($input['turnstile_token'] ?? ''));
+
+if ($token === '') {
+    json_error('Lütfen bot doğrulamasını tamamlayın.');
+}
+if (!verify_turnstile_token($token)) {
+    json_error('Turnstile doğrulaması başarısız. Lütfen tekrar deneyin.');
+}
 
 if ($fullName === '' || text_length($fullName) < 2 || text_length($fullName) > 100) {
     json_error('Ad Soyad zorunludur.');
@@ -95,6 +103,55 @@ function read_json_body(): array
 function text_length(string $value): int
 {
     return function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
+}
+
+function verify_turnstile_token(string $token): bool
+{
+    if (!defined('TURNSTILE_SECRET_KEY') || trim((string) TURNSTILE_SECRET_KEY) === '' || TURNSTILE_SECRET_KEY === 'TURNSTILE_SECRET_KEY_HERE') {
+        json_error('Turnstile sunucu yapılandırması eksik.', 500);
+    }
+
+    $postData = http_build_query([
+        'secret' => TURNSTILE_SECRET_KEY,
+        'response' => $token,
+        'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
+    ]);
+
+    $verifyUrl = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+
+    $responseBody = null;
+    if (function_exists('curl_init')) {
+        $ch = curl_init($verifyUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $postData,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => ["Content-Type: application/x-www-form-urlencoded"],
+            CURLOPT_TIMEOUT => 10,
+        ]);
+        $responseBody = curl_exec($ch);
+        curl_close($ch);
+    } else {
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
+                'content' => $postData,
+                'timeout' => 10,
+                'ignore_errors' => true,
+            ],
+        ]);
+        $responseBody = @file_get_contents($verifyUrl, false, $context);
+    }
+
+    if (!is_string($responseBody)) {
+        return false;
+    }
+
+    $result = json_decode($responseBody, true);
+    return is_array($result)
+        && !empty($result['success'])
+        && $result['success'] === true;
 }
 
 function uuid_v4(): string
