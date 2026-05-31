@@ -52,8 +52,30 @@ export default function Contact() {
   const widgetId = useRef<number | null>(null);
   const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
+  // Ensure a production-safe debug object is always available.
+  // Contains only booleans and a lastError string/null. No secrets.
+  function setProdDebug(patch: Partial<Record<string, any>>) {
+    try {
+      const w = window as any;
+      if (!w.__turnstileDebug) {
+        w.__turnstileDebug = {
+          siteKeyPresent: false,
+          scriptTagExists: false,
+          scriptLoaded: false,
+          turnstileAvailable: false,
+          renderAttempted: false,
+          renderSucceeded: false,
+          lastError: null,
+        };
+      }
+      Object.assign(w.__turnstileDebug, patch);
+    } catch (_e) {
+      // noop in strict environments
+    }
+  }
   useEffect(() => {
     setSiteKeyPresent(!!siteKey);
+    setProdDebug({ siteKeyPresent: !!siteKey });
     if (!siteKey) {
       setTurnstileError("Turnstile site anahtarı yapılandırılmamış.");
       // still attempt to load script for debugging, but do not render widget
@@ -62,13 +84,16 @@ export default function Contact() {
     let renderTimeout: number | undefined;
     function renderTurnstile() {
       setScriptLoaded(true);
+      setProdDebug({ scriptLoaded: true });
       setTurnstileAvailable(!!window.turnstile);
+      setProdDebug({ turnstileAvailable: !!window.turnstile });
       if (!turnstileRef.current || !window.turnstile) {
         // script present but turnstile not available yet; wait a short time
         renderTimeout = window.setTimeout(() => {
           setTurnstileAvailable(!!window.turnstile);
           if (window.turnstile && turnstileRef.current && siteKey) {
             try {
+              setProdDebug({ renderAttempted: true });
               widgetId.current = window.turnstile.render(turnstileRef.current, {
                 sitekey: siteKey,
                 callback: (token: string) => {
@@ -85,11 +110,16 @@ export default function Contact() {
                 },
               });
               setTurnstileReady(true);
+              setProdDebug({ renderSucceeded: true, lastError: null });
             } catch {
-              setTurnstileError("Turnstile widget yüklenemedi. Lütfen sayfayı yenileyin.");
+              const msg = "Turnstile widget yüklenemedi. Lütfen sayfayı yenileyin.";
+              setTurnstileError(msg);
+              setProdDebug({ lastError: msg, renderSucceeded: false });
             }
           } else {
-            setTurnstileError("Turnstile yüklenemedi. Lütfen sayfayı yenileyin.");
+            const msg = "Turnstile yüklenemedi. Lütfen sayfayı yenileyin.";
+            setTurnstileError(msg);
+            setProdDebug({ lastError: msg });
           }
         }, 800);
         return;
@@ -98,6 +128,7 @@ export default function Contact() {
       // normal render path
       try {
         if (siteKey) {
+          setProdDebug({ renderAttempted: true });
           widgetId.current = window.turnstile.render(turnstileRef.current, {
             sitekey: siteKey,
             callback: (token: string) => {
@@ -115,11 +146,16 @@ export default function Contact() {
           });
           setTurnstileReady(true);
           setTurnstileAvailable(true);
+          setProdDebug({ renderSucceeded: true, turnstileAvailable: true, lastError: null });
         } else {
-          setTurnstileError("Turnstile site anahtarı yapılandırılmamış.");
+          const msg = "Turnstile site anahtarı yapılandırılmamış.";
+          setTurnstileError(msg);
+          setProdDebug({ lastError: msg });
         }
       } catch {
-        setTurnstileError("Turnstile widget yüklenemedi. Lütfen sayfayı yenileyin.");
+        const msg = "Turnstile widget yüklenemedi. Lütfen sayfayı yenileyin.";
+        setTurnstileError(msg);
+        setProdDebug({ lastError: msg, renderSucceeded: false });
       } finally {
         if (renderTimeout) window.clearTimeout(renderTimeout);
       }
@@ -132,16 +168,23 @@ export default function Contact() {
 
     const existingScript = document.querySelector('script[src="https://challenges.cloudflare.com/turnstile/v0/api.js"]') as HTMLScriptElement | null;
     if (existingScript) {
+      setProdDebug({ scriptTagExists: true });
       // If already loaded, try to render immediately
       if ((existingScript as any).hasAttribute && existingScript.getAttribute('data-loaded') === '1') {
+        setProdDebug({ scriptLoaded: true });
         renderTurnstile();
         return;
       }
       existingScript.addEventListener("load", () => {
         try { existingScript.setAttribute('data-loaded', '1'); } catch (_) {}
+        setProdDebug({ scriptLoaded: true });
         renderTurnstile();
       });
-      existingScript.addEventListener("error", () => setTurnstileError("Turnstile yüklenemedi. Lütfen sayfayı yenileyin."));
+      existingScript.addEventListener("error", () => {
+        const msg = "Turnstile yüklenemedi. Lütfen sayfayı yenileyin.";
+        setTurnstileError(msg);
+        setProdDebug({ lastError: msg });
+      });
       return;
     }
 
@@ -153,12 +196,16 @@ export default function Contact() {
     script.onload = () => {
       try { script.setAttribute('data-loaded', '1'); } catch (_) {}
       setScriptLoaded(true);
+      setProdDebug({ scriptLoaded: true });
       renderTurnstile();
     };
     script.onerror = () => {
       setScriptLoaded(false);
-      setTurnstileError("Turnstile yüklenemedi. Lütfen sayfayı yenileyin.");
+      const msg = "Turnstile yüklenemedi. Lütfen sayfayı yenileyin.";
+      setTurnstileError(msg);
+      setProdDebug({ scriptLoaded: false, lastError: msg });
     };
+    setProdDebug({ scriptTagExists: true });
     document.body.appendChild(script);
     // Development-only debug logs
     if (import.meta.env.DEV) {
