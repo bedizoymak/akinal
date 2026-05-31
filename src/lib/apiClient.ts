@@ -104,6 +104,18 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T
   return (payload.data ?? ({} as T)) as T;
 }
 
+function normalizeProject(project: PublicProject): PublicProject {
+  return {
+    ...project,
+    is_published: project.is_published === true || project.is_published === 1 || project.is_published === "1",
+    is_featured: project.is_featured === true || project.is_featured === 1 || project.is_featured === "1",
+  };
+}
+
+function normalizeProjects(projects: PublicProject[]): PublicProject[] {
+  return projects.map(normalizeProject);
+}
+
 export async function getSiteSettings(): Promise<SiteSettings | null> {
   const data = await apiGet<{ settings: SiteSettings | null }>("/api/site-settings.php");
   return data.settings || null;
@@ -230,7 +242,7 @@ export async function getAdminProjects(): Promise<PublicProject[]> {
     method: "GET",
     credentials: "include",
   });
-  return data.projects || [];
+  return normalizeProjects(data.projects || []);
 }
 
 export async function getAdminProject(id: string): Promise<PublicProject | null> {
@@ -238,7 +250,7 @@ export async function getAdminProject(id: string): Promise<PublicProject | null>
     method: "GET",
     credentials: "include",
   });
-  return data.project || null;
+  return data.project ? normalizeProject(data.project) : null;
 }
 
 export async function createAdminProject(payload: Partial<PublicProject>): Promise<PublicProject> {
@@ -247,7 +259,7 @@ export async function createAdminProject(payload: Partial<PublicProject>): Promi
     credentials: "include",
     body: JSON.stringify(payload),
   });
-  return data.project;
+  return normalizeProject(data.project);
 }
 
 export async function updateAdminProject(payload: Partial<PublicProject> & { id: string }): Promise<PublicProject> {
@@ -256,7 +268,7 @@ export async function updateAdminProject(payload: Partial<PublicProject> & { id:
     credentials: "include",
     body: JSON.stringify(payload),
   });
-  return data.project;
+  return normalizeProject(data.project);
 }
 
 export async function deleteAdminProject(id: string): Promise<void> {
