@@ -45,39 +45,83 @@ export default function Contact() {
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
   const [turnstileReady, setTurnstileReady] = useState(false);
+  const [siteKeyPresent, setSiteKeyPresent] = useState<boolean>(false);
+  const [scriptLoaded, setScriptLoaded] = useState<boolean>(false);
+  const [turnstileAvailable, setTurnstileAvailable] = useState<boolean>(false);
   const turnstileRef = useRef<HTMLDivElement | null>(null);
   const widgetId = useRef<number | null>(null);
   const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
   useEffect(() => {
+    setSiteKeyPresent(!!siteKey);
     if (!siteKey) {
       setTurnstileError("Turnstile site anahtarı yapılandırılmamış.");
-      return;
+      // still attempt to load script for debugging, but do not render widget
     }
 
+    let renderTimeout: number | undefined;
     function renderTurnstile() {
+      setScriptLoaded(true);
+      setTurnstileAvailable(!!window.turnstile);
       if (!turnstileRef.current || !window.turnstile) {
+        // script present but turnstile not available yet; wait a short time
+        renderTimeout = window.setTimeout(() => {
+          setTurnstileAvailable(!!window.turnstile);
+          if (window.turnstile && turnstileRef.current && siteKey) {
+            try {
+              widgetId.current = window.turnstile.render(turnstileRef.current, {
+                sitekey: siteKey,
+                callback: (token: string) => {
+                  setTurnstileToken(token);
+                  setTurnstileError(null);
+                },
+                "error-callback": () => {
+                  setTurnstileToken("");
+                  setTurnstileError("Turnstile doğrulaması başarısız oldu. Lütfen tekrar deneyin.");
+                },
+                "expired-callback": () => {
+                  setTurnstileToken("");
+                  setTurnstileError("Turnstile oturumu süresi doldu. Lütfen tekrar doğrulayın.");
+                },
+              });
+              setTurnstileReady(true);
+            } catch {
+              setTurnstileError("Turnstile widget yüklenemedi. Lütfen sayfayı yenileyin.");
+            }
+          } else {
+            setTurnstileError("Turnstile yüklenemedi. Lütfen sayfayı yenileyin.");
+          }
+        }, 800);
         return;
       }
+
+      // normal render path
       try {
-        widgetId.current = window.turnstile.render(turnstileRef.current, {
-          sitekey: siteKey,
-          callback: (token: string) => {
-            setTurnstileToken(token);
-            setTurnstileError(null);
-          },
-          "error-callback": () => {
-            setTurnstileToken("");
-            setTurnstileError("Turnstile doğrulaması başarısız oldu. Lütfen tekrar deneyin.");
-          },
-          "expired-callback": () => {
-            setTurnstileToken("");
-            setTurnstileError("Turnstile oturumu süresi doldu. Lütfen tekrar doğrulayın.");
-          },
-        });
-        setTurnstileReady(true);
+        if (siteKey) {
+          widgetId.current = window.turnstile.render(turnstileRef.current, {
+            sitekey: siteKey,
+            callback: (token: string) => {
+              setTurnstileToken(token);
+              setTurnstileError(null);
+            },
+            "error-callback": () => {
+              setTurnstileToken("");
+              setTurnstileError("Turnstile doğrulaması başarısız oldu. Lütfen tekrar deneyin.");
+            },
+            "expired-callback": () => {
+              setTurnstileToken("");
+              setTurnstileError("Turnstile oturumu süresi doldu. Lütfen tekrar doğrulayın.");
+            },
+          });
+          setTurnstileReady(true);
+          setTurnstileAvailable(true);
+        } else {
+          setTurnstileError("Turnstile site anahtarı yapılandırılmamış.");
+        }
       } catch {
         setTurnstileError("Turnstile widget yüklenemedi. Lütfen sayfayı yenileyin.");
+      } finally {
+        if (renderTimeout) window.clearTimeout(renderTimeout);
       }
     }
 
@@ -86,9 +130,17 @@ export default function Contact() {
       return;
     }
 
-    const existingScript = document.querySelector('script[src="https://challenges.cloudflare.com/turnstile/v0/api.js"]');
+    const existingScript = document.querySelector('script[src="https://challenges.cloudflare.com/turnstile/v0/api.js"]') as HTMLScriptElement | null;
     if (existingScript) {
-      existingScript.addEventListener("load", renderTurnstile);
+      // If already loaded, try to render immediately
+      if ((existingScript as any).hasAttribute && existingScript.getAttribute('data-loaded') === '1') {
+        renderTurnstile();
+        return;
+      }
+      existingScript.addEventListener("load", () => {
+        try { existingScript.setAttribute('data-loaded', '1'); } catch (_) {}
+        renderTurnstile();
+      });
       existingScript.addEventListener("error", () => setTurnstileError("Turnstile yüklenemedi. Lütfen sayfayı yenileyin."));
       return;
     }
@@ -97,10 +149,24 @@ export default function Contact() {
     script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
     script.async = true;
     script.defer = true;
-    script.onload = renderTurnstile;
-    script.onerror = () => setTurnstileError("Turnstile yüklenemedi. Lütfen sayfayı yenileyin.");
+    script.setAttribute('crossorigin', 'anonymous');
+    script.onload = () => {
+      try { script.setAttribute('data-loaded', '1'); } catch (_) {}
+      setScriptLoaded(true);
+      renderTurnstile();
+    };
+    script.onerror = () => {
+      setScriptLoaded(false);
+      setTurnstileError("Turnstile yüklenemedi. Lütfen sayfayı yenileyin.");
+    };
     document.body.appendChild(script);
-  }, [siteKey]);
+    // Development-only debug logs
+    if (import.meta.env.DEV) {
+      console.debug("Turnstile debug:", { siteKeyPresent: !!siteKey, scriptLoaded, turnstileAvailable, turnstileReady });
+      // Expose flags for quick console checks
+      (window as any).__turnstileDebug = { siteKeyPresent: !!siteKey, scriptLoaded, turnstileAvailable, turnstileReady };
+    }
+  }, [siteKey, scriptLoaded, turnstileAvailable, turnstileReady]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
