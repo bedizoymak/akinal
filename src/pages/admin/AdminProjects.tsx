@@ -33,9 +33,9 @@ function Row({ p, onChange }: any) {
           <div className="flex items-center gap-2 mt-1 flex-wrap text-[11px]">
             <span className={cn("px-2 py-0.5 rounded-md border", statusBadgeVariant(p.project_status))}>{displayLabel(p.project_status)}</span>
             <span className="text-muted-foreground">{p.project_type} · {p.location}</span>
-            <span className={cn("px-2 py-0.5 rounded-md", p.is_published ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground")}>
-              {p.is_published ? "Yayında" : "Taslak"}
-            </span>
+              <span className={cn("px-2 py-0.5 rounded-md", p.is_published ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground")}>
+                {p.is_published ? "Yayında" : "Yayında Değil"}
+              </span>
           </div>
         </div>
       </div>
@@ -76,8 +76,16 @@ export default function AdminProjects() {
 
   async function onChange(action: string, p: any) {
     if (action === "toggle") {
-      await updateAdminProject({ id: p.id, is_published: !p.is_published });
-      toast({ title: p.is_published ? "Yayından kaldırıldı" : "Yayınlandı" });
+      const newPublished = !p.is_published;
+      setItems((prev) => prev.map((it) => (it.id === p.id ? { ...it, is_published: newPublished } : it)));
+      try {
+        await updateAdminProject({ id: p.id, is_published: newPublished });
+        toast({ title: newPublished ? "Yayınlandı" : "Yayından kaldırıldı" });
+      } catch (err) {
+        // Revert local state on error
+        setItems((prev) => prev.map((it) => (it.id === p.id ? { ...it, is_published: p.is_published } : it)));
+        toast({ title: "İşlem yapılamadı", description: "Yayın durumu güncellenemedi.", variant: "destructive" });
+      }
     } else if (action === "duplicate") {
       const { id, created_at, updated_at, ...rest } = p;
       const newSlug = `${p.slug}-kopya-${Date.now().toString(36)}`;
