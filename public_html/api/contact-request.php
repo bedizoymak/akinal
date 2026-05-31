@@ -15,10 +15,16 @@ $message = trim((string) ($input['message'] ?? ''));
 $token = trim((string) ($input['turnstile_token'] ?? ''));
 
 if ($token === '') {
-    json_error('Lütfen bot doğrulamasını tamamlayın.');
+    json_error('Lütfen bot doğrulamasını tamamlayın.', 400, ['reason' => 'missing_token']);
 }
-if (!verify_turnstile_token($token)) {
-    json_error('Turnstile doğrulaması başarısız. Lütfen tekrar deneyin.');
+
+$verifyDetails = [];
+if (!verify_turnstile_token($token, $verifyDetails)) {
+    json_error(
+        'Turnstile doğrulaması başarısız. Lütfen tekrar deneyin.',
+        400,
+        ['reason' => 'cloudflare_verify_failed', 'verify_details' => $verifyDetails]
+    );
 }
 
 if ($fullName === '' || text_length($fullName) < 2 || text_length($fullName) > 100) {
@@ -105,16 +111,15 @@ function text_length(string $value): int
     return function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
 }
 
-function verify_turnstile_token(string $token): bool
+function verify_turnstile_token(string $token, array &$details = null): bool
 {
     if (!defined('TURNSTILE_SECRET_KEY') || trim((string) TURNSTILE_SECRET_KEY) === '' || TURNSTILE_SECRET_KEY === 'TURNSTILE_SECRET_KEY_HERE') {
-        json_error('Turnstile sunucu yapılandırması eksik.', 500);
+        json_error('Turnstile sunucu yapılandırması eksik.', 500, ['reason' => 'missing_secret']);
     }
 
     $postData = http_build_query([
         'secret' => TURNSTILE_SECRET_KEY,
         'response' => $token,
-        'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
     ]);
 
     $verifyUrl = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
@@ -145,13 +150,35 @@ function verify_turnstile_token(string $token): bool
     }
 
     if (!is_string($responseBody)) {
+        if ($details !== null) {
+            $details['error_type'] = 'network_failure';
+        }
         return false;
     }
 
     $result = json_decode($responseBody, true);
-    return is_array($result)
-        && !empty($result['success'])
-        && $result['success'] === true;
+    if (!is_array($result)) {
+        if ($details !== null) {
+            $details['error_type'] = 'invalid_response';
+        }
+        return false;
+    }
+
+    if (!empty($result['success']) && $result['success'] === true) {
+        return true;
+    }
+
+    if ($details !== null) {
+        $details['error_type'] = 'verifier_rejected';
+        if (isset($result['error-codes']) && is_array($result['error-codes'])) {
+            $details['error_codes'] = $result['error-codes'];
+        }
+        if (isset($result['challenge_ts'])) {
+            $details['challenge_ts'] = $result['challenge_ts'];
+        }
+    }
+
+    return false;
 }
 
 function uuid_v4(): string
