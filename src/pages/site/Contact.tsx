@@ -312,15 +312,15 @@ export default function Contact() {
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <Label htmlFor="full_name">Ad Soyad *</Label>
-                <Input id="full_name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required maxLength={100} />
+                <Input id="full_name" name="name" autoComplete="name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required maxLength={100} />
               </div>
               <div>
                 <Label htmlFor="phone">Telefon *</Label>
-                <Input id="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required maxLength={30} />
+                <Input id="phone" name="tel" type="tel" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required maxLength={30} />
               </div>
               <div>
                 <Label htmlFor="email">E-posta</Label>
-                <Input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={255} />
+                <Input id="email" name="email" type="email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={255} />
               </div>
               <div className="sm:col-span-2">
                 <Label htmlFor="service_type">Hizmet Seçiniz *</Label>
@@ -330,10 +330,11 @@ export default function Contact() {
                     {SERVICE_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                <input type="hidden" name="service" value={form.service_type} />
               </div>
               <div className="sm:col-span-2">
                 <Label htmlFor="message">Mesajınız *</Label>
-                <Textarea id="message" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={5} required maxLength={2000} />
+                <Textarea id="message" name="message" autoComplete="message" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={5} required maxLength={2000} />
               </div>
             </div>
             <div className="mt-5">
