@@ -651,12 +651,17 @@ export async function deleteAdminExpenseCard(id: string): Promise<void> {
   });
 }
 
-export async function getAdminNotifications(): Promise<AdminNotification[]> {
-  const data = await apiRequest<AdminNotificationsResponse>("/api/admin/notifications.php", {
+export async function getAdminNotifications(limit?: number): Promise<AdminNotificationsResponse> {
+  const suffix = limit ? `?limit=${encodeURIComponent(String(limit))}` : "";
+  const data = await apiRequest<AdminNotificationsResponse>(`/api/admin/notifications.php${suffix}`, {
     method: "GET",
     credentials: "include",
   });
-  return data.notifications || [];
+  return {
+    notifications: data.notifications || [],
+    unread_count: data.unread_count || 0,
+    total_count: data.total_count || 0,
+  };
 }
 
 export async function updateAdminNotificationRead(id: string, isRead = true): Promise<AdminNotification> {
@@ -678,6 +683,13 @@ export async function markAllAdminNotificationsRead(): Promise<void> {
 
 export async function deleteAdminNotification(id: string): Promise<void> {
   await apiRequest<{ deleted: boolean }>(`/api/admin/notifications.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+export async function deleteAllAdminNotifications(): Promise<void> {
+  await apiRequest<{ deleted: boolean; deleted_all?: boolean }>("/api/admin/notifications.php?all=1", {
     method: "DELETE",
     credentials: "include",
   });

@@ -322,6 +322,8 @@ export interface AdminEmployeesResponse {
 
 export interface AdminNotificationsResponse {
   notifications: AdminNotification[];
+  unread_count?: number;
+  total_count?: number;
 }
 
 export interface AdminReportsResponse {

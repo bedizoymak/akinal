@@ -9,9 +9,14 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 try {
     if ($method === 'GET') {
-        ensure_payment_notifications();
+        if ((string) ($_GET['generate'] ?? '') === '1') {
+            ensure_payment_notifications();
+        }
+        $limit = max(1, min(200, (int) ($_GET['limit'] ?? 200)));
         json_success([
-            'notifications' => fetch_all_notifications('SELECT * FROM ak_notifications ORDER BY created_at DESC LIMIT 200'),
+            'notifications' => fetch_all_notifications("SELECT * FROM ak_notifications ORDER BY created_at DESC LIMIT {$limit}"),
+            'unread_count' => notification_count('SELECT COUNT(*) FROM ak_notifications WHERE is_read = 0'),
+            'total_count' => notification_count('SELECT COUNT(*) FROM ak_notifications'),
         ]);
     }
 
@@ -30,10 +35,18 @@ try {
     }
 
     if ($method === 'DELETE') {
+        $all = ((string) ($_GET['all'] ?? '')) === '1';
         $id = trim((string) ($_GET['id'] ?? ''));
-        if ($id === '') {
+        if (!$all && $id === '') {
             $input = read_admin_json_body();
-            $id = require_non_empty($input, 'id', 'Bildirim bulunamadı.');
+            $all = ($input['all'] ?? false) === true;
+            if (!$all) {
+                $id = require_non_empty($input, 'id', 'Bildirim bulunamadı.');
+            }
+        }
+        if ($all) {
+            db()->prepare('DELETE FROM ak_notifications')->execute();
+            json_success(['deleted' => true, 'deleted_all' => true]);
         }
         db()->prepare('DELETE FROM ak_notifications WHERE id = :id')->execute(['id' => $id]);
         json_success(['deleted' => true]);
@@ -108,3 +121,4 @@ function ensure_payment_notifications(): void
 
 function fetch_all_notifications(string $sql, array $params = []): array { $stmt = db()->prepare($sql); $stmt->execute($params); return $stmt->fetchAll() ?: []; }
 function fetch_one_notification(string $sql, array $params = []): ?array { $rows = fetch_all_notifications($sql . ' LIMIT 1', $params); return $rows[0] ?? null; }
+function notification_count(string $sql): int { $stmt = db()->query($sql); return (int) ($stmt ? $stmt->fetchColumn() : 0); }
