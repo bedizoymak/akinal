@@ -18,9 +18,7 @@ const baseCorsHeaders = {
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 8;
-const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
-const TURNSTILE_SECRET_KEY = Deno.env.get("TURNSTILE_SECRET_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -30,7 +28,6 @@ type ContactRequestBody = {
   email?: unknown;
   service_type?: unknown;
   message?: unknown;
-  turnstileToken?: unknown;
 };
 
 type ValidContactRequest = {
@@ -39,12 +36,6 @@ type ValidContactRequest = {
   email: string | null;
   service_type: string;
   message: string;
-  turnstileToken: string;
-};
-
-type TurnstileResponse = {
-  success?: boolean;
-  "error-codes"?: string[];
 };
 
 function getCorsHeaders(request: Request) {
@@ -127,7 +118,6 @@ function validateBody(body: ContactRequestBody | null): { data?: ValidContactReq
   const email = body.email === null ? "" : normalizeString(body.email);
   const serviceType = normalizeString(body.service_type);
   const message = normalizeString(body.message);
-  const turnstileToken = normalizeString(body.turnstileToken);
 
   if (fullName.length < 2 || fullName.length > 100) return { error: "Ad Soyad alanı geçersiz." };
   if (phone.length < 7 || phone.length > 30) return { error: "Telefon alanı geçersiz." };
@@ -136,7 +126,6 @@ function validateBody(body: ContactRequestBody | null): { data?: ValidContactReq
   }
   if (!serviceType) return { error: "Lütfen bir hizmet seçin." };
   if (message.length < 5 || message.length > 2000) return { error: "Mesaj alanı geçersiz." };
-  if (!turnstileToken) return { error: "Güvenlik doğrulaması gerekli." };
 
   return {
     data: {
@@ -145,42 +134,8 @@ function validateBody(body: ContactRequestBody | null): { data?: ValidContactReq
       email: email || null,
       service_type: serviceType,
       message,
-      turnstileToken,
     },
   };
-}
-
-async function verifyTurnstile(token: string, clientIp: string) {
-  if (!TURNSTILE_SECRET_KEY) {
-    console.error("TURNSTILE_SECRET_KEY Supabase secret olarak tanımlı değil.");
-    return false;
-  }
-
-  const payload = new URLSearchParams({
-    secret: TURNSTILE_SECRET_KEY,
-    response: token,
-  });
-
-  if (clientIp !== "unknown") payload.set("remoteip", clientIp);
-
-  const response = await fetch(TURNSTILE_VERIFY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: payload,
-  });
-
-  if (!response.ok) {
-    console.error("Turnstile doğrulama isteği başarısız:", response.status);
-    return false;
-  }
-
-  const data = (await response.json()) as TurnstileResponse;
-  if (!data.success) {
-    console.warn("Turnstile doğrulaması reddedildi:", data["error-codes"] ?? []);
-    return false;
-  }
-
-  return true;
 }
 
 async function insertContactRequest(data: ValidContactRequest) {
@@ -240,12 +195,6 @@ Deno.serve(async (request) => {
   const validation = validateBody(body);
   if (!validation.data) {
     return jsonResponse(request, { error: validation.error ?? "Form bilgileri geçersiz." }, 400);
-  }
-
-  const clientIp = getClientIp(request);
-  const turnstilePassed = await verifyTurnstile(validation.data.turnstileToken, clientIp);
-  if (!turnstilePassed) {
-    return jsonResponse(request, { error: "Güvenlik doğrulaması tamamlanamadı." }, 403);
   }
 
   const saved = await insertContactRequest(validation.data);

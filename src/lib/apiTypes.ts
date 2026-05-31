@@ -78,7 +78,6 @@ export interface ContactRequestPayload {
   email?: string | null;
   service_type?: string | null;
   message: string;
-  turnstileToken: string;
 }
 
 export interface AdminContactRequest {

@@ -101,8 +101,8 @@ Create authenticated PHP CRUD endpoints for projects, media, CRM, finance, notif
 Storage/upload replacement:
 Replace Supabase Storage buckets with PHP upload handling for project images, customer documents, payment documents, and expense documents.
 
-Turnstile/contact request replacement:
-Move Turnstile verification into the PHP contact submission endpoint before inserting into `ak_contact_requests`.
+Contact request replacement:
+Move contact submission validation into the PHP endpoint before inserting into `ak_contact_requests`.
 
 Notification trigger replacement:
 The Supabase notification triggers were not recreated. PHP should insert into `ak_notifications` after creating contacts, customers, projects, or expenses.

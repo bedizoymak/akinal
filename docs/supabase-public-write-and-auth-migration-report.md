@@ -56,9 +56,7 @@ Password hashes are never returned.
 
 ## Contact Request Flow
 
-The contact form posts JSON to `/api/contact-request.php`. PHP validates required fields, verifies Cloudflare Turnstile server-side with `TURNSTILE_SECRET_KEY`, inserts into `ak_contact_requests`, and creates a `Yeni İletişim Talebi` row in `ak_notifications`.
-
-If `TURNSTILE_SECRET_KEY` is missing or still set to `TURNSTILE_SECRET_KEY_HERE`, the endpoint fails safely.
+The contact form posts JSON to `/api/contact-request.php`. PHP validates required fields, inserts into `ak_contact_requests`, and creates a `Yeni İletişim Talebi` row in `ak_notifications`.
 
 ## Cookie Consent Flow
 
@@ -74,12 +72,6 @@ If the request fails, the cookie banner still closes locally and the site does n
 
 ## Required Server Config Addition
 
-Add this to the server-only `public_html/api/config.php`:
-
-```php
-define('TURNSTILE_SECRET_KEY', 'real-server-secret-goes-here');
-```
-
 Do not commit `config.php` or real secrets.
 
 `config.example.php` is now guarded against direct access. `db.php` defines `AK_API_INTERNAL` before requiring the production config.
@@ -87,28 +79,26 @@ Do not commit `config.php` or real secrets.
 ## Manual Deployment Steps
 
 1. Upload the changed PHP API files.
-2. Add `TURNSTILE_SECRET_KEY` to server-only `public_html/api/config.php`.
-3. Upload `public_html/create-admin-user.php`.
-4. Open `/create-admin-user.php?confirm=CREATE_AKINAL_ADMIN`.
-5. Create the first admin account.
-6. Delete `public_html/create-admin-user.php`.
-7. Deploy the frontend build.
+2. Upload `public_html/create-admin-user.php`.
+3. Open `/create-admin-user.php?confirm=CREATE_AKINAL_ADMIN`.
+4. Create the first admin account.
+5. Delete `public_html/create-admin-user.php`.
+6. Deploy the frontend build.
 
 ## Manual Test Checklist
 
 1. Upload PHP API files.
-2. Update server-only `api/config.php` with `TURNSTILE_SECRET_KEY`.
-3. Upload `create-admin-user.php`.
-4. Open `/create-admin-user.php?confirm=CREATE_AKINAL_ADMIN`.
-5. Create admin account.
-6. Delete `create-admin-user.php`.
-7. Test admin login.
-8. Test `/api/admin/me.php`.
-9. Test admin logout.
-10. Test contact form.
-11. Test cookie consent.
-12. Open browser Network tab and confirm public pages no longer call Supabase for site settings, projects, contact form, or cookie consent.
-13. Document remaining Supabase calls, especially admin CRUD.
+2. Upload `create-admin-user.php`.
+3. Open `/create-admin-user.php?confirm=CREATE_AKINAL_ADMIN`.
+4. Create admin account.
+5. Delete `create-admin-user.php`.
+6. Test admin login.
+7. Test `/api/admin/me.php`.
+8. Test admin logout.
+9. Test contact form.
+10. Test cookie consent.
+11. Open browser Network tab and confirm public pages no longer call Supabase for site settings, projects, contact form, or cookie consent.
+12. Document remaining Supabase calls, especially admin CRUD.
 
 ## Remaining Supabase Dependencies
 

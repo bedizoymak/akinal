@@ -36,7 +36,7 @@ This project is moving from Supabase/PostgreSQL to MySQL on shared hosting. The 
   - `expense-documents`
 - Supabase Storage URLs should become local file paths or CDN URLs stored in the existing URL columns.
 - Supabase Edge Functions must be replaced by PHP endpoints:
-  - `submit-contact-request` should validate Turnstile, insert into `ak_contact_requests`, and optionally create a notification.
+  - `submit-contact-request` should validate contact fields, insert into `ak_contact_requests`, and optionally create a notification.
   - `sales-chatbot` needs a PHP endpoint or separate service if the feature remains active.
 - Database triggers that created notifications were not recreated. PHP should insert into `ak_notifications` after creating contacts, customers, projects, or expenses.
 - `updated_at` triggers were replaced with MySQL `ON UPDATE CURRENT_TIMESTAMP` columns where those columns exist.
@@ -45,7 +45,7 @@ This project is moving from Supabase/PostgreSQL to MySQL on shared hosting. The 
   - `card_type = employee` requires `employee_id`.
   - `card_type = expense` requires `expense_card_id`.
 - `has_role()` and private schema functions are removed. PHP should check `ak_admin_users.role` and/or `ak_user_roles`.
-- Turnstile protection for contact submissions must be enforced in PHP before inserts.
+- Contact submission validation must be enforced in PHP before inserts.
 
 ## Installer Notes
 

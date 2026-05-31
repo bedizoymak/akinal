@@ -12,7 +12,6 @@ $phone = trim((string) ($input['phone'] ?? ''));
 $email = trim((string) ($input['email'] ?? ''));
 $serviceType = trim((string) ($input['service_type'] ?? ''));
 $message = trim((string) ($input['message'] ?? ''));
-$turnstileToken = trim((string) ($input['turnstileToken'] ?? $input['turnstile_token'] ?? ''));
 
 if ($fullName === '' || text_length($fullName) < 2 || text_length($fullName) > 100) {
     json_error('Ad Soyad zorunludur.');
@@ -28,16 +27,6 @@ if ($serviceType === '') {
 }
 if ($message === '' || text_length($message) < 5 || text_length($message) > 2000) {
     json_error('Mesajınızı yazınız.');
-}
-if ($turnstileToken === '') {
-    json_error('Güvenlik doğrulaması gerekli.');
-}
-if (!defined('TURNSTILE_SECRET_KEY') || TURNSTILE_SECRET_KEY === '' || TURNSTILE_SECRET_KEY === 'TURNSTILE_SECRET_KEY_HERE') {
-    json_error('Güvenlik doğrulaması sunucuda yapılandırılmamış. public_html/api/config.php içinde TURNSTILE_SECRET_KEY tanımlanmalıdır.', 500);
-}
-$turnstile = verify_turnstile($turnstileToken);
-if (!$turnstile['success']) {
-    json_error('Güvenlik doğrulaması başarısız.', 400, $turnstile['details']);
 }
 
 try {
@@ -101,69 +90,6 @@ function read_json_body(): array
         json_error('Geçersiz JSON gövdesi.');
     }
     return is_array($data) ? $data : [];
-}
-
-function verify_turnstile(string $token): array
-{
-    $payload = http_build_query([
-        'secret' => TURNSTILE_SECRET_KEY,
-        'response' => $token,
-        'remoteip' => $_SERVER['REMOTE_ADDR'] ?? null,
-    ]);
-
-    $response = false;
-    if (function_exists('curl_init')) {
-        $ch = curl_init('https://challenges.cloudflare.com/turnstile/v0/siteverify');
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $payload,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 8,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
-        ]);
-        $response = curl_exec($ch);
-        $curlError = curl_error($ch);
-        curl_close($ch);
-        if ($response === false) {
-            return [
-                'success' => false,
-                'details' => ['provider' => 'turnstile', 'reason' => $curlError ?: 'request_failed'],
-            ];
-        }
-    } else {
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
-                'content' => $payload,
-                'timeout' => 8,
-            ],
-        ]);
-        $response = file_get_contents('https://challenges.cloudflare.com/turnstile/v0/siteverify', false, $context);
-    }
-
-    if (!is_string($response)) {
-        return [
-            'success' => false,
-            'details' => ['provider' => 'turnstile', 'reason' => 'request_failed'],
-        ];
-    }
-
-    $decoded = json_decode($response, true);
-    if (!is_array($decoded)) {
-        return [
-            'success' => false,
-            'details' => ['provider' => 'turnstile', 'reason' => 'invalid_provider_response'],
-        ];
-    }
-
-    return [
-        'success' => ($decoded['success'] ?? false) === true,
-        'details' => [
-            'provider' => 'turnstile',
-            'error_codes' => $decoded['error-codes'] ?? [],
-        ],
-    ];
 }
 
 function text_length(string $value): int

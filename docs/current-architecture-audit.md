@@ -273,7 +273,7 @@ The contact form has a PHP endpoint now, so `submit-contact-request` appears to 
 - Writes:
   - `ak_contact_requests`
   - `ak_notifications`
-- Verifies Cloudflare Turnstile using `TURNSTILE_SECRET_KEY`.
+- Validates contact request fields before inserting them.
 - Used by:
   - `src/pages/site/Contact.tsx`
 
@@ -518,7 +518,7 @@ Some of these are heavily used by the frontend, but via Supabase table names, no
 - MySQL schema has many tables that are not yet exposed through PHP APIs.
 - `router-notes.md` documents planned admin CRUD endpoints that do not exist, which may mislead deployment or migration expectations.
 - Supabase migration files remain as historical source material, but are not aligned with MySQL runtime behavior.
-- Cloudflare Turnstile is required by `contact-request.php`; missing server config will break the public contact form.
+- Contact request validation now happens in `contact-request.php`; missing database config will break the public contact form.
 
 ### Low
 

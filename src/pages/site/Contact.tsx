@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { z } from "zod";
 import { Phone, MessageCircle, Mail, MapPin } from "lucide-react";
 import Seo from "@/components/site/Seo";
@@ -11,31 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useSiteSettings, getWhatsAppLink, getTelLink, getMapsLink } from "@/hooks/useSiteSettings";
 import { SERVICE_OPTIONS } from "@/lib/projects";
 import { submitContactRequest } from "@/lib/apiClient";
-
-const TURNSTILE_SITE_KEY = ((import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined) || "").trim();
-const isTurnstileConfigured = Boolean(TURNSTILE_SITE_KEY && TURNSTILE_SITE_KEY !== "VITE_TURNSTILE_SITE_KEY_HERE");
-const showTurnstileDevMessage = !isTurnstileConfigured && import.meta.env.DEV;
-const TURNSTILE_SCRIPT_ID = "cloudflare-turnstile-script";
-const TURNSTILE_SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&hl=tr";
-
-type TurnstileRenderOptions = {
-  sitekey: string;
-  callback: (token: string) => void;
-  "expired-callback": () => void;
-  "error-callback": () => void;
-  theme: "light";
-  language: "tr";
-};
-
-declare global {
-  interface Window {
-    turnstile?: {
-      render: (element: HTMLElement, options: TurnstileRenderOptions) => string;
-      reset: (widgetId?: string) => void;
-      ready?: (callback: () => void) => void;
-    };
-  }
-}
 
 const schema = z.object({
   full_name: z.string().trim().min(2, "Ad Soyad zorunludur.").max(100),
@@ -51,113 +26,12 @@ export default function Contact() {
   const experienceYears = new Date().getFullYear() - 2011;
   const [form, setForm] = useState({ full_name: "", phone: "", email: "", service_type: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState("");
-  const [captchaError, setCaptchaError] = useState("");
-  const [captchaLoading, setCaptchaLoading] = useState(isTurnstileConfigured);
-  const turnstileRef = useRef<HTMLDivElement>(null);
-  const widgetIdRef = useRef<string>();
-
-  useEffect(() => {
-    if (!isTurnstileConfigured) {
-      setCaptchaLoading(false);
-      setCaptchaError("Güvenlik doğrulaması yapılandırılmamış. Lütfen site yöneticisiyle iletişime geçin.");
-      return;
-    }
-    if (!turnstileRef.current || widgetIdRef.current) return;
-
-    let cancelled = false;
-    const timeout = window.setTimeout(() => {
-      if (!widgetIdRef.current && !cancelled) {
-        setCaptchaLoading(false);
-        setCaptchaError("Güvenlik doğrulaması yüklenemedi. Lütfen sayfayı yenileyin veya tarayıcı eklentilerinizi kontrol edin.");
-      }
-    }, 10000);
-
-    const renderWidget = () => {
-      if (cancelled || !window.turnstile || !turnstileRef.current || widgetIdRef.current) return;
-      try {
-        const widgetId = window.turnstile.render(turnstileRef.current, {
-          sitekey: TURNSTILE_SITE_KEY,
-          theme: "light",
-          language: "tr",
-          callback: (token) => {
-            setCaptchaToken(token);
-            setCaptchaError("");
-            setCaptchaLoading(false);
-          },
-          "expired-callback": () => {
-            setCaptchaToken("");
-            setCaptchaLoading(false);
-            setCaptchaError("Güvenlik doğrulamasının süresi doldu. Lütfen tekrar doğrulayın.");
-          },
-          "error-callback": () => {
-            setCaptchaToken("");
-            setCaptchaLoading(false);
-            setCaptchaError("Güvenlik doğrulaması tamamlanamadı. Lütfen tekrar deneyin.");
-          },
-        });
-        if (!widgetId) {
-          setCaptchaLoading(false);
-          setCaptchaError("Güvenlik doğrulaması başlatılamadı. Lütfen sayfayı yenileyin.");
-          return;
-        }
-        widgetIdRef.current = widgetId;
-        setCaptchaLoading(false);
-        setCaptchaError("");
-      } catch {
-        setCaptchaLoading(false);
-        setCaptchaError("Güvenlik doğrulaması başlatılamadı. Lütfen sayfayı yenileyin.");
-      } finally {
-        window.clearTimeout(timeout);
-      }
-    };
-
-    if (window.turnstile) {
-      if (window.turnstile.ready) window.turnstile.ready(renderWidget);
-      else renderWidget();
-      return () => {
-        cancelled = true;
-        window.clearTimeout(timeout);
-      };
-    }
-
-    const existingScript = document.getElementById(TURNSTILE_SCRIPT_ID) as HTMLScriptElement | null;
-    const script = existingScript || document.createElement("script");
-    script.id = TURNSTILE_SCRIPT_ID;
-    script.src = TURNSTILE_SCRIPT_SRC;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      if (window.turnstile?.ready) window.turnstile.ready(renderWidget);
-      else renderWidget();
-    };
-    script.onerror = () => {
-      window.clearTimeout(timeout);
-      setCaptchaLoading(false);
-      setCaptchaError("Güvenlik doğrulaması yüklenemedi. Lütfen bağlantınızı veya tarayıcı güvenlik ayarlarınızı kontrol edin.");
-    };
-    if (!existingScript) document.head.appendChild(script);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeout);
-    };
-  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!isTurnstileConfigured) {
-      toast({ title: "Güvenlik doğrulaması hazır değil", description: "Form şu anda gönderilemiyor. Lütfen daha sonra tekrar deneyin.", variant: "destructive" });
-      return;
-    }
     const parsed = schema.safeParse(form);
     if (!parsed.success) {
       toast({ title: "Form eksik", description: parsed.error.errors[0].message, variant: "destructive" });
-      return;
-    }
-    if (!captchaToken) {
-      setCaptchaError("Lütfen Ben robot değilim doğrulamasını tamamlayın.");
-      toast({ title: "Güvenlik doğrulaması gerekli", description: "Formu göndermek için Ben robot değilim doğrulamasını tamamlayın.", variant: "destructive" });
       return;
     }
     setSubmitting(true);
@@ -165,21 +39,15 @@ export default function Contact() {
       await submitContactRequest({
         ...parsed.data,
         email: parsed.data.email || null,
-        turnstileToken: captchaToken,
       });
     } catch {
       setSubmitting(false);
-      setCaptchaToken("");
-      setCaptchaError("Güvenlik doğrulaması yenilenmelidir. Lütfen tekrar doğrulayın.");
-      window.turnstile?.reset(widgetIdRef.current);
       toast({ title: "Hata", description: "Talebiniz gönderilemedi. Lütfen tekrar deneyin.", variant: "destructive" });
       return;
     }
     setSubmitting(false);
     toast({ title: "Talebiniz alındı", description: "Talebiniz başarıyla alındı. En kısa sürede sizinle iletişime geçeceğiz." });
     setForm({ full_name: "", phone: "", email: "", service_type: "", message: "" });
-    setCaptchaToken("");
-    window.turnstile?.reset(widgetIdRef.current);
   }
 
   const cards = [
@@ -266,24 +134,8 @@ export default function Contact() {
                 <Label htmlFor="message">Mesajınız *</Label>
                 <Textarea id="message" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={5} required maxLength={2000} />
               </div>
-              <div className="sm:col-span-2">
-                <Label>Güvenlik Doğrulaması *</Label>
-                <div className="mt-2 rounded-lg border border-border bg-background p-3">
-                  {isTurnstileConfigured ? (
-                    <div className="min-h-[65px]">
-                      <div ref={turnstileRef} />
-                      {captchaLoading && !captchaToken && !captchaError && <p className="text-sm text-muted-foreground">Güvenlik doğrulaması yükleniyor...</p>}
-                    </div>
-                  ) : showTurnstileDevMessage ? (
-                    <p className="text-sm text-muted-foreground">Dev: VITE_TURNSTILE_SITE_KEY tanımlanmadığı için Turnstile gösterilemiyor.</p>
-                  ) : (
-                    <p className="text-sm text-destructive">Güvenlik doğrulaması yapılandırılmamış. Form şu anda gönderilemiyor.</p>
-                  )}
-                </div>
-                {captchaError && <p className="mt-2 text-sm text-destructive">{captchaError}</p>}
-              </div>
             </div>
-            <Button type="submit" disabled={submitting || !isTurnstileConfigured || !captchaToken} aria-busy={submitting} className="mt-5 w-full bg-accent hover:bg-accent-glow text-accent-foreground font-semibold">
+            <Button type="submit" disabled={submitting} aria-busy={submitting} className="mt-5 w-full bg-accent hover:bg-accent-glow text-accent-foreground font-semibold">
               {submitting ? "Gönderiliyor..." : "Gönder"}
             </Button>
           </form>

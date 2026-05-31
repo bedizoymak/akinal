@@ -18,11 +18,6 @@ define('DB_NAME', 'akinalin_wp282');
 define('DB_USER', 'MYSQL_USERNAME_HERE');
 define('DB_PASS', 'MYSQL_PASSWORD_HERE');
 
-// Required by POST /api/contact-request.php.
-// Create a server-side Cloudflare Turnstile secret for the same site key used
-// by VITE_TURNSTILE_SITE_KEY, then set the real value in config.php only.
-define('TURNSTILE_SECRET_KEY', 'TURNSTILE_SECRET_KEY_HERE');
-
 // Temporary one-time token for /api/admin/run-demo-import.php.
 // Set a long random value in production config.php only, run the import once,
 // then delete run-demo-import.php from the server immediately.

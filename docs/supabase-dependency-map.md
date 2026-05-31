@@ -59,7 +59,7 @@ React/Vite frontend -> PHP API under `public_html/api` -> MySQL/MariaDB `ak_` ta
 
 | File | Supabase features used | MySQL table mapping | Replacement PHP endpoint/tooling | Risk |
 | --- | --- | --- | --- | --- |
-| `supabase/functions/submit-contact-request/index.ts` | Edge function, Turnstile validation, DB insert | `ak_contact_requests`, likely `ak_notifications` | `POST /api/contact-request.php` | High |
+| `supabase/functions/submit-contact-request/index.ts` | Edge function, contact validation, DB insert | `ak_contact_requests`, likely `ak_notifications` | `POST /api/contact-request.php` | High |
 | `supabase/functions/sales-chatbot/index.ts` | Edge function | No direct table confirmed from dependency scan | Future `POST /api/sales-chatbot.php` or external service | Medium |
 | `supabase/config.toml` | Supabase project config | N/A | Remove after all Supabase runtime paths are gone | Low |
 | `supabase/migrations/*.sql` | PostgreSQL schema, RLS, policies, storage, triggers | Converted to 20 `ak_` MySQL tables | Historical reference only after PHP migration | Low |
@@ -77,7 +77,7 @@ React/Vite frontend -> PHP API under `public_html/api` -> MySQL/MariaDB `ak_` ta
 ## Suggested Migration Order
 
 1. Replace public read-only site data: `useSiteSettings.ts`, `Home.tsx`, `Projects.tsx`, `ProjectDetail.tsx`.
-2. Replace public writes: contact request with Turnstile, cookie consent.
+2. Replace public writes: contact request and cookie consent.
 3. Implement PHP admin auth/session: login, logout, me, route guards.
 4. Replace admin settings/projects/media reads and writes.
 5. Replace CRM/customer admin flows.

@@ -154,7 +154,7 @@ Only the server copy should contain real credentials.
 - Login must use `password_hash()` and `password_verify()`.
 - Admin lookup should use `ak_admin_users.email_lower = strtolower(email)` and require `is_active = 1`.
 - Public write endpoints must validate input and rate-limit or add bot protection where appropriate.
-- Contact requests must verify Turnstile server-side before insert.
+- Contact requests must validate required fields server-side before insert.
 - Upload endpoints must validate file type, size, path, and executable restrictions.
 
 ## What Was Not Implemented Yet

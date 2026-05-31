@@ -176,7 +176,7 @@ After deployment:
 1. Build frontend with `npm run build`.
 2. Upload built frontend assets to the production web root according to the hosting layout.
 3. Upload `public_html/api`.
-4. Confirm production `public_html/api/config.php` contains correct MySQL credentials and Turnstile settings.
+4. Confirm production `public_html/api/config.php` contains correct MySQL credentials.
 5. Create or permission-check:
    - `public_html/uploads/project-images`
    - `public_html/uploads/payment-documents`
