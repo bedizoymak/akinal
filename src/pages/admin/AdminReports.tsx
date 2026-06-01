@@ -21,6 +21,7 @@ import {
   isCanceledStatus,
   isPaidStatus,
   paymentPlanRemainingFromPayments,
+  printCurrentReport,
   safeNumber,
   summarizeLedgerFinance,
   sumBy,
@@ -82,12 +83,50 @@ function Filters({ children }: any) {
   return <Card className="mb-4 print:hidden"><CardContent className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">{children}</CardContent></Card>;
 }
 
+function paymentAsFinanceEntry(payment: any) {
+  return {
+    id: `legacy-payment-${payment.id}`,
+    project_id: payment.project_id,
+    entry_date: payment.payment_date,
+    card_type: "customer",
+    customer_id: payment.customer_id,
+    amount: payment.amount,
+    currency_tag: "TRY",
+    group_tag: "Resmi",
+    direction: "Gelir",
+    status: "Gerçekleşti",
+  };
+}
+
+function expenseAsFinanceEntry(expense: any) {
+  return {
+    id: `legacy-expense-${expense.id}`,
+    project_id: expense.project_id,
+    entry_date: expense.expense_date,
+    card_type: "expense",
+    customer_id: expense.customer_id,
+    amount: expense.amount,
+    currency_tag: "TRY",
+    group_tag: "Resmi",
+    direction: "Gider",
+    status: "Gerçekleşti",
+  };
+}
+
+function mysqlFinanceEntries(data: any) {
+  return [
+    ...data.financialEntries.data,
+    ...data.payments.data.map(paymentAsFinanceEntry),
+    ...data.expenses.data.map(expenseAsFinanceEntry),
+  ];
+}
+
 function ExportBar({ onCSV, title }: { onCSV: () => void; title: string }) {
   return (
     <div className="mb-4 flex flex-col gap-2 print:hidden sm:flex-row sm:flex-wrap sm:items-center">
-      <Button onClick={() => window.print()} variant="outline"><FileText className="h-4 w-4 mr-2" /> PDF Olarak İndir</Button>
+      <Button onClick={() => printCurrentReport(title)} variant="outline"><FileText className="h-4 w-4 mr-2" /> PDF Olarak İndir</Button>
       <Button onClick={onCSV} variant="outline"><Download className="h-4 w-4 mr-2" /> CSV Olarak İndir</Button>
-      <Button onClick={() => window.print()} variant="outline"><Printer className="h-4 w-4 mr-2" /> Yazdır</Button>
+      <Button onClick={() => printCurrentReport(title)} variant="outline"><Printer className="h-4 w-4 mr-2" /> Yazdır</Button>
       <div className="text-sm text-muted-foreground sm:ml-auto sm:self-center">{title}</div>
     </div>
   );
@@ -95,13 +134,14 @@ function ExportBar({ onCSV, title }: { onCSV: () => void; title: string }) {
 
 // ========== Report 1: Project Finance ==========
 function ProjectFinanceReport({ data }: any) {
-  const { projects, financialEntries } = data;
+  const { projects } = data;
   const [from, setFrom] = useState(""); const [to, setTo] = useState(""); const [projectId, setProjectId] = useState("all");
+  const financeEntries = useMemo(() => mysqlFinanceEntries(data), [data]);
 
   const rows = useMemo(() => {
     const list = projectId === "all" ? projects.data : projects.data.filter((p: any) => p.id === projectId);
     return list.map((p: any) => {
-      const fe = entriesInDateRange(financialEntries.data, from, to).filter((x: any) => x.project_id === p.id);
+      const fe = entriesInDateRange(financeEntries, from, to).filter((x: any) => x.project_id === p.id);
       const summary = summarizeLedgerFinance({ financialEntries: fe });
       const totalReceivable = summary.receivable;
       const totalReceived = summary.totalIncome;
@@ -115,7 +155,7 @@ function ProjectFinanceReport({ data }: any) {
         expenseRate: totalReceived > 0 ? (totalSpent / totalReceived) * 100 : 0,
       };
     });
-  }, [projects.data, financialEntries.data, from, to, projectId]);
+  }, [projects.data, financeEntries, from, to, projectId]);
 
   const dateRange = `${from || "Başlangıç"} - ${to || "Bugün"}`;
 
@@ -433,14 +473,14 @@ function ExpensesReport({ data }: any) {
 
 // ========== Report 5: General Summary ==========
 function GeneralSummaryReport({ data }: any) {
-  const { financialEntries } = data;
+  const financeEntries = useMemo(() => mysqlFinanceEntries(data), [data]);
   const today = new Date();
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
   const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
 
-  const summary = summarizeLedgerFinance({ financialEntries: financialEntries.data });
+  const summary = summarizeLedgerFinance({ financialEntries: financeEntries });
   const monthSummary = summarizeLedgerFinance({
-    financialEntries: financialEntries.data,
+    financialEntries: financeEntries,
     from: monthStart,
     to: monthEnd,
   });
@@ -468,7 +508,7 @@ function GeneralSummaryReport({ data }: any) {
     const ms = d.toISOString().slice(0, 10);
     const me = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
     const label = d.toLocaleDateString("tr-TR", { month: "short", year: "2-digit" });
-    const monthlySummary = summarizeLedgerFinance({ financialEntries: financialEntries.data, from: ms, to: me });
+    const monthlySummary = summarizeLedgerFinance({ financialEntries: financeEntries, from: ms, to: me });
     monthly.push({
       ay: label,
       "Gerçekleşen Gelir": monthlySummary.totalIncome,

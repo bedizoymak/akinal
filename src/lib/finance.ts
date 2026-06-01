@@ -172,19 +172,48 @@ export function statusBadgeClass(status: string): string {
   }
 }
 
-export function exportCSV(filename: string, rows: Record<string, unknown>[]) {
-  if (!rows.length) return;
-  const headers = Object.keys(rows[0]);
+function datedDownloadName(filename: string): string {
+  const dot = filename.lastIndexOf(".");
+  const base = dot > 0 ? filename.slice(0, dot) : filename;
+  const ext = dot > 0 ? filename.slice(dot) : "";
+  const date = new Date().toISOString().slice(0, 10);
+  const safeBase = base.trim().replace(/\s+/g, "-").replace(/[\\/:*?"<>|]/g, "-");
+  return `${safeBase}-${date}${ext}`;
+}
+
+function downloadBlob(filename: string, blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = datedDownloadName(filename);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export function printCurrentReport(title: string) {
+  const previousTitle = document.title;
+  document.title = datedDownloadName(`${title}.pdf`).replace(/\.pdf$/i, "");
+  window.print();
+  window.setTimeout(() => {
+    document.title = previousTitle;
+  }, 500);
+}
+
+export function exportCSV(filename: string, rows: Record<string, unknown>[], fallbackHeaders: string[] = []) {
+  const headers = rows.length ? Object.keys(rows[0]) : fallbackHeaders;
+  if (!headers.length) {
+    rows = [{ Bilgi: "Dışa aktarılacak kayıt bulunmuyor." }];
+  }
   const escape = (v: unknown) => {
     const s = v == null ? "" : String(v);
     return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const csv = [headers.join(";"), ...rows.map((r) => headers.map((h) => escape(r[h])).join(";"))].join("\n");
+  const effectiveHeaders = rows.length ? Object.keys(rows[0]) : headers;
+  const csv = [effectiveHeaders.join(";"), ...rows.map((r) => effectiveHeaders.map((h) => escape(r[h])).join(";"))].join("\r\n");
   const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(filename, blob);
 }
 
 export function whatsappLink(phone: string, message: string): string {
