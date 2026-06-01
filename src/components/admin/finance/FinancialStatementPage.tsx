@@ -16,6 +16,7 @@ import {
   ENTRY_DIRECTIONS,
   ENTRY_STATUSES,
   GROUP_TAGS,
+  displayLabel,
   formatDate,
   formatMoney,
   statusBadgeClass,
@@ -142,7 +143,7 @@ function makeEntity(kind: FinancialStatementKind, row: AdminProjectLookup | Admi
       tableTitle: "Proje Ekstresi",
       details: [
         { label: "Konum", value: project.location },
-        { label: "Durum", value: project.project_status },
+        { label: "Durum", value: displayLabel(project.project_status) },
       ],
     };
   }
@@ -253,15 +254,21 @@ function MoneyLines({ totals, tone }: { totals: CurrencyTotals; tone?: "success"
   const lines = formatCurrencyTotalLines(totals);
   const color = tone === "success" ? "text-emerald-700" : tone === "danger" ? "text-red-600" : tone === "warning" ? "text-amber-700" : "text-foreground";
 
-  if (!lines.length) return <span className="text-foreground">{formatMoney(0, "TRY")}</span>;
+  if (!lines.length) return <span className="block max-w-full whitespace-normal break-words text-sm text-foreground">{formatMoney(0, "TRY")}</span>;
 
   return (
-    <div className={cn("space-y-1 text-base leading-tight", color)}>
+    <div className={cn("min-w-0 max-w-full space-y-1 text-sm leading-tight", color)}>
       {lines.map((line) => (
-        <div key={line}>{line}</div>
+        <div key={line} className="max-w-full whitespace-normal break-words">
+          {line}
+        </div>
       ))}
     </div>
   );
+}
+
+function MoneyValue({ amount, currency }: { amount: number | string; currency: CurrencyTag }) {
+  return <span className="block max-w-full whitespace-normal break-words text-sm leading-tight">{formatMoney(amount, currency)}</span>;
 }
 
 function ChartCard({ title, data, currency }: { title: string; data: ChartDatum[]; currency: CurrencyTag }) {
@@ -449,7 +456,7 @@ function SummaryCards({ kind, summary }: { kind: FinancialStatementKind; summary
         <AdminMetricCard label="Resmi Bakiye" value={<MoneyLines totals={summary.officialBalance} />} description="Resmi hareketler" />
         <AdminMetricCard label="Gayri Resmi Bakiye" value={<MoneyLines totals={summary.unofficialBalance} />} description="Gayri resmi hareketler" />
         {CURRENCIES.map((currency) => (
-          <AdminMetricCard key={currency} label={`${currency} Toplamı`} value={formatMoney(summary.realizedNet[currency], currency)} description="Gerçekleşen net bakiye" />
+          <AdminMetricCard key={currency} label={`${currency} Toplamı`} value={<MoneyValue amount={summary.realizedNet[currency]} currency={currency} />} description="Gerçekleşen net bakiye" />
         ))}
       </div>
     );
@@ -478,7 +485,7 @@ function SummaryCards({ kind, summary }: { kind: FinancialStatementKind; summary
       <AdminMetricCard label="Toplam Resmi Tutar" value={<MoneyLines totals={summary.officialBalance} />} description="Resmi kayıt bakiyesi" />
       <AdminMetricCard label="Toplam Gayri Resmi Tutar" value={<MoneyLines totals={summary.unofficialBalance} />} description="Gayri resmi kayıt bakiyesi" />
       {CURRENCIES.map((currency) => (
-        <AdminMetricCard key={currency} label={`${currency} Toplamı`} value={formatMoney(summary.realizedSigned[currency] + summary.plannedSigned[currency], currency)} description="İptal hariç hareket bakiyesi" />
+        <AdminMetricCard key={currency} label={`${currency} Toplamı`} value={<MoneyValue amount={summary.realizedSigned[currency] + summary.plannedSigned[currency]} currency={currency} />} description="İptal hariç hareket bakiyesi" />
       ))}
     </div>
   );

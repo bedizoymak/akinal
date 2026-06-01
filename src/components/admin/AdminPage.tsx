@@ -95,6 +95,8 @@ function AutoFitMetricValue({ children, className }: { children: ReactNode; clas
 }
 
 export function AdminMetricCard({ label, value, description, icon: Icon, tone = "default" }: AdminMetricCardProps) {
+  const complexValue = typeof value !== "string" && typeof value !== "number";
+
   return (
     <div className="relative flex min-h-[138px] w-full min-w-0 max-w-full flex-col justify-between overflow-hidden rounded-md border border-border/80 bg-card p-5 shadow-sm transition-colors hover:border-foreground/20">
       <div className={cn("absolute inset-x-0 top-0 h-1", metricAccentClass[tone])} />
@@ -107,7 +109,11 @@ export function AdminMetricCard({ label, value, description, icon: Icon, tone = 
           </div>
         )}
         </div>
-        <AutoFitMetricValue className={cn("font-extrabold", metricValueToneClass[tone])}>{value}</AutoFitMetricValue>
+        {complexValue ? (
+          <div className={cn("mt-3 w-full min-w-0 max-w-full font-extrabold leading-tight tabular-nums", metricValueToneClass[tone])}>{value}</div>
+        ) : (
+          <AutoFitMetricValue className={cn("font-extrabold", metricValueToneClass[tone])}>{value}</AutoFitMetricValue>
+        )}
       </div>
       {description && <div className="mt-4 overflow-hidden text-ellipsis whitespace-nowrap border-t border-border/60 pt-3 text-xs leading-relaxed text-muted-foreground">{description}</div>}
     </div>

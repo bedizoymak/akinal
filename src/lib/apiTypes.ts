@@ -104,6 +104,13 @@ export interface AdminDashboardSummary {
   total_payments: number;
   total_expenses: number;
   basic_net_balance: number;
+  planned_income?: number;
+  month_income?: number;
+  month_expenses?: number;
+  month_net?: number;
+  overdue_collections?: number;
+  expected_payments?: number;
+  financial_entry_count?: number;
 }
 
 export interface AdminDashboardProject {
@@ -119,6 +126,44 @@ export interface AdminDashboardProject {
 export interface AdminDashboardResponse {
   summary: AdminDashboardSummary;
   active_projects_list: AdminDashboardProject[];
+  overdue_plans?: AdminDashboardPaymentPlan[];
+  upcoming_plans?: AdminDashboardPaymentPlan[];
+  recent_movements?: AdminDashboardMovement[];
+  monthly_financials?: AdminDashboardMonthlyFinancial[];
+}
+
+export interface AdminDashboardPaymentPlan {
+  id: string;
+  title: string | null;
+  amount: number | string;
+  due_date: string | null;
+  status: string | null;
+  customer_id: string | null;
+  project_id: string | null;
+  paid_amount: number | string;
+  remaining_amount: number | string;
+  customer_name: string | null;
+  project_title: string | null;
+}
+
+export interface AdminDashboardMovement {
+  id: string;
+  label: string | null;
+  amount: number | string;
+  date: string | null;
+  direction: string | null;
+  card_type: string | null;
+  currency: string | null;
+  group: string | null;
+  status: string | null;
+  project_title: string | null;
+}
+
+export interface AdminDashboardMonthlyFinancial {
+  month_key: string;
+  income: number | string;
+  expenses: number | string;
+  net: number | string;
 }
 
 export interface AdminCustomer {

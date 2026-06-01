@@ -28,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   formatDate,
   displayLabel,
+  formatMoney,
   type CurrencyTag,
   type EntryDirection,
   type GroupTag,
@@ -35,7 +36,13 @@ import {
 import { statusBadgeVariant } from "@/lib/projects";
 import { cn } from "@/lib/utils";
 import { getAdminDashboard } from "@/lib/apiClient";
-import type { AdminDashboardProject, AdminDashboardSummary } from "@/lib/apiTypes";
+import type {
+  AdminDashboardMonthlyFinancial,
+  AdminDashboardMovement,
+  AdminDashboardPaymentPlan,
+  AdminDashboardProject,
+  AdminDashboardSummary,
+} from "@/lib/apiTypes";
 
 type RecentMovement = {
   id: string;
@@ -52,6 +59,10 @@ type RecentMovement = {
 type DashboardData = {
   summary: AdminDashboardSummary;
   activeProjects: AdminDashboardProject[];
+  overduePlans: AdminDashboardPaymentPlan[];
+  upcomingPlans: AdminDashboardPaymentPlan[];
+  recentMovements: AdminDashboardMovement[];
+  monthlyFinancials: AdminDashboardMonthlyFinancial[];
 };
 
 const initialData: DashboardData = {
@@ -69,6 +80,10 @@ const initialData: DashboardData = {
     basic_net_balance: 0,
   },
   activeProjects: [],
+  overduePlans: [],
+  upcomingPlans: [],
+  recentMovements: [],
+  monthlyFinancials: [],
 };
 
 const chartColors = {
@@ -109,6 +124,24 @@ function chartCurrency(value: number) {
   return value.toLocaleString("tr-TR");
 }
 
+function normalizeCurrency(value: string | null | undefined): CurrencyTag {
+  return value === "USD" || value === "EUR" ? value : "TRY";
+}
+
+function normalizeDirection(value: string | null | undefined): EntryDirection {
+  return value === "Gider" ? "Gider" : "Gelir";
+}
+
+function normalizeGroup(value: string | null | undefined): GroupTag {
+  return value === "Gayri Resmi" ? "Gayri Resmi" : "Resmi";
+}
+
+function movementSource(cardType: string | null | undefined) {
+  if (cardType === "employee") return "Personel";
+  if (cardType === "expense") return "Gider";
+  return "Müşteri";
+}
+
 function LoadingDashboard() {
   return (
     <div className="w-full max-w-full space-y-7 overflow-x-hidden">
@@ -144,6 +177,10 @@ export default function AdminDashboard() {
         setData({
           summary: dashboard.summary,
           activeProjects: dashboard.active_projects_list || [],
+          overduePlans: dashboard.overdue_plans || [],
+          upcomingPlans: dashboard.upcoming_plans || [],
+          recentMovements: dashboard.recent_movements || [],
+          monthlyFinancials: dashboard.monthly_financials || [],
         });
       } catch {
         setLoadError(true);
@@ -155,26 +192,43 @@ export default function AdminDashboard() {
 
   const dashboard = useMemo(() => {
     const months = lastSixMonths();
-    const monthlyFinancials = months.map((month) => ({ month: month.month, income: 0, expenses: 0, net: 0 }));
-    const recentMovements: RecentMovement[] = [];
+    const monthlyByKey = new Map(data.monthlyFinancials.map((item) => [item.month_key, item]));
+    const monthlyFinancials = months.map((month) => {
+      const item = monthlyByKey.get(month.key);
+      const income = Number(item?.income || 0);
+      const expenses = Number(item?.expenses || 0);
+      const net = Number(item?.net ?? income - expenses);
+      return { month: month.month, income, expenses, net };
+    });
+    const recentMovements: RecentMovement[] = data.recentMovements.map((movement) => ({
+      id: movement.id,
+      label: movement.label || "Finansal hareket",
+      amount: Number(movement.amount || 0),
+      date: movement.date || "",
+      direction: normalizeDirection(movement.direction),
+      source: movementSource(movement.card_type),
+      currency: normalizeCurrency(movement.currency),
+      group: normalizeGroup(movement.group),
+      projectTitle: movement.project_title || undefined,
+    }));
 
     return {
       totalIncome: Number(data.summary.total_payments || 0),
       totalExpenses: Number(data.summary.total_expenses || 0),
       netStatus: Number(data.summary.basic_net_balance || 0),
-      monthIncome: 0,
-      monthExpenses: 0,
-      monthNet: 0,
+      monthIncome: Number(data.summary.month_income || 0),
+      monthExpenses: Number(data.summary.month_expenses || 0),
+      monthNet: Number(data.summary.month_net || 0),
       activeProjects: data.activeProjects,
-      pendingCollections: 0,
-      expectedPayments: 0,
-      overdueCollections: 0,
-      overduePlans: [],
-      upcomingPlans: [],
+      pendingCollections: Number(data.summary.planned_income || 0),
+      expectedPayments: Number(data.summary.expected_payments || 0),
+      overdueCollections: Number(data.summary.overdue_collections || 0),
+      overduePlans: data.overduePlans,
+      upcomingPlans: data.upcomingPlans,
       recentMovements,
       newRequests: Array.from({ length: Number(data.summary.new_contact_requests || 0) }),
       monthlyFinancials,
-      hasFinancialData: false,
+      hasFinancialData: Boolean(Number(data.summary.financial_entry_count || 0) || data.monthlyFinancials.length || recentMovements.length),
     };
   }, [data]);
 
@@ -263,8 +317,8 @@ export default function AdminDashboard() {
                           {movement.projectTitle || "Proje bağlantısı yok"} · {movement.group}
                         </div>
                       </div>
-                      <div className={cn("max-w-full shrink-0 self-end whitespace-nowrap text-right text-lg font-extrabold tabular-nums sm:self-auto", isIncome ? "text-emerald-700" : "text-red-600")}>
-                        {isIncome ? "+" : "-"}{formatDashboardTRY(movement.amount)}
+                      <div className={cn("max-w-full shrink-0 self-end whitespace-normal break-words text-right text-lg font-extrabold tabular-nums sm:self-auto", isIncome ? "text-emerald-700" : "text-red-600")}>
+                        {isIncome ? "+" : "-"}{formatMoney(movement.amount, movement.currency)}
                       </div>
                     </div>
                   );
