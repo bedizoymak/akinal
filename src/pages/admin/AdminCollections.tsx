@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PAYMENT_METHODS, formatTRY, formatDate, customerDisplayName, exportCSV } from "@/lib/finance";
 import { Plus, Edit, Trash2, Download, Wallet, Users, FolderKanban, CalendarDays, Loader2 } from "lucide-react";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
+import { QuickCreateCustomerButton } from "@/components/admin/QuickCreateCustomerButton";
 import { createAdminPayment, deleteAdminPayment, getAdminPaymentsData, updateAdminPayment, uploadAdminPaymentDocument } from "@/lib/apiClient";
 
 const empty = { customer_id: "", project_id: "", payment_plan_id: "", amount: "", payment_date: new Date().toISOString().slice(0, 10), payment_method: "Nakit", description: "", document_url: "" };
@@ -56,6 +57,10 @@ export default function AdminCollections() {
 
   function openNew() { setForm({ ...empty, customer_id: filterCustomer !== "all" ? filterCustomer : "" }); setEditId(null); setOpen(true); }
   function openEdit(it: any) { setForm({ ...it, project_id: it.project_id || "", payment_plan_id: it.payment_plan_id || "", description: it.description || "", document_url: it.document_url || "", amount: String(it.amount) }); setEditId(it.id); setOpen(true); }
+  function handleCustomerCreated(customer: any) {
+    setCustomers((current) => [customer, ...current.filter((item) => item.id !== customer.id)]);
+    setForm((current: any) => ({ ...current, customer_id: customer.id, payment_plan_id: "" }));
+  }
 
   async function uploadDoc(file: File) {
     setUploading(true);
@@ -207,7 +212,11 @@ export default function AdminCollections() {
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>{editId ? "Tahsilatı Düzenle" : "Yeni Tahsilat"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="md:col-span-2"><Label>Müşteri *</Label>
+            <div className="md:col-span-2">
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <Label>Müşteri *</Label>
+                <QuickCreateCustomerButton onCreated={handleCustomerCreated} />
+              </div>
               <Select value={form.customer_id} onValueChange={(v) => setForm((f: any) => ({ ...f, customer_id: v, payment_plan_id: "" }))}>
                 <SelectTrigger><SelectValue placeholder="Müşteri seçin" /></SelectTrigger>
                 <SelectContent>{customers.map((c) => <SelectItem key={c.id} value={c.id}>{customerDisplayName(c)}</SelectItem>)}</SelectContent>

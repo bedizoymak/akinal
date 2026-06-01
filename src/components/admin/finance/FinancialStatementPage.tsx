@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Edit, FileText, Plus, Search, Trash2 } from "lucide-react";
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader, AdminSection } from "@/components/admin/AdminPage";
+import { QuickCreateCustomerButton } from "@/components/admin/QuickCreateCustomerButton";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -600,6 +601,11 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function handleCustomerCreated(customer: AdminCustomerLookup) {
+    setCustomers((current) => [customer, ...current.filter((item) => item.id !== customer.id)]);
+    updateForm("customer_id", customer.id);
+  }
+
   function handleCardTypeChange(value: string) {
     const next = value as CardType;
     setForm((current) => ({
@@ -882,7 +888,10 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
 
             {form.card_type === "customer" && kind === "project" && (
               <div className="md:col-span-2">
-                <Label>Müşteri *</Label>
+                <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                  <Label>Müşteri *</Label>
+                  <QuickCreateCustomerButton onCreated={handleCustomerCreated} />
+                </div>
                 <Select value={form.customer_id || "none"} onValueChange={(value) => updateForm("customer_id", value === "none" ? "" : value)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>

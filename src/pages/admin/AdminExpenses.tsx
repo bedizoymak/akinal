@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { EXPENSE_CATEGORIES, formatTRY, formatDate, customerDisplayName, exportCSV } from "@/lib/finance";
 import { Plus, Edit, Trash2, Download, Receipt, FolderKanban, Tags, CalendarDays, Loader2 } from "lucide-react";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
+import { QuickCreateCustomerButton } from "@/components/admin/QuickCreateCustomerButton";
+import { QuickCreateExpenseCategoryButton } from "@/components/admin/QuickCreateExpenseCategoryButton";
 import { createAdminExpense, deleteAdminExpense, getAdminExpensesData, updateAdminExpense, uploadAdminExpenseDocument } from "@/lib/apiClient";
 
 const empty = { project_id: "", customer_id: "", title: "", category: "Malzeme", amount: "", expense_date: new Date().toISOString().slice(0, 10), description: "", document_url: "" };
@@ -26,6 +28,7 @@ export default function AdminExpenses() {
   const [from, setFrom] = useState(""); const [to, setTo] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
   const { toast } = useToast();
 
   async function load() {
@@ -43,6 +46,15 @@ export default function AdminExpenses() {
 
   function openNew() { setForm({ ...empty, project_id: filterProject !== "all" ? filterProject : "" }); setEditId(null); setOpen(true); }
   function openEdit(it: any) { setForm({ ...it, project_id: it.project_id || "", customer_id: it.customer_id || "", description: it.description || "", document_url: it.document_url || "", amount: String(it.amount) }); setEditId(it.id); setOpen(true); }
+  function handleCustomerCreated(customer: any) {
+    setCustomers((current) => [customer, ...current.filter((item) => item.id !== customer.id)]);
+    setForm((current: any) => ({ ...current, customer_id: customer.id }));
+  }
+  function handleCategoryCreated(category: string) {
+    setCustomCategories((current) => current.some((item) => item.toLocaleLowerCase("tr-TR") === category.toLocaleLowerCase("tr-TR")) ? current : [...current, category]);
+    setForm((current: any) => ({ ...current, category }));
+    setFilterCategory((current) => current === "all" ? current : category);
+  }
 
   async function uploadDoc(file: File) {
     setUploading(true);
@@ -91,6 +103,11 @@ export default function AdminExpenses() {
   });
 
   const total = filtered.reduce((s, x) => s + Number(x.amount), 0);
+  const categoryOptions = useMemo(() => Array.from(new Set([
+    ...EXPENSE_CATEGORIES,
+    ...items.map((item) => item.category).filter(Boolean),
+    ...customCategories,
+  ])), [customCategories, items]);
   const thisMonth = new Date().toISOString().slice(0, 7);
   const monthTotal = filtered.filter((x) => String(x.expense_date || "").startsWith(thisMonth)).reduce((s, x) => s + Number(x.amount), 0);
   const projectCount = new Set(filtered.map((x) => x.project_id).filter(Boolean)).size;
@@ -126,7 +143,7 @@ export default function AdminExpenses() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5 p-4 bg-card border border-border rounded-md">
         <Select value={filterProject} onValueChange={setFilterProject}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tüm Projeler</SelectItem>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}</SelectContent></Select>
-        <Select value={filterCategory} onValueChange={setFilterCategory}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tüm Kategoriler</SelectItem>{EXPENSE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select>
+        <Select value={filterCategory} onValueChange={setFilterCategory}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tüm Kategoriler</SelectItem>{categoryOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select>
         <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
       </div>
@@ -190,15 +207,23 @@ export default function AdminExpenses() {
                 <SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">— Seçilmedi —</SelectItem>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Müşteri (opsiyonel)</Label>
+            <div>
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <Label>Müşteri (opsiyonel)</Label>
+                <QuickCreateCustomerButton onCreated={handleCustomerCreated} />
+              </div>
               <Select value={form.customer_id || "none"} onValueChange={(v) => setForm((f: any) => ({ ...f, customer_id: v === "none" ? "" : v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">— Seçilmedi —</SelectItem>{customers.map((c) => <SelectItem key={c.id} value={c.id}>{customerDisplayName(c)}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div><Label>Gider Başlığı *</Label><Input value={form.title} onChange={(e) => setForm((f: any) => ({ ...f, title: e.target.value }))} /></div>
-            <div><Label>Gider Kategorisi</Label>
+            <div>
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <Label>Gider Kategorisi</Label>
+                <QuickCreateExpenseCategoryButton existingCategories={categoryOptions} onCreated={handleCategoryCreated} />
+              </div>
               <Select value={form.category} onValueChange={(v) => setForm((f: any) => ({ ...f, category: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{EXPENSE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                <SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{categoryOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div><Label>Tutar *</Label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm((f: any) => ({ ...f, amount: e.target.value }))} /></div>

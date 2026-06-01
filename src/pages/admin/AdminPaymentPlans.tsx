@@ -11,6 +11,7 @@ import { PAYMENT_PLAN_STATUSES, formatTRY, formatDate, statusBadgeClass, custome
 import { cn } from "@/lib/utils";
 import { Plus, Edit, Trash2, Download, MessageCircle, CalendarClock, AlertTriangle, Wallet, CheckCircle2, Loader2 } from "lucide-react";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
+import { QuickCreateCustomerButton } from "@/components/admin/QuickCreateCustomerButton";
 import { createAdminPaymentPlan, deleteAdminPaymentPlan, getAdminPaymentPlansData, updateAdminPaymentPlan } from "@/lib/apiClient";
 
 const empty = { customer_id: "", project_id: "", title: "", description: "", amount: "", due_date: "", status: "Bekliyor", notes: "" };
@@ -52,6 +53,10 @@ export default function AdminPaymentPlans() {
 
   function openNew() { setForm({ ...empty, customer_id: filterCustomer !== "all" ? filterCustomer : "" }); setEditId(null); setOpen(true); }
   function openEdit(p: any) { setForm({ ...p, project_id: p.project_id || "", amount: String(p.amount), notes: p.notes || "", description: p.description || "" }); setEditId(p.id); setOpen(true); }
+  function handleCustomerCreated(customer: any) {
+    setCustomers((current) => [customer, ...current.filter((item) => item.id !== customer.id)]);
+    setForm((current: any) => ({ ...current, customer_id: customer.id }));
+  }
 
   async function save() {
     if (!form.customer_id || !form.title || !form.amount || !form.due_date) {
@@ -213,7 +218,11 @@ export default function AdminPaymentPlans() {
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>{editId ? "Ödeme Planını Düzenle" : "Yeni Ödeme Planı"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="md:col-span-2"><Label>Müşteri *</Label>
+            <div className="md:col-span-2">
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <Label>Müşteri *</Label>
+                <QuickCreateCustomerButton onCreated={handleCustomerCreated} />
+              </div>
               <Select value={form.customer_id} onValueChange={(v) => setForm((f: any) => ({ ...f, customer_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Müşteri seçin" /></SelectTrigger>
                 <SelectContent>{customers.map((c) => <SelectItem key={c.id} value={c.id}>{customerDisplayName(c)}</SelectItem>)}</SelectContent>
