@@ -30,7 +30,10 @@ import { cn } from "@/lib/utils";
 const NAV_GROUPS = [
   {
     title: "Genel",
-    items: [{ to: "/admin", label: "Genel Bakış", description: "Kısa şirket özeti", icon: LayoutDashboard, end: true }],
+    items: [
+      { to: "/admin", label: "Genel Bakış", description: "Kısa şirket özeti", icon: LayoutDashboard, end: true },
+      { to: "/admin/finans-dashboard", label: "Finans Özeti", description: "Gelir, gider ve net durum", icon: BarChart3 },
+    ],
   },
   {
     title: "Proje Yönetimi",
@@ -50,7 +53,6 @@ const NAV_GROUPS = [
   {
     title: "Finans",
     items: [
-      { to: "/admin/finans-dashboard", label: "Finans Özeti", description: "Gelir, gider ve net durum", icon: BarChart3 },
       { to: "/admin/giderler", label: "Giderler", description: "Masraf takibi", icon: Receipt },
       { to: "/admin/gider-kartlari", label: "Gider Kartları", description: "Sabit gider başlıkları", icon: Tags },
       { to: "/admin/raporlar", label: "Raporlar", description: "Yönetim raporları", icon: FileBarChart },
