@@ -281,6 +281,8 @@ export interface AdminFinancialEntry {
   direction: EntryDirection;
   status: EntryStatus;
   document_url: string | null;
+  is_legacy_expense?: boolean | number | null;
+  is_legacy_payment?: boolean | number | null;
   created_at?: string | null;
   updated_at?: string | null;
 }

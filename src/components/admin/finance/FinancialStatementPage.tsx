@@ -789,7 +789,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
                       {kind === "project" ? (
                         <>
                           <td className="p-3">{getCardTypeLabel(entry.card_type)}</td>
-                          <td className="p-3">{getEntryCardName(entry, lookups)}</td>
+                          <td className="p-3">{entry.is_legacy_expense ? "Gider kaydı" : entry.is_legacy_payment ? "Tahsilat kaydı" : getEntryCardName(entry, lookups)}</td>
                         </>
                       ) : (
                         <td className="p-3">{getProjectName(entry.project_id, lookups)}</td>
@@ -814,8 +814,16 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
                       </td>
                       <td className="p-3">
                         <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => openEdit(entry)} title="Düzenle"><Edit className="h-4 w-4" /><span className="sr-only sm:not-sr-only sm:ml-1">Düzenle</span></Button>
-                          <Button size="sm" variant="ghost" onClick={() => deleteEntry(entry)} title="Sil"><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only sm:not-sr-only sm:ml-1">Sil</span></Button>
+                          {entry.is_legacy_expense || entry.is_legacy_payment ? (
+                            <span className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
+                              {entry.is_legacy_expense ? "Giderler modülünden yönetilir" : "Tahsilatlar modülünden yönetilir"}
+                            </span>
+                          ) : (
+                            <>
+                              <Button size="sm" variant="ghost" onClick={() => openEdit(entry)} title="Düzenle"><Edit className="h-4 w-4" /><span className="sr-only sm:not-sr-only sm:ml-1">Düzenle</span></Button>
+                              <Button size="sm" variant="ghost" onClick={() => deleteEntry(entry)} title="Sil"><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only sm:not-sr-only sm:ml-1">Sil</span></Button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -96,7 +96,70 @@ function fetch_statement_entries(string $kind, string $id): array
     $column = statement_fixed_column($kind);
     $stmt = db()->prepare("SELECT * FROM ak_financial_entries WHERE `{$column}` = :id ORDER BY entry_date DESC, created_at DESC");
     $stmt->execute(['id' => $id]);
-    return $stmt->fetchAll() ?: [];
+    $entries = $stmt->fetchAll() ?: [];
+
+    if ($kind === 'project' || $kind === 'customer') {
+        $legacyColumn = $kind === 'project' ? 'project_id' : 'customer_id';
+        $paymentStmt = db()->prepare("
+            SELECT
+              CONCAT('legacy-payment-', id) AS id,
+              project_id,
+              payment_date AS entry_date,
+              'customer' AS card_type,
+              customer_id,
+              NULL AS employee_id,
+              NULL AS expense_card_id,
+              COALESCE(description, 'Tahsilat') AS title,
+              description,
+              amount,
+              'TRY' AS currency_tag,
+              'Resmi' AS group_tag,
+              'Gelir' AS direction,
+              'Gerçekleşti' AS status,
+              document_url,
+              created_at,
+              updated_at,
+              1 AS is_legacy_payment
+            FROM ak_payments
+            WHERE `{$legacyColumn}` = :id
+        ");
+        $paymentStmt->execute(['id' => $id]);
+        $entries = array_merge($entries, $paymentStmt->fetchAll() ?: []);
+
+        $expenseStmt = db()->prepare("
+            SELECT
+              CONCAT('legacy-expense-', id) AS id,
+              project_id,
+              expense_date AS entry_date,
+              'expense' AS card_type,
+              customer_id,
+              NULL AS employee_id,
+              NULL AS expense_card_id,
+              title,
+              description,
+              amount,
+              'TRY' AS currency_tag,
+              'Resmi' AS group_tag,
+              'Gider' AS direction,
+              'Gerçekleşti' AS status,
+              document_url,
+              created_at,
+              updated_at,
+              1 AS is_legacy_expense
+            FROM ak_expenses
+            WHERE `{$legacyColumn}` = :id
+        ");
+        $expenseStmt->execute(['id' => $id]);
+        $entries = array_merge($entries, $expenseStmt->fetchAll() ?: []);
+    }
+
+    usort($entries, static function (array $left, array $right): int {
+        $leftKey = (string) ($left['entry_date'] ?? '') . ' ' . (string) ($left['created_at'] ?? '');
+        $rightKey = (string) ($right['entry_date'] ?? '') . ' ' . (string) ($right['created_at'] ?? '');
+        return strcmp($rightKey, $leftKey);
+    });
+
+    return $entries;
 }
 
 function financial_entry_payload(array $input): array

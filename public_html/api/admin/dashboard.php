@@ -107,41 +107,98 @@ try {
 
     $recentMovements = $pdo->query("
         SELECT
-          fe.id,
-          fe.title AS label,
-          fe.amount,
-          fe.entry_date AS date,
-          fe.direction,
-          fe.card_type,
-          fe.currency_tag AS currency,
-          fe.group_tag AS `group`,
-          fe.status,
-          pr.title AS project_title
-        FROM ak_financial_entries fe
-        LEFT JOIN ak_projects pr ON pr.id = fe.project_id
-        WHERE fe.status <> 'İptal'
-        ORDER BY fe.entry_date DESC, fe.created_at DESC
+          movement.id,
+          movement.label,
+          movement.amount,
+          movement.date,
+          movement.direction,
+          movement.card_type,
+          movement.currency,
+          movement.`group`,
+          movement.status,
+          movement.project_title
+        FROM (
+          SELECT
+            fe.id,
+            fe.title AS label,
+            fe.amount,
+            fe.entry_date AS date,
+            fe.direction,
+            fe.card_type,
+            fe.currency_tag AS currency,
+            fe.group_tag AS `group`,
+            fe.status,
+            pr.title AS project_title,
+            fe.created_at
+          FROM ak_financial_entries fe
+          LEFT JOIN ak_projects pr ON pr.id = fe.project_id
+          WHERE fe.status <> 'İptal'
+          UNION ALL
+          SELECT
+            CONCAT('payment-', p.id) AS id,
+            COALESCE(p.description, 'Tahsilat') AS label,
+            p.amount,
+            p.payment_date AS date,
+            'Gelir' AS direction,
+            'customer' AS card_type,
+            'TRY' AS currency,
+            'Resmi' AS `group`,
+            'Gerçekleşti' AS status,
+            pr.title AS project_title,
+            p.created_at
+          FROM ak_payments p
+          LEFT JOIN ak_projects pr ON pr.id = p.project_id
+          UNION ALL
+          SELECT
+            CONCAT('expense-', e.id) AS id,
+            e.title AS label,
+            e.amount,
+            e.expense_date AS date,
+            'Gider' AS direction,
+            'expense' AS card_type,
+            'TRY' AS currency,
+            'Resmi' AS `group`,
+            'Gerçekleşti' AS status,
+            pr.title AS project_title,
+            e.created_at
+          FROM ak_expenses e
+          LEFT JOIN ak_projects pr ON pr.id = e.project_id
+        ) movement
+        ORDER BY movement.date DESC, movement.created_at DESC
         LIMIT 8
     ")->fetchAll();
 
     $monthlyFinancials = $pdo->query("
         SELECT
-          DATE_FORMAT(entry_date, '%Y-%m') AS month_key,
+          DATE_FORMAT(finance_date, '%Y-%m') AS month_key,
           COALESCE(SUM(CASE WHEN direction = 'Gelir' THEN amount ELSE 0 END), 0) AS income,
           COALESCE(SUM(CASE WHEN direction = 'Gider' THEN amount ELSE 0 END), 0) AS expenses
-        FROM ak_financial_entries
-        WHERE status = 'Gerçekleşti'
-          AND currency_tag = 'TRY'
-          AND entry_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 5 MONTH), '%Y-%m-01')
-        GROUP BY DATE_FORMAT(entry_date, '%Y-%m')
+        FROM (
+          SELECT entry_date AS finance_date, direction, amount
+          FROM ak_financial_entries
+          WHERE status = 'Gerçekleşti'
+            AND currency_tag = 'TRY'
+            AND entry_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 5 MONTH), '%Y-%m-01')
+          UNION ALL
+          SELECT payment_date AS finance_date, 'Gelir' AS direction, amount
+          FROM ak_payments
+          WHERE payment_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 5 MONTH), '%Y-%m-01')
+          UNION ALL
+          SELECT expense_date AS finance_date, 'Gider' AS direction, amount
+          FROM ak_expenses
+          WHERE expense_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 5 MONTH), '%Y-%m-01')
+        ) finance_rows
+        GROUP BY DATE_FORMAT(finance_date, '%Y-%m')
         ORDER BY month_key ASC
     ")->fetchAll();
 
     $hasLedgerEntries = (int) ($ledgerTotals['entry_count'] ?? 0) > 0;
-    $totalPayments = $hasLedgerEntries ? (float) ($ledgerTotals['realized_income_try'] ?? 0) : (float) ($paymentStats['total_payments'] ?? 0);
-    $totalExpenses = $hasLedgerEntries ? (float) ($ledgerTotals['realized_expense_try'] ?? 0) : (float) ($expenseStats['total_expenses'] ?? 0);
-    $monthIncome = (float) ($ledgerTotals['month_income_try'] ?? 0);
-    $monthExpenses = (float) ($ledgerTotals['month_expense_try'] ?? 0);
+    $totalPayments = ($hasLedgerEntries ? (float) ($ledgerTotals['realized_income_try'] ?? 0) : 0.0) + (float) ($paymentStats['total_payments'] ?? 0);
+    $totalExpenses = ($hasLedgerEntries ? (float) ($ledgerTotals['realized_expense_try'] ?? 0) : 0.0) + (float) ($expenseStats['total_expenses'] ?? 0);
+    $monthPaymentStats = fetch_one($pdo, "SELECT COALESCE(SUM(amount), 0) AS month_income FROM ak_payments WHERE payment_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')");
+    $monthIncome = (float) ($ledgerTotals['month_income_try'] ?? 0) + (float) ($monthPaymentStats['month_income'] ?? 0);
+    $monthExpenseStats = fetch_one($pdo, "SELECT COALESCE(SUM(amount), 0) AS month_expenses FROM ak_expenses WHERE expense_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')");
+    $monthExpenses = (float) ($ledgerTotals['month_expense_try'] ?? 0) + (float) ($monthExpenseStats['month_expenses'] ?? 0);
     $overdueCollections = array_reduce($overduePlans ?: [], static function (float $sum, array $plan): float {
         return $sum + (float) ($plan['remaining_amount'] ?? 0);
     }, 0.0);

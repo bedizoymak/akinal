@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/AdminPage";
 import { getAdminFinanceSummary } from "@/lib/apiClient";
+import type { AdminExpense, AdminFinancialEntry, AdminPayment } from "@/lib/apiTypes";
 
 function Stat({ label, value, color, sub }: any) {
   return (
@@ -53,6 +54,52 @@ function PieCard({ title, data }: any) {
   );
 }
 
+function expenseToFinancialEntry(expense: AdminExpense): AdminFinancialEntry {
+  return {
+    id: `legacy-expense-${expense.id}`,
+    project_id: expense.project_id,
+    entry_date: expense.expense_date || expense.created_at?.slice(0, 10) || "",
+    card_type: "expense",
+    customer_id: expense.customer_id,
+    employee_id: null,
+    expense_card_id: null,
+    title: expense.title || "Gider kaydı",
+    description: expense.description,
+    amount: expense.amount,
+    currency_tag: "TRY",
+    group_tag: "Resmi",
+    direction: "Gider",
+    status: "Gerçekleşti",
+    document_url: expense.document_url,
+    is_legacy_expense: true,
+    created_at: expense.created_at,
+    updated_at: expense.updated_at,
+  };
+}
+
+function paymentToFinancialEntry(payment: AdminPayment): AdminFinancialEntry {
+  return {
+    id: `legacy-payment-${payment.id}`,
+    project_id: payment.project_id,
+    entry_date: payment.payment_date || payment.created_at?.slice(0, 10) || "",
+    card_type: "customer",
+    customer_id: payment.customer_id,
+    employee_id: null,
+    expense_card_id: null,
+    title: payment.description || "Tahsilat",
+    description: payment.description,
+    amount: payment.amount,
+    currency_tag: "TRY",
+    group_tag: "Resmi",
+    direction: "Gelir",
+    status: "Gerçekleşti",
+    document_url: payment.document_url,
+    is_legacy_payment: true,
+    created_at: payment.created_at,
+    updated_at: payment.updated_at,
+  };
+}
+
 export default function AdminFinance() {
   const [plans, setPlans] = useState<any[]>([]);
   const [pays, setPays] = useState<any[]>([]);
@@ -79,12 +126,21 @@ export default function AdminFinance() {
   }
   useEffect(() => { load(); }, []);
 
+  const financeEntries = useMemo(
+    () => [
+      ...financialEntries,
+      ...pays.map((payment) => paymentToFinancialEntry(payment)),
+      ...exps.map((expense) => expenseToFinancialEntry(expense)),
+    ],
+    [exps, financialEntries, pays],
+  );
+
   const stats = useMemo(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
     const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
-    const overall = summarizeLedgerFinance({ financialEntries });
-    const month = summarizeLedgerFinance({ financialEntries, from: monthStart, to: monthEnd });
+    const overall = summarizeLedgerFinance({ financialEntries: financeEntries });
+    const month = summarizeLedgerFinance({ financialEntries: financeEntries, from: monthStart, to: monthEnd });
 
     return {
       totalReceived: overall.totalIncome,
@@ -96,7 +152,7 @@ export default function AdminFinance() {
       receivedThisMonth: month.totalIncome,
       expenseThisMonth: month.totalExpense,
     };
-  }, [financialEntries]);
+  }, [financeEntries]);
 
   const overallPie = [
     { name: "Gerçekleşen Gelir", value: stats.totalReceived, color: FINANCE_COLORS.received },
@@ -121,14 +177,14 @@ export default function AdminFinance() {
   }, [plans, pays]);
 
   const projectStats = useMemo(() => projects.map((pr) => {
-    const projEntries = financialEntries.filter((entry) => entry.project_id === pr.id);
+    const projEntries = financeEntries.filter((entry) => entry.project_id === pr.id);
     const summary = summarizeLedgerFinance({ financialEntries: projEntries });
     const received = summary.totalIncome;
     const receivable = summary.receivable;
     const expense = summary.totalExpense;
     const payable = summary.payable;
     return { ...pr, received, receivable, expense, payable, net: summary.netBalance };
-  }), [projects, financialEntries]);
+  }), [projects, financeEntries]);
 
   const upcoming = useMemo(() => {
     return plans.map((p) => {
