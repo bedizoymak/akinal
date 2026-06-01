@@ -23,6 +23,7 @@ import type {
   AdminNotification,
   AdminNotificationsResponse,
   AdminReportsResponse,
+  AdminSqlEditorResult,
   ContactRequestPayload,
   CookieConsentPayload,
   ProjectDetailResponse,
@@ -745,4 +746,13 @@ export async function getAdminReportsData(): Promise<AdminReportsResponse> {
     method: "GET",
     credentials: "include",
   });
+}
+
+export async function executeAdminSql(payload: { sql: string; confirmed?: boolean; destructive_confirmation?: string }): Promise<AdminSqlEditorResult> {
+  const data = await apiRequest<{ result: AdminSqlEditorResult }>("/api/admin/sql-editor.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.result;
 }

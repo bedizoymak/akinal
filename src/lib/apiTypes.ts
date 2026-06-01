@@ -392,6 +392,17 @@ export interface AdminReportsResponse {
   };
 }
 
+export interface AdminSqlEditorResult {
+  statement_type: string;
+  is_select: boolean;
+  destructive: boolean;
+  columns: string[];
+  rows: Record<string, unknown>[];
+  row_count: number;
+  affected_rows: number | null;
+  executed_at: string;
+}
+
 export type ConsentStatus = "accepted" | "rejected" | "managed";
 
 export interface CookieConsentPayload {
