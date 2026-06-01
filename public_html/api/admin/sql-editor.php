@@ -73,7 +73,7 @@ try {
     ]);
 } catch (PDOException $exception) {
     error_log('Admin SQL editor error: ' . $exception->getMessage());
-    json_error('SQL sorgusu çalıştırılamadı. Söz dizimini ve tablo/kolon adlarını kontrol edin.', 400);
+    json_error(admin_sql_error_message($exception), 400);
 } catch (Throwable $exception) {
     error_log('Admin SQL editor failure: ' . $exception->getMessage());
     json_error('SQL editör işlemi tamamlanamadı.', 500);
@@ -173,6 +173,45 @@ function is_select_statement(string $statementType): bool
 function is_destructive_statement(string $statementType): bool
 {
     return in_array($statementType, ['DROP', 'TRUNCATE', 'ALTER'], true);
+}
+
+function admin_sql_error_message(PDOException $exception): string
+{
+    $errorInfo = $exception->errorInfo ?? [];
+    $sqlState = (string) ($errorInfo[0] ?? $exception->getCode());
+    $driverCode = isset($errorInfo[1]) ? (string) $errorInfo[1] : '';
+    $driverMessage = (string) ($errorInfo[2] ?? $exception->getMessage());
+    $driverMessage = sanitize_sql_error($driverMessage);
+
+    $prefixParts = array_filter([$sqlState, $driverCode], static fn($value) => $value !== '');
+    $prefix = $prefixParts ? 'SQL hatası (' . implode(' / ', $prefixParts) . '): ' : 'SQL hatası: ';
+
+    return $prefix . ($driverMessage !== '' ? $driverMessage : 'Sorgu çalıştırılamadı.');
+}
+
+function sanitize_sql_error(string $message): string
+{
+    $message = preg_replace('/SQLSTATE\[[^\]]+\]:\s*/', '', $message) ?? $message;
+    $message = preg_replace('/\s+/', ' ', $message) ?? $message;
+    $message = trim($message);
+
+    foreach (['DB_HOST', 'DB_NAME', 'DB_USER'] as $constant) {
+        if (defined($constant)) {
+            $value = (string) constant($constant);
+            if ($value !== '') {
+                $message = str_replace($value, '[redacted]', $message);
+            }
+        }
+    }
+
+    if (defined('DB_PASS')) {
+        $password = (string) DB_PASS;
+        if ($password !== '') {
+            $message = str_replace($password, '[redacted]', $message);
+        }
+    }
+
+    return substr($message, 0, 500);
 }
 
 function log_admin_sql(array $admin, string $statementType, string $sql): void
