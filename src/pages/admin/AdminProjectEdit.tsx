@@ -6,10 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { displayLabel } from "@/lib/finance";
 import { PROJECT_STATUSES, PROJECT_TYPES, turkishSlugify, resolveImageUrl } from "@/lib/projects";
-import { ArrowLeft, Upload, Trash2, Star, Crop, GripVertical, ExternalLink } from "lucide-react";
+import { districtsForProvince, TURKEY_PROVINCES } from "@/lib/turkeyLocations";
+import { ArrowLeft, Upload, Trash2, Star, GripVertical, ExternalLink, Check, ChevronsUpDown } from "lucide-react";
 import ImageCropDialog from "@/components/admin/ImageCropDialog";
 import { AdminPageHeader } from "@/components/admin/AdminPage";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
@@ -34,6 +37,67 @@ const empty = {
   cover_image_url: "", is_featured: false, is_published: false, sort_order: 0,
   seo_title: "", seo_description: "",
 };
+
+function SearchableLocationSelect({
+  value,
+  options,
+  placeholder,
+  searchPlaceholder,
+  emptyText,
+  disabled,
+  onChange,
+}: {
+  value: string;
+  options: string[];
+  placeholder: string;
+  searchPlaceholder: string;
+  emptyText: string;
+  disabled?: boolean;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled}
+          className="w-full justify-between font-normal"
+        >
+          <span className="truncate">{value || placeholder}</span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={searchPlaceholder} />
+          <CommandList>
+            <CommandEmpty>{emptyText}</CommandEmpty>
+            <CommandGroup>
+              {options.map((option) => (
+                <CommandItem
+                  key={option}
+                  value={option}
+                  onSelect={() => {
+                    onChange(option);
+                    setOpen(false);
+                  }}
+                >
+                  <Check className={`mr-2 h-4 w-4 ${value === option ? "opacity-100" : "opacity-0"}`} />
+                  {option}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function ImgTile({ img, onDelete, onSetCover, isCover }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: img.id });
@@ -80,6 +144,37 @@ export default function AdminProjectEdit() {
   function update(k: string, v: any) {
     setData((d: any) => ({ ...d, [k]: v }));
     if (k === "title" && !slugTouched && isNew) setData((d: any) => ({ ...d, slug: turkishSlugify(v) }));
+  }
+
+  function shouldSyncLocation(currentLocation: string, city: string, district: string) {
+    const trimmed = String(currentLocation || "").trim();
+    if (!trimmed) return true;
+    const currentPair = [district, city].filter(Boolean).join(", ");
+    const cityOnly = city || "";
+    return trimmed === currentPair || trimmed === cityOnly;
+  }
+
+  function applyLocation(city: string, district: string) {
+    const nextLocation = [district, city].filter(Boolean).join(", ");
+    setData((current: any) => {
+      const shouldSync = shouldSyncLocation(current.location, current.city, current.district);
+      return {
+        ...current,
+        city,
+        district,
+        location: shouldSync ? nextLocation : current.location,
+      };
+    });
+  }
+
+  function updateCity(city: string) {
+    const allowedDistricts = districtsForProvince(city);
+    const nextDistrict = allowedDistricts.includes(data.district) ? data.district : "";
+    applyLocation(city, nextDistrict);
+  }
+
+  function updateDistrict(district: string) {
+    applyLocation(data.city || "", district);
   }
 
   async function uploadBlob(blob: Blob, name: string): Promise<string> {
@@ -185,6 +280,11 @@ export default function AdminProjectEdit() {
     if (!data.project_type) { toast({ title: "Hata", description: "Lütfen bir proje türü seçin.", variant: "destructive" }); return; }
     if (!data.project_status) { toast({ title: "Hata", description: "Lütfen bir proje durumu seçin.", variant: "destructive" }); return; }
     if (!data.location.trim()) { toast({ title: "Hata", description: "Konum zorunludur.", variant: "destructive" }); return; }
+    const districtOptions = districtsForProvince(data.city);
+    if (data.city && districtOptions.length && data.district && !districtOptions.includes(data.district)) {
+      toast({ title: "Hata", description: "Seçilen ilçe, seçilen ile ait değil.", variant: "destructive" });
+      return;
+    }
     if (!data.cover_image_url) { toast({ title: "Hata", description: "Ana görsel yüklenmelidir.", variant: "destructive" }); return; }
     if (!data.short_description.trim()) { toast({ title: "Hata", description: "Kısa açıklama zorunludur.", variant: "destructive" }); return; }
 
@@ -219,6 +319,13 @@ export default function AdminProjectEdit() {
   const projectStatusOptions = data.project_status && !PROJECT_STATUSES.includes(data.project_status)
     ? [data.project_status, ...PROJECT_STATUSES]
     : PROJECT_STATUSES;
+  const districtOptions = districtsForProvince(data.city);
+  const cityOptions = data.city && !TURKEY_PROVINCES.includes(data.city)
+    ? [data.city, ...TURKEY_PROVINCES]
+    : [...TURKEY_PROVINCES];
+  const availableDistrictOptions = data.district && data.city && districtOptions.length && !districtOptions.includes(data.district)
+    ? [data.district, ...districtOptions]
+    : districtOptions;
 
   return (
     <div className="max-w-5xl">
@@ -298,9 +405,35 @@ export default function AdminProjectEdit() {
             </div>
             <div><Label>Konum *</Label><Input value={data.location} onChange={(e) => update("location", e.target.value)} placeholder="Örn: Kadıköy, İstanbul" /></div>
             <div className="grid grid-cols-2 gap-2">
-              <div><Label>İl</Label><Input value={data.city || ""} onChange={(e) => update("city", e.target.value)} /></div>
-              <div><Label>İlçe</Label><Input value={data.district || ""} onChange={(e) => update("district", e.target.value)} /></div>
+              <div>
+                <Label>İl</Label>
+                <SearchableLocationSelect
+                  value={data.city || ""}
+                  options={cityOptions}
+                  placeholder="İl seçin"
+                  searchPlaceholder="İl ara..."
+                  emptyText="İl bulunamadı."
+                  onChange={updateCity}
+                />
+              </div>
+              <div>
+                <Label>İlçe</Label>
+                {data.city && districtOptions.length === 0 ? (
+                  <Input value={data.district || ""} onChange={(e) => updateDistrict(e.target.value)} placeholder="İlçe yazın" />
+                ) : (
+                  <SearchableLocationSelect
+                    value={data.district || ""}
+                    options={availableDistrictOptions}
+                    placeholder={data.city ? "İlçe seçin" : "Önce il seçin"}
+                    searchPlaceholder="İlçe ara..."
+                    emptyText={data.city ? "Bu il için ilçe bulunamadı." : "Önce il seçin."}
+                    disabled={!data.city || availableDistrictOptions.length === 0}
+                    onChange={updateDistrict}
+                  />
+                )}
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground">İl değiştiğinde uyumsuz ilçe seçimi temizlenir. Konum alanı boşsa il/ilçe seçiminize göre otomatik doldurulur.</p>
           </section>
 
           <section className="p-6 bg-card border border-border rounded-md space-y-3">
