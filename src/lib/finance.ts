@@ -201,6 +201,71 @@ export function printCurrentReport(title: string) {
   }, 500);
 }
 
+export async function exportPDF(filename: string, title: string, dateRange: string, rows: Record<string, unknown>[], fallbackHeaders: string[] = []) {
+  const [{ default: pdfMake }, vfsFonts] = await Promise.all([
+    import("pdfmake/build/pdfmake"),
+    import("pdfmake/build/vfs_fonts"),
+  ]);
+  const vfs = (vfsFonts as any).default?.pdfMake?.vfs
+    ?? (vfsFonts as any).pdfMake?.vfs
+    ?? (vfsFonts as any).default?.vfs
+    ?? (vfsFonts as any).vfs;
+  (pdfMake as any).vfs = vfs;
+
+  const headers = rows.length ? Object.keys(rows[0]) : fallbackHeaders;
+  const effectiveRows = rows.length ? rows : [{ Bilgi: "Dışa aktarılacak kayıt bulunmuyor." }];
+  const effectiveHeaders = headers.length ? headers : Object.keys(effectiveRows[0]);
+  const body = [
+    effectiveHeaders.map((header) => ({ text: header, style: "tableHeader" })),
+    ...effectiveRows.map((row) => effectiveHeaders.map((header) => String(row[header] ?? ""))),
+  ];
+
+  const documentDefinition = {
+    pageSize: "A4",
+    pageOrientation: effectiveHeaders.length > 5 ? "landscape" : "portrait",
+    pageMargins: [24, 28, 24, 28],
+    defaultStyle: {
+      font: "Roboto",
+      fontSize: 8,
+    },
+    styles: {
+      title: { fontSize: 16, bold: true, margin: [0, 0, 0, 4] },
+      meta: { fontSize: 9, color: "#666666", margin: [0, 0, 0, 12] },
+      tableHeader: { bold: true, color: "#111111", fillColor: "#eeeeee" },
+    },
+    content: [
+      { text: "Akinal İnşaat", style: "meta" },
+      { text: title, style: "title" },
+      { text: `Tarih aralığı: ${dateRange}\nOluşturulma: ${formatDate(new Date())}`, style: "meta" },
+      {
+        table: {
+          headerRows: 1,
+          widths: effectiveHeaders.map(() => "auto"),
+          body,
+        },
+        layout: {
+          fillColor: (rowIndex: number) => rowIndex === 0 ? "#eeeeee" : null,
+          hLineColor: () => "#dddddd",
+          vLineColor: () => "#dddddd",
+          paddingLeft: () => 4,
+          paddingRight: () => 4,
+          paddingTop: () => 3,
+          paddingBottom: () => 3,
+        },
+      },
+    ],
+    footer: (currentPage: number, pageCount: number) => ({
+      text: `Akinal İnşaat Yönetim Paneli - ${currentPage} / ${pageCount}`,
+      alignment: "center",
+      fontSize: 7,
+      color: "#777777",
+      margin: [0, 8, 0, 0],
+    }),
+  };
+
+  (pdfMake as any).createPdf(documentDefinition).download(datedDownloadName(filename));
+}
+
 export function exportCSV(filename: string, rows: Record<string, unknown>[], fallbackHeaders: string[] = []) {
   const headers = rows.length ? Object.keys(rows[0]) : fallbackHeaders;
   if (!headers.length) {

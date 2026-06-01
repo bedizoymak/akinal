@@ -13,6 +13,7 @@ import {
   customerDisplayName,
   displayLabel,
   exportCSV,
+  exportPDF,
   statusBadgeClass,
   daysUntil,
   EXPENSE_CATEGORIES,
@@ -121,10 +122,10 @@ function mysqlFinanceEntries(data: any) {
   ];
 }
 
-function ExportBar({ onCSV, title }: { onCSV: () => void; title: string }) {
+function ExportBar({ onCSV, onPDF, title }: { onCSV: () => void; onPDF: () => void; title: string }) {
   return (
     <div className="mb-4 flex flex-col gap-2 print:hidden sm:flex-row sm:flex-wrap sm:items-center">
-      <Button onClick={() => printCurrentReport(title)} variant="outline"><FileText className="h-4 w-4 mr-2" /> PDF Olarak İndir</Button>
+      <Button onClick={onPDF} variant="outline"><FileText className="h-4 w-4 mr-2" /> PDF Olarak İndir</Button>
       <Button onClick={onCSV} variant="outline"><Download className="h-4 w-4 mr-2" /> CSV Olarak İndir</Button>
       <Button onClick={() => printCurrentReport(title)} variant="outline"><Printer className="h-4 w-4 mr-2" /> Yazdır</Button>
       <div className="text-sm text-muted-foreground sm:ml-auto sm:self-center">{title}</div>
@@ -158,6 +159,16 @@ function ProjectFinanceReport({ data }: any) {
   }, [projects.data, financeEntries, from, to, projectId]);
 
   const dateRange = `${from || "Başlangıç"} - ${to || "Bugün"}`;
+  const exportRows = rows.map((r: any) => ({
+    "Proje Adı": r.title,
+    "Gerçekleşen Gelir": formatTRY(r.totalReceived),
+    "Planlanan Gelir": formatTRY(r.totalReceivable),
+    "Gerçekleşen Gider": formatTRY(r.totalSpent),
+    "Planlanan Gider": formatTRY(r.totalPayable),
+    "Net Durum": formatTRY(r.net),
+    "Tahsilat Oranı (%)": r.collectionRate.toFixed(2),
+    "Gider Oranı (%)": r.expenseRate.toFixed(2),
+  }));
 
   return (
     <div>
@@ -172,16 +183,7 @@ function ProjectFinanceReport({ data }: any) {
           </SelectContent>
         </Select>
       </Filters>
-      <ExportBar title="Proje Finans Raporu" onCSV={() => exportCSV("proje-finans-raporu.csv", rows.map((r: any) => ({
-        "Proje Adı": r.title,
-        "Gerçekleşen Gelir": r.totalReceived,
-        "Planlanan Gelir": r.totalReceivable,
-        "Gerçekleşen Gider": r.totalSpent,
-        "Planlanan Gider": r.totalPayable,
-        "Net Durum": r.net,
-        "Tahsilat Oranı (%)": r.collectionRate.toFixed(2),
-        "Gider Oranı (%)": r.expenseRate.toFixed(2),
-      })))} />
+      <ExportBar title="Proje Finans Raporu" onCSV={() => exportCSV("proje-finans-raporu.csv", exportRows)} onPDF={() => exportPDF("proje-finans-raporu.pdf", "Proje Finans Raporu", dateRange, exportRows)} />
       <ReportHeader title="Proje Finans Raporu" dateRange={dateRange} />
       <Card><CardContent className="p-0">
         <Table className="min-w-[980px]">
@@ -243,6 +245,15 @@ function CustomerPaymentReport({ data }: any) {
   }, [customers.data, projects.data, plans.data, payments.data, customerId, projectId, from, to, status, today]);
 
   const dateRange = `${from || "Başlangıç"} - ${to || "Bugün"}`;
+  const exportRows = rows.map((r: any) => ({
+    "Müşteri": r.name,
+    "İlgili Proje": r.project,
+    "Toplam Borç": formatTRY(r.totalDebt),
+    "Tahsil Edilen": formatTRY(r.collected),
+    "Kalan Bakiye": formatTRY(r.remaining),
+    "Vadesi Geçen Tutar": formatTRY(r.overdue),
+    "Son Ödeme Tarihi": r.lastPaymentDate ? formatDate(r.lastPaymentDate) : "-",
+  }));
 
   return (
     <div>
@@ -275,11 +286,7 @@ function CustomerPaymentReport({ data }: any) {
           <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
       </Filters>
-      <ExportBar title="Müşteri Ödeme Raporu" onCSV={() => exportCSV("musteri-odeme-raporu.csv", rows.map((r: any) => ({
-        "Müşteri": r.name, "İlgili Proje": r.project,
-        "Toplam Borç": r.totalDebt, "Tahsil Edilen": r.collected, "Kalan Bakiye": r.remaining,
-        "Vadesi Geçen Tutar": r.overdue, "Son Ödeme Tarihi": r.lastPaymentDate || "-",
-      })))} />
+      <ExportBar title="Müşteri Ödeme Raporu" onCSV={() => exportCSV("musteri-odeme-raporu.csv", exportRows)} onPDF={() => exportPDF("musteri-odeme-raporu.pdf", "Müşteri Ödeme Raporu", dateRange, exportRows)} />
       <ReportHeader title="Müşteri Ödeme Raporu" dateRange={dateRange} />
       <Card><CardContent className="p-0">
         <Table className="min-w-[880px]">
@@ -332,6 +339,14 @@ function CollectionsReport({ data }: any) {
 
   const total = rows.reduce((s: number, r: any) => s + r.amount, 0);
   const dateRange = `${from || "Başlangıç"} - ${to || "Bugün"}`;
+  const exportRows = rows.map((r: any) => ({
+    "Müşteri": r.customer,
+    "Proje": r.project,
+    "Tahsilat Tutarı": formatTRY(r.amount),
+    "Tahsilat Tarihi": formatDate(r.date),
+    "Ödeme Yöntemi": r.method,
+    "Açıklama": r.description,
+  }));
 
   return (
     <div>
@@ -362,10 +377,7 @@ function CollectionsReport({ data }: any) {
           </SelectContent>
         </Select>
       </Filters>
-      <ExportBar title="Tahsilat Raporu" onCSV={() => exportCSV("tahsilat-raporu.csv", rows.map((r: any) => ({
-        "Müşteri": r.customer, "Proje": r.project, "Tahsilat Tutarı": r.amount,
-        "Tahsilat Tarihi": r.date, "Ödeme Yöntemi": r.method, "Açıklama": r.description,
-      })))} />
+      <ExportBar title="Tahsilat Raporu" onCSV={() => exportCSV("tahsilat-raporu.csv", exportRows)} onPDF={() => exportPDF("tahsilat-raporu.pdf", "Tahsilat Raporu", dateRange, exportRows)} />
       <ReportHeader title="Tahsilat Raporu" dateRange={dateRange} />
       <div className="grid md:grid-cols-3 gap-3 mb-4">
         <SummaryCard label="Toplam Tahsilat" value={formatTRY(total)} color="text-emerald-700" />
@@ -415,6 +427,14 @@ function ExpensesReport({ data }: any) {
 
   const total = rows.reduce((s: number, r: any) => s + r.amount, 0);
   const dateRange = `${from || "Başlangıç"} - ${to || "Bugün"}`;
+  const exportRows = rows.map((r: any) => ({
+    "Proje": r.project,
+    "Gider Başlığı": r.title,
+    "Kategori": r.category,
+    "Tutar": formatTRY(r.amount),
+    "Tarih": formatDate(r.date),
+    "Açıklama": r.description,
+  }));
 
   return (
     <div>
@@ -438,10 +458,7 @@ function ExpensesReport({ data }: any) {
           </SelectContent>
         </Select>
       </Filters>
-      <ExportBar title="Gider Raporu" onCSV={() => exportCSV("gider-raporu.csv", rows.map((r: any) => ({
-        "Proje": r.project, "Gider Başlığı": r.title, "Kategori": r.category,
-        "Tutar": r.amount, "Tarih": r.date, "Açıklama": r.description,
-      })))} />
+      <ExportBar title="Gider Raporu" onCSV={() => exportCSV("gider-raporu.csv", exportRows)} onPDF={() => exportPDF("gider-raporu.pdf", "Gider Raporu", dateRange, exportRows)} />
       <ReportHeader title="Gider Raporu" dateRange={dateRange} />
       <div className="grid md:grid-cols-3 gap-3 mb-4">
         <SummaryCard label="Toplam Gider" value={formatTRY(total)} color="text-red-700" />
@@ -516,14 +533,20 @@ function GeneralSummaryReport({ data }: any) {
     });
   }
   const hasMonthlyData = monthly.some((item) => item["Gerçekleşen Gelir"] > 0 || item["Gerçekleşen Gider"] > 0);
+  const exportRows = [{
+    "Gerçekleşen Gelir": formatTRY(totalReceived),
+    "Planlanan Gelir": formatTRY(totalReceivable),
+    "Gerçekleşen Gider": formatTRY(totalSpent),
+    "Planlanan Gider": formatTRY(totalPayable),
+    "Net Durum": formatTRY(net),
+    "Bu Ay Beklenen Tahsilat": formatTRY(monthExpected),
+    "Bu Ay Gerçekleşen Gelir": formatTRY(monthCollected),
+    "Bu Ay Gerçekleşen Gider": formatTRY(monthSpent),
+  }];
 
   return (
     <div>
-      <ExportBar title="Genel Finans Özeti" onCSV={() => exportCSV("genel-finans-ozeti.csv", [{
-        "Gerçekleşen Gelir": totalReceived, "Planlanan Gelir": totalReceivable,
-        "Gerçekleşen Gider": totalSpent, "Planlanan Gider": totalPayable, "Net Durum": net,
-        "Bu Ay Beklenen Tahsilat": monthExpected, "Bu Ay Gerçekleşen Gelir": monthCollected, "Bu Ay Gerçekleşen Gider": monthSpent,
-      }])} />
+      <ExportBar title="Genel Finans Özeti" onCSV={() => exportCSV("genel-finans-ozeti.csv", exportRows)} onPDF={() => exportPDF("genel-finans-ozeti.pdf", "Genel Finans Özeti", "Tüm Zamanlar", exportRows)} />
       <ReportHeader title="Genel Finans Özeti" dateRange="Tüm Zamanlar" />
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard label="Gerçekleşen Gelir" value={formatTRY(totalReceived)} color="text-emerald-700" />
@@ -611,6 +634,15 @@ function OverdueReport({ data }: any) {
 
   const totalOverdue = rows.reduce((s: number, r: any) => s + r.remaining, 0);
   const dateRange = `${from || "Başlangıç"} - ${to || "Bugün"}`;
+  const exportRows = rows.map((r: any) => ({
+    "Müşteri": r.customer,
+    "Proje": r.project,
+    "Vade Tarihi": formatDate(r.dueDate),
+    "Geciken Gün": `${r.days} gün`,
+    "Tutar": formatTRY(r.amount),
+    "Kalan Tutar": formatTRY(r.remaining),
+    "Durum": displayLabel(r.status),
+  }));
 
   return (
     <div>
@@ -643,10 +675,7 @@ function OverdueReport({ data }: any) {
           <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
       </Filters>
-      <ExportBar title="Vadesi Geçen Ödemeler Raporu" onCSV={() => exportCSV("vadesi-gecen-odemeler.csv", rows.map((r: any) => ({
-        "Müşteri": r.customer, "Proje": r.project, "Vade Tarihi": r.dueDate,
-        "Geciken Gün": r.days, "Tutar": r.amount, "Kalan Tutar": r.remaining, "Durum": r.status,
-      })))} />
+      <ExportBar title="Vadesi Geçen Ödemeler Raporu" onCSV={() => exportCSV("vadesi-gecen-odemeler.csv", exportRows)} onPDF={() => exportPDF("vadesi-gecen-odemeler.pdf", "Vadesi Geçen Ödemeler Raporu", dateRange, exportRows)} />
       <ReportHeader title="Vadesi Geçen Ödemeler Raporu" dateRange={dateRange} />
       <div className="grid md:grid-cols-3 gap-3 mb-4">
         <SummaryCard label="Toplam Vadesi Geçen" value={formatTRY(totalOverdue)} color="text-red-700" />
