@@ -146,23 +146,18 @@ export default function AdminProjectEdit() {
     if (k === "title" && !slugTouched && isNew) setData((d: any) => ({ ...d, slug: turkishSlugify(v) }));
   }
 
-  function shouldSyncLocation(currentLocation: string, city: string, district: string) {
-    const trimmed = String(currentLocation || "").trim();
-    if (!trimmed) return true;
-    const currentPair = [district, city].filter(Boolean).join(", ");
-    const cityOnly = city || "";
-    return trimmed === currentPair || trimmed === cityOnly;
+  function generatedLocation(city: string, district: string) {
+    return [district, city].filter(Boolean).join(", ");
   }
 
   function applyLocation(city: string, district: string) {
-    const nextLocation = [district, city].filter(Boolean).join(", ");
+    const nextLocation = generatedLocation(city, district);
     setData((current: any) => {
-      const shouldSync = shouldSyncLocation(current.location, current.city, current.district);
       return {
         ...current,
         city,
         district,
-        location: shouldSync ? nextLocation : current.location,
+        location: nextLocation || current.location,
       };
     });
   }
@@ -276,10 +271,11 @@ export default function AdminProjectEdit() {
   }
 
   async function save(publish?: boolean) {
+    const location = generatedLocation(data.city || "", data.district || "") || String(data.location || "").trim();
     if (!data.title.trim()) { toast({ title: "Hata", description: "Proje adı zorunludur.", variant: "destructive" }); return; }
     if (!data.project_type) { toast({ title: "Hata", description: "Lütfen bir proje türü seçin.", variant: "destructive" }); return; }
     if (!data.project_status) { toast({ title: "Hata", description: "Lütfen bir proje durumu seçin.", variant: "destructive" }); return; }
-    if (!data.location.trim()) { toast({ title: "Hata", description: "Konum zorunludur.", variant: "destructive" }); return; }
+    if (!location) { toast({ title: "Hata", description: "İl veya ilçe seçimi zorunludur.", variant: "destructive" }); return; }
     const districtOptions = districtsForProvince(data.city);
     if (data.city && districtOptions.length && data.district && !districtOptions.includes(data.district)) {
       toast({ title: "Hata", description: "Seçilen ilçe, seçilen ile ait değil.", variant: "destructive" });
@@ -289,7 +285,7 @@ export default function AdminProjectEdit() {
     if (!data.short_description.trim()) { toast({ title: "Hata", description: "Kısa açıklama zorunludur.", variant: "destructive" }); return; }
 
     const slug = (data.slug || turkishSlugify(data.title)).trim();
-    const payload = { ...data, slug, is_published: publish ?? data.is_published };
+    const payload = { ...data, slug, location, is_published: publish ?? data.is_published };
 
     setSaving(true);
     try {
@@ -326,6 +322,7 @@ export default function AdminProjectEdit() {
   const availableDistrictOptions = data.district && data.city && districtOptions.length && !districtOptions.includes(data.district)
     ? [data.district, ...districtOptions]
     : districtOptions;
+  const locationPreview = generatedLocation(data.city || "", data.district || "") || data.location || "";
 
   return (
     <div className="max-w-5xl">
@@ -403,7 +400,6 @@ export default function AdminProjectEdit() {
             <div><Label>Proje Durumu *</Label>
               <Select value={data.project_status} onValueChange={(v) => update("project_status", v)}><SelectTrigger><SelectValue placeholder="Seçin" /></SelectTrigger><SelectContent>{projectStatusOptions.map((t) => <SelectItem key={t} value={t}>{displayLabel(t)}</SelectItem>)}</SelectContent></Select>
             </div>
-            <div><Label>Konum *</Label><Input value={data.location} onChange={(e) => update("location", e.target.value)} placeholder="Örn: Kadıköy, İstanbul" /></div>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label>İl</Label>
@@ -433,7 +429,11 @@ export default function AdminProjectEdit() {
                 )}
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">İl değiştiğinde uyumsuz ilçe seçimi temizlenir. Konum alanı boşsa il/ilçe seçiminize göre otomatik doldurulur.</p>
+            <div>
+              <Label>Konum</Label>
+              <Input value={locationPreview} readOnly className="bg-muted" placeholder="İl / ilçe seçimine göre otomatik oluşur" />
+            </div>
+            <p className="text-xs text-muted-foreground">Konum, ilçe ve il seçiminden otomatik oluşturulur. Eski projelerde il/ilçe yoksa kayıtlı konum korunur.</p>
           </section>
 
           <section className="p-6 bg-card border border-border rounded-md space-y-3">
