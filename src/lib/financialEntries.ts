@@ -77,8 +77,8 @@ export function getEntryCardName(entry: AdminFinancialEntry, lookups: FinanceLoo
 }
 
 export function getProjectName(projectId: string | null | undefined, lookups: FinanceLookups): string {
-  if (!projectId) return "Bilinmeyen kayıt";
-  return lookups.projects.get(projectId)?.title || "Bilinmeyen kayıt";
+  if (!projectId) return "Proje bağlantısı yok";
+  return lookups.projects.get(projectId)?.title || "Silinmiş proje";
 }
 
 export function chooseChartCurrency(entries: AdminFinancialEntry[]): CurrencyTag {
