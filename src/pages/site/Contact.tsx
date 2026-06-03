@@ -29,11 +29,11 @@ declare global {
 }
 
 const schema = z.object({
-  full_name: z.string().trim().min(2, "Ad Soyad zorunludur.").max(100),
-  phone: z.string().trim().min(7, "Telefon numarası zorunludur.").max(30),
-  email: z.string().trim().email("Geçerli bir e-posta giriniz.").max(255).optional().or(z.literal("")),
+  full_name: z.string().trim().min(2, "Ad Soyad zorunludur.").max(100, "Ad Soyad en fazla 100 karakter olabilir."),
+  phone: z.string().trim().min(7, "Telefon numarası zorunludur.").max(30, "Telefon numarası en fazla 30 karakter olabilir."),
+  email: z.string().trim().email("Geçerli bir e-posta giriniz.").max(255, "E-posta en fazla 255 karakter olabilir.").optional().or(z.literal("")),
   service_type: z.string().min(1, "Lütfen bir hizmet seçin."),
-  message: z.string().trim().min(5, "Mesajınızı yazınız.").max(2000),
+  message: z.string().trim().min(5, "Mesajınızı yazınız.").max(2000, "Mesajınız en fazla 2000 karakter olabilir."),
 });
 
 export default function Contact() {
@@ -51,8 +51,7 @@ export default function Contact() {
 
   useEffect(() => {
     if (!siteKey) {
-      setTurnstileError("Turnstile site anahtarı yapılandırılmamış.");
-      // still attempt to load script for debugging, but do not render widget
+      setTurnstileError("Güvenlik doğrulaması yapılandırılmamış. Lütfen telefon veya WhatsApp üzerinden bize ulaşın.");
     }
 
     let renderTimeout: number | undefined;
@@ -70,20 +69,20 @@ export default function Contact() {
                 },
                 "error-callback": () => {
                   setTurnstileToken("");
-                  setTurnstileError("Turnstile doğrulaması başarısız oldu. Lütfen tekrar deneyin.");
+                  setTurnstileError("Güvenlik doğrulaması tamamlanamadı. Lütfen tekrar deneyin.");
                 },
                 "expired-callback": () => {
                   setTurnstileToken("");
-                  setTurnstileError("Turnstile oturumu süresi doldu. Lütfen tekrar doğrulayın.");
+                  setTurnstileError("Güvenlik doğrulamasının süresi doldu. Lütfen tekrar deneyin.");
                 },
               });
               setTurnstileReady(true);
             } catch {
-              const msg = "Turnstile widget yüklenemedi. Lütfen sayfayı yenileyin.";
+              const msg = "Güvenlik doğrulaması yüklenemedi. Lütfen sayfayı yenileyin.";
               setTurnstileError(msg);
             }
           } else {
-            const msg = "Turnstile yüklenemedi. Lütfen sayfayı yenileyin.";
+            const msg = "Güvenlik doğrulaması yüklenemedi. Lütfen sayfayı yenileyin.";
             setTurnstileError(msg);
           }
         }, 800);
@@ -101,20 +100,20 @@ export default function Contact() {
             },
             "error-callback": () => {
               setTurnstileToken("");
-              setTurnstileError("Turnstile doğrulaması başarısız oldu. Lütfen tekrar deneyin.");
+              setTurnstileError("Güvenlik doğrulaması tamamlanamadı. Lütfen tekrar deneyin.");
             },
             "expired-callback": () => {
               setTurnstileToken("");
-              setTurnstileError("Turnstile oturumu süresi doldu. Lütfen tekrar doğrulayın.");
+              setTurnstileError("Güvenlik doğrulamasının süresi doldu. Lütfen tekrar deneyin.");
             },
           });
           setTurnstileReady(true);
         } else {
-          const msg = "Turnstile site anahtarı yapılandırılmamış.";
+          const msg = "Güvenlik doğrulaması yapılandırılmamış. Lütfen telefon veya WhatsApp üzerinden bize ulaşın.";
           setTurnstileError(msg);
         }
       } catch {
-        const msg = "Turnstile widget yüklenemedi. Lütfen sayfayı yenileyin.";
+        const msg = "Güvenlik doğrulaması yüklenemedi. Lütfen sayfayı yenileyin.";
         setTurnstileError(msg);
       } finally {
         if (renderTimeout) window.clearTimeout(renderTimeout);
@@ -138,7 +137,7 @@ export default function Contact() {
         renderTurnstile();
       });
       existingScript.addEventListener("error", () => {
-        const msg = "Turnstile yüklenemedi. Lütfen sayfayı yenileyin.";
+        const msg = "Güvenlik doğrulaması yüklenemedi. Lütfen sayfayı yenileyin.";
         setTurnstileError(msg);
       });
       return;
@@ -154,7 +153,7 @@ export default function Contact() {
       renderTurnstile();
     };
     script.onerror = () => {
-      const msg = "Turnstile yüklenemedi. Lütfen sayfayı yenileyin.";
+      const msg = "Güvenlik doğrulaması yüklenemedi. Lütfen sayfayı yenileyin.";
       setTurnstileError(msg);
     };
     document.body.appendChild(script);
@@ -167,11 +166,11 @@ export default function Contact() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!siteKey) {
-      toast({ title: "Hata", description: "Turnstile yapılandırılması eksik. Lütfen yönetici ile iletişime geçin.", variant: "destructive" });
+      toast({ title: "Form şu anda gönderilemiyor", description: "Güvenlik doğrulaması yapılandırılmamış. Lütfen telefon veya WhatsApp üzerinden bize ulaşın.", variant: "destructive" });
       return;
     }
     if (!turnstileToken) {
-      toast({ title: "Hata", description: "Lütfen bot doğrulamasını tamamlayın.", variant: "destructive" });
+      toast({ title: "Güvenlik doğrulaması gerekli", description: "Lütfen formu göndermeden önce güvenlik doğrulamasını tamamlayın.", variant: "destructive" });
       return;
     }
     const parsed = schema.safeParse(form);
@@ -289,7 +288,7 @@ export default function Contact() {
             <div className="mt-5">
               <div ref={turnstileRef} />
               {turnstileError && <p className="mt-3 text-sm text-destructive">{turnstileError}</p>}
-              {!turnstileError && !turnstileReady && <p className="mt-3 text-sm text-muted-foreground">Bot koruması yükleniyor...</p>}
+              {!turnstileError && !turnstileReady && <p className="mt-3 text-sm text-muted-foreground">Güvenlik doğrulaması yükleniyor...</p>}
             </div>
             <Button type="submit" disabled={submitting || !siteKey} aria-busy={submitting} className="mt-5 w-full bg-accent hover:bg-accent-glow text-accent-foreground font-semibold">
               {submitting ? "Gönderiliyor..." : "Gönder"}

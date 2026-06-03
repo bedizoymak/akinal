@@ -27,12 +27,11 @@ const legalLinks = [
   { label: "Kullanım Şartları", to: "/kullanim-sartlari" },
 ];
 
-const footerAddressLines = ["Molla Gürani Mah.", "Sarı Musa Sk.", "NO:49/A 34349", "İstanbul/Türkiye"];
-
 export default function SiteFooter() {
   const { settings } = useSiteSettings();
   const currentYear = new Date().getFullYear();
   const companyName = settings.company_name || "Şirket";
+  const footerAddressLines = settings.address.split(/\s*,\s*|\s*\/\s*/).filter(Boolean);
 
   return (
     <footer className="relative z-40 bg-gradient-dark text-white">
@@ -87,10 +86,10 @@ export default function SiteFooter() {
                 <MapPin className="h-4 w-4 mt-0.5 text-accent shrink-0" />
                 <a href={settings.map_embed_url && !settings.map_embed_url.includes("/dir/") && !settings.map_embed_url.includes("destination=") ? settings.map_embed_url : getMapsLink(settings.address)} target="_blank" rel="noreferrer" className="min-w-0 leading-relaxed hover:text-white">
                   <span>
-                    {footerAddressLines.map((line, index) => (
+                    {(footerAddressLines.length > 1 ? footerAddressLines : [settings.address]).map((line, index, lines) => (
                       <span key={line}>
                         {line}
-                        {index < footerAddressLines.length - 1 && <br />}
+                        {index < lines.length - 1 && <br />}
                       </span>
                     ))}
                   </span>

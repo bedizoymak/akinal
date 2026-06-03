@@ -18,7 +18,7 @@ export default function ProjectCard({ project }: { project: ProjectCardData }) {
   return (
     <Link
       to={`/projelerimiz/${project.slug}`}
-      className="group relative flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-card-soft hover:shadow-elegant transition-all duration-500 hover:-translate-y-1"
+      className="group relative flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-card-soft hover:shadow-elegant transition-all duration-500 hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
         {project.cover_image_url ? (

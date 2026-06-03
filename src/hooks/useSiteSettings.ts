@@ -26,22 +26,22 @@ export interface SiteSettings {
 
 const defaults: SiteSettings = {
   id: "",
-  company_name: "",
+  company_name: "Akinal İnşaat",
   phone: "",
   whatsapp_number: "",
-  email: "",
+  email: "info@akinalinsaat.com",
   address: DEFAULT_SITE_ADDRESS,
   map_embed_url: null,
   instagram_url: null,
   facebook_url: null,
   linkedin_url: null,
-  footer_description: "",
-  hero_title: "",
-  hero_subtitle: "",
+  footer_description: "Akinal İnşaat; kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme alanlarında planlı ve güvenilir çözümler sunar.",
+  hero_title: "Güvenli Yapılar, Planlı Süreçler, Kalıcı Değer",
+  hero_subtitle: "Kentsel dönüşüm, kat karşılığı inşaat ve anahtar teslim projelerde; fizibiliteden teslim aşamasına kadar süreci teknik, şeffaf ve kontrollü şekilde yönetiyoruz.",
   favicon_url: "/favicon.png",
-  whatsapp_message: "",
-  seo_title: "İnşaat ve Kentsel Dönüşüm",
-  seo_description: "İnşaat, kentsel dönüşüm ve proje geliştirme hizmetleri.",
+  whatsapp_message: "Merhaba, Akinal İnşaat ile projem hakkında görüşmek istiyorum.",
+  seo_title: "Akinal İnşaat | Kentsel Dönüşüm ve İnşaat Hizmetleri",
+  seo_description: "Akinal İnşaat; kentsel dönüşüm, kat karşılığı inşaat, anahtar teslim inşaat ve proje geliştirme alanlarında güvenilir çözümler sunar.",
 };
 
 export function useSiteSettings() {

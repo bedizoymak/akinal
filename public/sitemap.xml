@@ -18,5 +18,14 @@
   <url>
     <loc>https://akinalinsaat.com/iletisim</loc>
   </url>
-  <!-- TODO: Dynamic project detail URLs are not included because they cannot be generated safely at build time yet. -->
+  <url>
+    <loc>https://akinalinsaat.com/gizlilik-politikasi</loc>
+  </url>
+  <url>
+    <loc>https://akinalinsaat.com/cerez-politikasi</loc>
+  </url>
+  <url>
+    <loc>https://akinalinsaat.com/kullanim-sartlari</loc>
+  </url>
+  <!-- Dynamic project detail URLs should be generated from production project data during the deployment workflow. -->
 </urlset>

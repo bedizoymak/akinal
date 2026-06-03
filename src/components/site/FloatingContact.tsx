@@ -13,6 +13,8 @@ function WhatsAppIcon({ className = "" }: { className?: string }) {
 
 export default function FloatingContact() {
   const { settings } = useSiteSettings();
+  if (!settings.whatsapp_number) return null;
+
   return (
     <div className="fixed bottom-8 right-4 z-50 flex flex-col items-end gap-3 md:bottom-10 md:right-6">
       <a

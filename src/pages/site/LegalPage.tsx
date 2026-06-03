@@ -104,6 +104,7 @@ export default function LegalPage() {
       <Seo
         title={content.title}
         description={content.description}
+        canonical={pathname}
         breadcrumbs={[
           { name: "Ana Sayfa", path: "/" },
           { name: content.title, path: pathname },

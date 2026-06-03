@@ -39,12 +39,12 @@ const VALUES = [
 ];
 
 const SERVICES = [
-  { title: "Kentsel Dönüşüm", text: "Riskli yapıların yenilenmesi, fizibilite çalışmaları, hak sahipleriyle süreç yönetimi ve uygulama desteği.", icon: HardHat },
-  { title: "Kat Karşılığı İnşaat", text: "Arsa sahipleri için güvenilir, şeffaf ve değer odaklı kat karşılığı proje geliştirme çözümleri.", icon: Building },
-  { title: "Anahtar Teslim İnşaat", text: "Planlamadan teslim aşamasına kadar tüm inşaat sürecinin tek elden profesyonel yönetimi.", icon: Hammer },
-  { title: "Proje Geliştirme", text: "Arsa, konum, imar durumu ve yatırım potansiyeline göre uygulanabilir proje senaryolarının oluşturulması.", icon: ClipboardList },
-  { title: "Ruhsat ve Resmi Süreç Takibi", text: "Belediye, ruhsat, proje onay ve yasal süreçlerin düzenli ve kontrollü şekilde takip edilmesi.", icon: FileCheck },
-  { title: "Riskli Yapı Danışmanlığı", text: "Bina sahipleri için ön değerlendirme, süreç bilgilendirme ve dönüşüm yol haritası desteği.", icon: ShieldCheck },
+  { title: "Kentsel Dönüşüm", slug: "kentsel-donusum", text: "Riskli yapıların yenilenmesi, fizibilite çalışmaları, hak sahipleriyle süreç yönetimi ve uygulama desteği.", icon: HardHat },
+  { title: "Kat Karşılığı İnşaat", slug: "kat-karsiligi-insaat", text: "Arsa sahipleri için güvenilir, şeffaf ve değer odaklı kat karşılığı proje geliştirme çözümleri.", icon: Building },
+  { title: "Anahtar Teslim İnşaat", slug: "anahtar-teslim-insaat", text: "Planlamadan teslim aşamasına kadar tüm inşaat sürecinin tek elden profesyonel yönetimi.", icon: Hammer },
+  { title: "Proje Geliştirme", slug: "proje-gelistirme", text: "Arsa, konum, imar durumu ve yatırım potansiyeline göre uygulanabilir proje senaryolarının oluşturulması.", icon: ClipboardList },
+  { title: "Ruhsat ve Resmi Süreç Takibi", slug: "ruhsat-ve-resmi-surec-takibi", text: "Belediye, ruhsat, proje onay ve yasal süreçlerin düzenli ve kontrollü şekilde takip edilmesi.", icon: FileCheck },
+  { title: "Riskli Yapı Danışmanlığı", slug: "riskli-yapi-danismanligi", text: "Bina sahipleri için ön değerlendirme, süreç bilgilendirme ve dönüşüm yol haritası desteği.", icon: ShieldCheck },
 ];
 
 const STEPS = [
@@ -169,7 +169,7 @@ export default function Home() {
             <div className="relative">
               <div className="absolute -inset-4 hidden rounded-lg border border-accent/15 lg:block" />
               <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-elegant">
-                <img src={sampleProject1} alt="Akinal İnşaat proje uygulama yaklaşımı" className="aspect-[4/3] w-full object-cover" />
+                <img src={sampleProject1} alt="Akinal İnşaat proje uygulama yaklaşımı" loading="lazy" className="aspect-[4/3] w-full object-cover" />
                 <div className="border-t border-border bg-card p-5">
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Akinal İnşaat Yaklaşımı</div>
                   <div className="mt-1 font-display text-xl font-bold text-foreground">Projeye başlamadan önce netlik sağlarız.</div>
@@ -195,7 +195,7 @@ export default function Home() {
 
           <div className="mb-10 overflow-hidden rounded-lg border border-border bg-card shadow-elegant">
             <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
-              <img src={sampleProject3} alt="Akinal İnşaat hizmet kapsamı" className="aspect-[16/10] h-full w-full object-cover lg:aspect-auto" />
+              <img src={sampleProject3} alt="Akinal İnşaat hizmet kapsamı" loading="lazy" className="aspect-[16/10] h-full w-full object-cover lg:aspect-auto" />
               <div className="flex flex-col justify-center p-6 md:p-8 lg:p-10">
                 <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
                   <Building className="h-3.5 w-3.5" /> Uçtan Uca Hizmet
@@ -210,7 +210,7 @@ export default function Home() {
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {SERVICES.map((service) => (
-              <div key={service.title} className="group relative rounded-lg border border-border bg-card p-6 shadow-card-soft transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-elegant">
+              <Link key={service.title} to={`/hizmetlerimiz/${service.slug}`} className="group relative rounded-lg border border-border bg-card p-6 shadow-card-soft transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-elegant focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">
                 <div className="absolute inset-x-0 top-0 h-1 bg-accent/70 opacity-70 transition-opacity group-hover:opacity-100" />
                 <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-md bg-primary/5 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                   <service.icon className="h-6 w-6" />
@@ -220,7 +220,7 @@ export default function Home() {
                 <div className="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.16em] text-accent opacity-0 transition-all duration-300 group-hover:translate-x-1 group-hover:opacity-100">
                   Detaylı bilgi <ArrowRight className="ml-2 h-3.5 w-3.5" />
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -228,7 +228,6 @@ export default function Home() {
 
       {/* KENTSEL DÖNÜŞÜM TIMELINE */}
       <section className="relative overflow-hidden py-20 md:py-28">
-          {/* Temporary decorative visual; replace with real Akinal İnşaat project imagery before production if needed. */}
         <img src={blueprintPattern} alt="" aria-hidden="true" className="absolute -right-40 top-10 hidden h-[560px] w-[680px] object-cover opacity-[0.045] lg:block" />
         <div className="container-narrow relative">
           <div className="mb-14 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
@@ -264,7 +263,6 @@ export default function Home() {
       {/* WHY US — DARK */}
       <section className="relative overflow-hidden bg-gradient-dark py-20 text-white md:py-28">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,hsl(var(--accent)/0.18),transparent_32%)]" />
-          {/* Temporary decorative visual; replace with real Akinal İnşaat project imagery before production if needed. */}
         <img src={urbanSilhouette} alt="" aria-hidden="true" className="absolute inset-x-0 bottom-0 h-64 w-full object-cover opacity-[0.18] mix-blend-screen" />
         <div className="container-narrow relative">
           <div className="mb-14 max-w-3xl">
@@ -315,7 +313,7 @@ export default function Home() {
         <div className="container-narrow relative">
           <div className="grid gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-center">
             <div className="overflow-hidden rounded-lg border border-border bg-card shadow-elegant">
-              <img src={sampleProject3} alt="Akinal İnşaat proje değerlendirme yaklaşımı" className="aspect-[4/3] w-full object-cover" />
+              <img src={sampleProject3} alt="Akinal İnşaat proje değerlendirme yaklaşımı" loading="lazy" className="aspect-[4/3] w-full object-cover" />
               <div className="border-t border-border bg-card p-5">
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Başlangıç Netliği</div>
                 <div className="mt-1 font-display text-xl font-bold">Teknik çerçeve sade, anlaşılır ve uygulanabilir şekilde kurulur.</div>
@@ -346,7 +344,7 @@ export default function Home() {
 
       {/* MAIN CTA */}
       <section className="relative w-full overflow-hidden bg-primary py-14 text-primary-foreground md:py-20">
-        <img src={sampleProject2} alt="Akinal İnşaat iletişim ve ön değerlendirme" className="absolute inset-0 h-full w-full object-cover opacity-16" />
+        <img src={sampleProject2} alt="Akinal İnşaat iletişim ve ön değerlendirme" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-16" />
         <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/92 to-primary-glow/80" />
         <div className="container-narrow relative">
           <div className="rounded-lg border border-white/15 bg-white/[0.07] p-5 shadow-elegant backdrop-blur md:p-8">
@@ -369,14 +367,18 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="grid gap-3">
-                  <Button asChild size="lg" className="justify-center bg-[#25D366] text-white shadow-accent-glow hover:bg-[#20BD5C]">
-                    <a href={getWhatsAppLink(settings.whatsapp_number, settings.whatsapp_message)} target="_blank" rel="noreferrer">
-                      <MessageCircle className="mr-2 h-5 w-5" /> WhatsApp ile Görüş
-                    </a>
-                  </Button>
-                  <Button asChild size="lg" className="justify-center border border-white/15 bg-white/12 text-white shadow-sm hover:bg-white hover:text-primary">
-                    <a href={getTelLink(settings.phone)}><PhoneIcon className="mr-2 h-5 w-5" /> Telefonla Ara</a>
-                  </Button>
+                  {settings.whatsapp_number && (
+                    <Button asChild size="lg" className="justify-center bg-[#25D366] text-white shadow-accent-glow hover:bg-[#20BD5C]">
+                      <a href={getWhatsAppLink(settings.whatsapp_number, settings.whatsapp_message)} target="_blank" rel="noreferrer">
+                        <MessageCircle className="mr-2 h-5 w-5" /> WhatsApp ile Görüş
+                      </a>
+                    </Button>
+                  )}
+                  {settings.phone && (
+                    <Button asChild size="lg" className="justify-center border border-white/15 bg-white/12 text-white shadow-sm hover:bg-white hover:text-primary">
+                      <a href={getTelLink(settings.phone)}><PhoneIcon className="mr-2 h-5 w-5" /> Telefonla Ara</a>
+                    </Button>
+                  )}
                   <Button asChild size="lg" variant="outline" className="justify-center border-white/25 bg-transparent text-white shadow-sm hover:bg-white hover:text-primary">
                     <Link to="/iletisim"><Mail className="mr-2 h-5 w-5" /> İletişim Formu Doldur</Link>
                   </Button>
