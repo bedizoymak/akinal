@@ -141,10 +141,10 @@ export default function AdminMarketTicker() {
               </span>
               <span
                 className={cn(
-                  "hidden w-fit rounded px-1 py-0.5 font-semibold tabular-nums md:inline",
-                  isPositive && "bg-accent/20 text-green-100 shadow-[0_0_10px_hsl(var(--accent)/0.28)]",
-                  isNegative && "bg-red-950/30 text-red-100",
-                  !isPositive && !isNegative && "bg-white/5 text-white/65",
+                  "hidden w-fit rounded bg-black/25 px-1 py-0.5 font-semibold tabular-nums shadow-[0_1px_7px_rgba(0,0,0,0.28)] ring-1 ring-white/10 md:inline",
+                  isPositive && "text-green-100 shadow-[0_0_10px_hsl(var(--accent)/0.28),0_1px_7px_rgba(0,0,0,0.28)]",
+                  isNegative && "text-red-100",
+                  !isPositive && !isNegative && "text-white/65",
                 )}
               >
                 {formatChange(change)}
