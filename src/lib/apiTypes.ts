@@ -196,6 +196,7 @@ export interface AdminPaymentPlan {
   title: string | null;
   description: string | null;
   amount: number | string;
+  account_type?: "resmi" | "gayri_resmi" | string | null;
   due_date: string | null;
   status: string | null;
   notes?: string | null;
@@ -209,6 +210,7 @@ export interface AdminPayment {
   project_id: string | null;
   payment_plan_id: string | null;
   amount: number | string;
+  account_type?: "resmi" | "gayri_resmi" | string | null;
   payment_date: string | null;
   payment_method: string | null;
   description: string | null;

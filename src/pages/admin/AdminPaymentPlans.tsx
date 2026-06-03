@@ -14,11 +14,12 @@ import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/
 import { QuickCreateCustomerButton } from "@/components/admin/QuickCreateCustomerButton";
 import { createAdminPaymentPlan, deleteAdminPaymentPlan, getAdminPaymentPlansData, updateAdminPaymentPlan } from "@/lib/apiClient";
 
-const empty = { customer_id: "", project_id: "", title: "", description: "", amount: "", due_date: "", status: "Bekliyor", notes: "" };
+const empty = { customer_id: "", project_id: "", title: "", description: "", amount: "", account_type: "resmi", due_date: "", status: "Bekliyor", notes: "" };
 
 export default function AdminPaymentPlans() {
   const [params] = useSearchParams();
   const preCustomer = params.get("musteri") || "";
+  const preAccountType = params.get("hesap") === "gayri_resmi" ? "gayri_resmi" : "resmi";
   const [plans, setPlans] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
@@ -49,10 +50,10 @@ export default function AdminPaymentPlans() {
     }
   }
   useEffect(() => { load(); }, []);
-  useEffect(() => { if (preCustomer) { setForm((f: any) => ({ ...f, customer_id: preCustomer })); setOpen(true); } }, [preCustomer]);
+  useEffect(() => { if (preCustomer) { setForm((f: any) => ({ ...f, customer_id: preCustomer, account_type: preAccountType })); setOpen(true); } }, [preCustomer, preAccountType]);
 
-  function openNew() { setForm({ ...empty, customer_id: filterCustomer !== "all" ? filterCustomer : "" }); setEditId(null); setOpen(true); }
-  function openEdit(p: any) { setForm({ ...p, project_id: p.project_id || "", amount: String(p.amount), notes: p.notes || "", description: p.description || "" }); setEditId(p.id); setOpen(true); }
+  function openNew() { setForm({ ...empty, customer_id: filterCustomer !== "all" ? filterCustomer : "", account_type: preAccountType }); setEditId(null); setOpen(true); }
+  function openEdit(p: any) { setForm({ ...p, account_type: p.account_type || "resmi", project_id: p.project_id || "", amount: String(p.amount), notes: p.notes || "", description: p.description || "" }); setEditId(p.id); setOpen(true); }
   function handleCustomerCreated(customer: any) {
     setCustomers((current) => [customer, ...current.filter((item) => item.id !== customer.id)]);
     setForm((current: any) => ({ ...current, customer_id: customer.id }));
@@ -232,6 +233,12 @@ export default function AdminPaymentPlans() {
               <Select value={form.project_id || "none"} onValueChange={(v) => setForm((f: any) => ({ ...f, project_id: v === "none" ? "" : v }))}>
                 <SelectTrigger><SelectValue placeholder="Proje seçin" /></SelectTrigger>
                 <SelectContent><SelectItem value="none">— Seçilmedi —</SelectItem>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Hesap Türü</Label>
+              <Select value={form.account_type || "resmi"} onValueChange={(v) => setForm((f: any) => ({ ...f, account_type: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="resmi">Resmi Hesap</SelectItem><SelectItem value="gayri_resmi">Gayri Resmi Hesap</SelectItem></SelectContent>
               </Select>
             </div>
             <div><Label>Ödeme Başlığı *</Label><Input value={form.title} onChange={(e) => setForm((f: any) => ({ ...f, title: e.target.value }))} placeholder="Örn: 1. Taksit, Peşinat" /></div>

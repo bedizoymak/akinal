@@ -13,11 +13,12 @@ import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/
 import { QuickCreateCustomerButton } from "@/components/admin/QuickCreateCustomerButton";
 import { createAdminPayment, deleteAdminPayment, getAdminPaymentsData, updateAdminPayment, uploadAdminPaymentDocument } from "@/lib/apiClient";
 
-const empty = { customer_id: "", project_id: "", payment_plan_id: "", amount: "", payment_date: new Date().toISOString().slice(0, 10), payment_method: "Nakit", description: "", document_url: "" };
+const empty = { customer_id: "", project_id: "", payment_plan_id: "", amount: "", account_type: "resmi", payment_date: new Date().toISOString().slice(0, 10), payment_method: "Nakit", description: "", document_url: "" };
 
 export default function AdminCollections() {
   const [params] = useSearchParams();
   const preCustomer = params.get("musteri") || "";
+  const preAccountType = params.get("hesap") === "gayri_resmi" ? "gayri_resmi" : "resmi";
   const shouldOpenNew = params.get("yeni") === "1";
   const [items, setItems] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -49,14 +50,14 @@ export default function AdminCollections() {
   useEffect(() => { load(); }, []);
   useEffect(() => {
     if (preCustomer || shouldOpenNew) {
-      setForm((f: any) => ({ ...f, customer_id: preCustomer || f.customer_id }));
+      setForm((f: any) => ({ ...f, customer_id: preCustomer || f.customer_id, account_type: preAccountType }));
       setEditId(null);
       setOpen(true);
     }
-  }, [preCustomer, shouldOpenNew]);
+  }, [preCustomer, preAccountType, shouldOpenNew]);
 
-  function openNew() { setForm({ ...empty, customer_id: filterCustomer !== "all" ? filterCustomer : "" }); setEditId(null); setOpen(true); }
-  function openEdit(it: any) { setForm({ ...it, project_id: it.project_id || "", payment_plan_id: it.payment_plan_id || "", description: it.description || "", document_url: it.document_url || "", amount: String(it.amount) }); setEditId(it.id); setOpen(true); }
+  function openNew() { setForm({ ...empty, customer_id: filterCustomer !== "all" ? filterCustomer : "", account_type: preAccountType }); setEditId(null); setOpen(true); }
+  function openEdit(it: any) { setForm({ ...it, account_type: it.account_type || "resmi", project_id: it.project_id || "", payment_plan_id: it.payment_plan_id || "", description: it.description || "", document_url: it.document_url || "", amount: String(it.amount) }); setEditId(it.id); setOpen(true); }
   function handleCustomerCreated(customer: any) {
     setCustomers((current) => [customer, ...current.filter((item) => item.id !== customer.id)]);
     setForm((current: any) => ({ ...current, customer_id: customer.id, payment_plan_id: "" }));
@@ -115,7 +116,7 @@ export default function AdminCollections() {
     return true;
   });
 
-  const customerPlans = plans.filter((p) => p.customer_id === form.customer_id);
+  const customerPlans = plans.filter((p) => p.customer_id === form.customer_id && (p.account_type || "resmi") === (form.account_type || "resmi"));
   const total = filtered.reduce((s, x) => s + Number(x.amount), 0);
   const thisMonth = new Date().toISOString().slice(0, 7);
   const monthTotal = filtered.filter((x) => String(x.payment_date || "").startsWith(thisMonth)).reduce((s, x) => s + Number(x.amount), 0);
@@ -225,6 +226,12 @@ export default function AdminCollections() {
             <div><Label>Proje</Label>
               <Select value={form.project_id || "none"} onValueChange={(v) => setForm((f: any) => ({ ...f, project_id: v === "none" ? "" : v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">— Seçilmedi —</SelectItem>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Hesap Türü</Label>
+              <Select value={form.account_type || "resmi"} onValueChange={(v) => setForm((f: any) => ({ ...f, account_type: v, payment_plan_id: "" }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="resmi">Resmi Hesap</SelectItem><SelectItem value="gayri_resmi">Gayri Resmi Hesap</SelectItem></SelectContent>
               </Select>
             </div>
             <div><Label>İlgili Ödeme Planı</Label>

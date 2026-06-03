@@ -8,6 +8,8 @@ require_admin();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 try {
+    ensure_account_type_columns();
+
     if ($method === 'GET') {
         $id = trim((string) ($_GET['id'] ?? ''));
         if ($id !== '') {
@@ -81,6 +83,23 @@ try {
     json_error('Method not allowed.', 405);
 } catch (Throwable $exception) {
     json_error('Müşteri işlemi tamamlanamadı.', 500);
+}
+
+function ensure_account_type_columns(): void
+{
+    ensure_account_type_column('ak_payment_plans', 'amount');
+    ensure_account_type_column('ak_payments', 'amount');
+}
+
+function ensure_account_type_column(string $table, string $afterColumn): void
+{
+    $statement = db()->query("SHOW COLUMNS FROM {$table} LIKE 'account_type'");
+    if ($statement && $statement->fetch()) {
+        return;
+    }
+
+    db()->exec("ALTER TABLE {$table} ADD COLUMN account_type VARCHAR(20) NOT NULL DEFAULT 'resmi' AFTER {$afterColumn}");
+    db()->exec("ALTER TABLE {$table} ADD INDEX idx_{$table}_account_type (account_type)");
 }
 
 function customer_payload(array $input): array

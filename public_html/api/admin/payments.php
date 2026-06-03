@@ -8,6 +8,8 @@ require_admin();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 try {
+    ensure_account_type_column();
+
     if ($method === 'GET') {
         json_success([
             'payments' => fetch_all('SELECT * FROM ak_payments ORDER BY payment_date DESC'),
@@ -65,11 +67,29 @@ function payment_payload(array $input): array
         'project_id' => nullable_string($input, 'project_id'),
         'payment_plan_id' => nullable_string($input, 'payment_plan_id'),
         'amount' => (float) ($input['amount'] ?? 0),
+        'account_type' => account_type($input),
         'payment_date' => require_non_empty($input, 'payment_date', 'Tahsilat tarihi zorunludur.'),
         'payment_method' => nullable_string($input, 'payment_method') ?? 'Nakit',
         'description' => nullable_string($input, 'description'),
         'document_url' => nullable_string($input, 'document_url'),
     ];
+}
+
+function account_type(array $input): string
+{
+    $value = (string) ($input['account_type'] ?? 'resmi');
+    return in_array($value, ['resmi', 'gayri_resmi'], true) ? $value : 'resmi';
+}
+
+function ensure_account_type_column(): void
+{
+    $statement = db()->query("SHOW COLUMNS FROM ak_payments LIKE 'account_type'");
+    if ($statement && $statement->fetch()) {
+        return;
+    }
+
+    db()->exec("ALTER TABLE ak_payments ADD COLUMN account_type VARCHAR(20) NOT NULL DEFAULT 'resmi' AFTER amount");
+    db()->exec("ALTER TABLE ak_payments ADD INDEX idx_payments_account_type (account_type)");
 }
 
 function sync_plan_status(?string $planId): void
