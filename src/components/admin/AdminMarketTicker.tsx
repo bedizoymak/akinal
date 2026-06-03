@@ -153,7 +153,6 @@ export default function AdminMarketTicker() {
           </div>
         );
       })}
-      {rates?.stale && <span className="ml-1 hidden rounded bg-white/10 px-1 py-0.5 text-[10px] font-semibold text-white/70 xl:inline">STALE</span>}
     </div>
   );
 }
