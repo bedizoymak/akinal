@@ -6,7 +6,7 @@
   - Aktif Projeler -> `/admin/projeler`
   - Toplam Tahsilat -> `/admin/tahsilatlar`
   - Toplam Gider -> `/admin/giderler`
-  - Net Durum -> `/admin/finans`
+  - Net Durum -> `/admin/finans-ozeti`
   - Beklenen Tahsilat -> `/admin/odeme-planlari`
   - Vadesi Geçen Alacak -> `/admin/odeme-planlari`
 

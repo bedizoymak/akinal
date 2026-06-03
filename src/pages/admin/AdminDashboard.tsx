@@ -267,7 +267,7 @@ export default function AdminDashboard() {
             <AdminMetricCard to="/admin/projeler" label="Aktif Projeler" value={data.summary.active_projects} description={`${data.summary.total_projects} toplam proje`} icon={FolderKanban} tone="accent" />
             <AdminMetricCard to="/admin/tahsilatlar" label="Toplam Tahsilat" value={formatDashboardTRY(dashboard.totalIncome)} description="Gerçekleşen gelen ödemeler" icon={Wallet} tone="success" />
             <AdminMetricCard to="/admin/giderler" label="Toplam Gider" value={formatDashboardTRY(dashboard.totalExpenses)} description="Yapılan masraflar" icon={Receipt} tone="danger" />
-            <AdminMetricCard to="/admin/finans" label="Net Durum" value={formatDashboardTRY(dashboard.netStatus)} description="Gerçekleşen gelir eksi gider" icon={dashboard.netStatus >= 0 ? TrendingUp : TrendingDown} tone={dashboard.netStatus >= 0 ? "success" : "danger"} />
+            <AdminMetricCard to="/admin/finans-ozeti" label="Net Durum" value={formatDashboardTRY(dashboard.netStatus)} description="Gerçekleşen gelir eksi gider" icon={dashboard.netStatus >= 0 ? TrendingUp : TrendingDown} tone={dashboard.netStatus >= 0 ? "success" : "danger"} />
             <AdminMetricCard to="/admin/odeme-planlari" label="Beklenen Tahsilat" value={formatDashboardTRY(dashboard.pendingCollections)} description="Planlanan gelir kayıtları" icon={CalendarClock} tone="warning" />
             <AdminMetricCard to="/admin/odeme-planlari" label="Vadesi Geçen Alacak" value={formatDashboardTRY(dashboard.overdueCollections)} description={`${dashboard.overduePlans.length} ödeme planı takip bekliyor`} icon={Receipt} tone={dashboard.overdueCollections > 0 ? "danger" : "success"} />
           </div>
