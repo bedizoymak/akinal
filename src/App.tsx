@@ -41,6 +41,7 @@ const AdminFinance = lazy(() => import("./pages/admin/AdminFinance"));
 const AdminProjectFinance = lazy(() => import("./pages/admin/AdminProjectFinance"));
 const AdminNotifications = lazy(() => import("./pages/admin/AdminNotifications"));
 const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
+const AdminSqlEditor = lazy(() => import("./pages/admin/AdminSqlEditor"));
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,7 @@ const App = () => (
                 <Route path="bildirimler" element={<AdminNotifications />} />
                 <Route path="raporlar" element={<AdminReports />} />
                 <Route path="ayarlar" element={<AdminSettings />} />
+                <Route path="sql-editor" element={<AdminSqlEditor />} />
               </Route>
 
               <Route element={<PublicLayout />}>
