@@ -11,9 +11,10 @@ header('Pragma: no-cache');
 header('Expires: 0');
 
 const MARKET_RATES_CACHE_TTL = 5;
-const MARKET_RATES_SOURCE_URL = 'https://api.genelpara.com/json/';
-const MARKET_RATES_DOVIZ_URL = MARKET_RATES_SOURCE_URL . '?list=doviz&sembol=USD,EUR';
-const MARKET_RATES_ALTIN_URL = MARKET_RATES_SOURCE_URL . '?list=altin&sembol=GA';
+const MARKET_RATES_DOVIZ_SOURCE_URL = 'https://kur.doviz.com/';
+const MARKET_RATES_GENELPARA_SOURCE_URL = 'https://api.genelpara.com/json/';
+const MARKET_RATES_GENELPARA_DOVIZ_URL = MARKET_RATES_GENELPARA_SOURCE_URL . '?list=doviz&sembol=USD,EUR';
+const MARKET_RATES_GENELPARA_ALTIN_URL = MARKET_RATES_GENELPARA_SOURCE_URL . '?list=altin&sembol=GA';
 
 $cacheFile = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'akinal_market_rates_cache.json';
 $cached = read_market_rates_cache($cacheFile);
@@ -38,8 +39,40 @@ json_success(fallback_market_rates());
 
 function fetch_market_rates(): ?array
 {
-    $currency = fetch_market_rates_json(MARKET_RATES_DOVIZ_URL);
-    $gold = fetch_market_rates_json(MARKET_RATES_ALTIN_URL);
+    return fetch_market_rates_from_doviz() ?? fetch_market_rates_from_genelpara();
+}
+
+function fetch_market_rates_from_doviz(): ?array
+{
+    $html = fetch_market_rates_body(MARKET_RATES_DOVIZ_SOURCE_URL, 'text/html,application/xhtml+xml');
+    if ($html === null || trim($html) === '') {
+        return null;
+    }
+
+    $rates = [
+        parse_doviz_rate($html, 'EURO', 'eur', 'EUR'),
+        parse_doviz_rate($html, 'DOLAR', 'usd', 'USD'),
+        parse_doviz_rate($html, 'GRAM ALTIN', 'gold', 'gram-altin'),
+    ];
+
+    foreach ($rates as $rate) {
+        if ($rate['value'] === null) {
+            return null;
+        }
+    }
+
+    return [
+        'rates' => $rates,
+        'source' => MARKET_RATES_DOVIZ_SOURCE_URL,
+        'stale' => false,
+        'fetched_at' => gmdate('c'),
+    ];
+}
+
+function fetch_market_rates_from_genelpara(): ?array
+{
+    $currency = fetch_market_rates_json(MARKET_RATES_GENELPARA_DOVIZ_URL);
+    $gold = fetch_market_rates_json(MARKET_RATES_GENELPARA_ALTIN_URL);
 
     if ($currency === null || $gold === null) {
         return null;
@@ -59,13 +92,25 @@ function fetch_market_rates(): ?array
 
     return [
         'rates' => $rates,
-        'source' => MARKET_RATES_SOURCE_URL,
+        'source' => MARKET_RATES_GENELPARA_SOURCE_URL,
         'stale' => false,
         'fetched_at' => gmdate('c'),
     ];
 }
 
 function fetch_market_rates_json(string $url): ?array
+{
+    $body = fetch_market_rates_body($url, 'application/json');
+
+    if (!is_string($body) || trim($body) === '') {
+        return null;
+    }
+
+    $data = json_decode($body, true);
+    return is_array($data) && ($data['success'] ?? false) === true ? $data : null;
+}
+
+function fetch_market_rates_body(string $url, string $accept): ?string
 {
     $body = null;
 
@@ -78,7 +123,7 @@ function fetch_market_rates_json(string $url): ?array
             CURLOPT_TIMEOUT => 8,
             CURLOPT_USERAGENT => 'AkinalInsaatAdminTicker/1.0',
             CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_HTTPHEADER => ['Accept: application/json'],
+            CURLOPT_HTTPHEADER => ['Accept: ' . $accept],
         ]);
         $body = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -93,18 +138,34 @@ function fetch_market_rates_json(string $url): ?array
         $context = stream_context_create([
             'http' => [
                 'timeout' => 8,
-                'header' => "User-Agent: AkinalInsaatAdminTicker/1.0\r\nAccept: application/json\r\n",
+                'header' => "User-Agent: AkinalInsaatAdminTicker/1.0\r\nAccept: " . $accept . "\r\n",
             ],
         ]);
         $body = @file_get_contents($url, false, $context);
     }
 
-    if (!is_string($body) || trim($body) === '') {
-        return null;
+    return is_string($body) ? $body : null;
+}
+
+function parse_doviz_rate(string $html, string $label, string $code, string $socketKey): array
+{
+    $value = null;
+    $change = null;
+
+    if (preg_match('/data-socket-key="' . preg_quote($socketKey, '/') . '"\s+data-socket-attr="s"[^>]*>\s*([^<]+)\s*</u', $html, $valueMatch)) {
+        $value = parse_market_number($valueMatch[1]);
     }
 
-    $data = json_decode($body, true);
-    return is_array($data) && ($data['success'] ?? false) === true ? $data : null;
+    if (preg_match('/data-socket-key="' . preg_quote($socketKey, '/') . '"\s+data-socket-attr="c"[^>]*>\s*([^<]+)\s*</u', $html, $changeMatch)) {
+        $change = parse_market_number($changeMatch[1]);
+    }
+
+    return [
+        'code' => $code,
+        'label' => $label,
+        'value' => $value,
+        'change_percent' => $change,
+    ];
 }
 
 function parse_genelpara_rate(array $payload, string $symbol, string $label, string $code): array
@@ -136,7 +197,7 @@ function fallback_market_rates(): array
             ['code' => 'usd', 'label' => 'DOLAR', 'value' => null, 'change_percent' => null],
             ['code' => 'gold', 'label' => 'GRAM ALTIN', 'value' => null, 'change_percent' => null],
         ],
-        'source' => MARKET_RATES_SOURCE_URL,
+        'source' => MARKET_RATES_DOVIZ_SOURCE_URL,
         'stale' => true,
         'fetched_at' => gmdate('c'),
     ];
