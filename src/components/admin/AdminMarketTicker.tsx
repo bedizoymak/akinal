@@ -128,7 +128,7 @@ export default function AdminMarketTicker() {
         return (
           <div key={rate.code} className="grid min-w-0 grid-cols-[auto_auto] items-start gap-x-1.5 border-white/15 px-1.5 text-[10px] leading-none first:pl-0 last:pr-0 md:border-l md:first:border-l-0">
             <span className="hidden whitespace-nowrap pt-1 font-semibold text-white/70 lg:inline">{rate.label}</span>
-            <div className="flex min-w-0 flex-col items-start gap-0.5">
+            <div className="flex min-w-0 flex-col items-center gap-0.5">
               <span
                 className={cn(
                   "rounded px-1 py-0.5 font-bold tabular-nums text-white transition-colors duration-700",
@@ -142,7 +142,7 @@ export default function AdminMarketTicker() {
               <span
                 className={cn(
                   "hidden w-fit rounded px-1 py-0.5 font-semibold tabular-nums md:inline",
-                  isPositive && "bg-accent/20 text-green-100",
+                  isPositive && "bg-accent/20 text-green-100 shadow-[0_0_10px_hsl(var(--accent)/0.28)]",
                   isNegative && "bg-red-950/30 text-red-100",
                   !isPositive && !isNegative && "bg-white/5 text-white/65",
                 )}
