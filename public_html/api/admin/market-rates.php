@@ -6,7 +6,7 @@ require_once __DIR__ . '/helpers.php';
 require_admin();
 require_method('GET');
 
-const MARKET_RATES_CACHE_TTL = 600;
+const MARKET_RATES_CACHE_TTL = 15;
 const MARKET_RATES_SOURCE_URL = 'https://kur.doviz.com/';
 
 $cacheFile = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'akinal_market_rates_cache.json';
@@ -38,9 +38,9 @@ function fetch_market_rates(): ?array
     }
 
     $rates = [
-        parse_market_rate($html, 'GRAM ALTIN', 'gold'),
-        parse_market_rate($html, 'DOLAR', 'usd'),
         parse_market_rate($html, 'EURO', 'eur'),
+        parse_market_rate($html, 'DOLAR', 'usd'),
+        parse_market_rate($html, 'GRAM ALTIN', 'gold'),
     ];
 
     foreach ($rates as $rate) {
@@ -123,9 +123,9 @@ function fallback_market_rates(): array
 {
     return [
         'rates' => [
-            ['code' => 'gold', 'label' => 'GRAM ALTIN', 'value' => null, 'change_percent' => null],
-            ['code' => 'usd', 'label' => 'DOLAR', 'value' => null, 'change_percent' => null],
             ['code' => 'eur', 'label' => 'EURO', 'value' => null, 'change_percent' => null],
+            ['code' => 'usd', 'label' => 'DOLAR', 'value' => null, 'change_percent' => null],
+            ['code' => 'gold', 'label' => 'GRAM ALTIN', 'value' => null, 'change_percent' => null],
         ],
         'source' => MARKET_RATES_SOURCE_URL,
         'stale' => true,

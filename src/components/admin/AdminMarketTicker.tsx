@@ -3,6 +3,12 @@ import { getAdminMarketRates } from "@/lib/apiClient";
 import type { AdminMarketRatesResponse } from "@/lib/apiTypes";
 import { cn } from "@/lib/utils";
 
+const FALLBACK_RATES = [
+  { code: "eur" as const, label: "EURO", value: null, change_percent: null },
+  { code: "usd" as const, label: "DOLAR", value: null, change_percent: null },
+  { code: "gold" as const, label: "GRAM ALTIN", value: null, change_percent: null },
+];
+
 const formatter = new Intl.NumberFormat("tr-TR", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -23,35 +29,33 @@ export default function AdminMarketTicker() {
   useEffect(() => {
     let cancelled = false;
 
-    getAdminMarketRates()
-      .then((data) => {
-        if (!cancelled) setRates(data);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setRates({
-            rates: [
-              { code: "gold", label: "GRAM ALTIN", value: null, change_percent: null },
-              { code: "usd", label: "DOLAR", value: null, change_percent: null },
-              { code: "eur", label: "EURO", value: null, change_percent: null },
-            ],
-            source: "",
-            stale: true,
-            fetched_at: new Date().toISOString(),
-          });
-        }
-      });
+    function loadRates() {
+      getAdminMarketRates()
+        .then((data) => {
+          if (!cancelled) setRates(data);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setRates({
+              rates: FALLBACK_RATES,
+              source: "",
+              stale: true,
+              fetched_at: new Date().toISOString(),
+            });
+          }
+        });
+    }
+
+    loadRates();
+    const interval = window.setInterval(loadRates, 15000);
 
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
     };
   }, []);
 
-  const items = rates?.rates ?? [
-    { code: "gold" as const, label: "GRAM ALTIN", value: null, change_percent: null },
-    { code: "usd" as const, label: "DOLAR", value: null, change_percent: null },
-    { code: "eur" as const, label: "EURO", value: null, change_percent: null },
-  ];
+  const items = rates?.rates ?? FALLBACK_RATES;
 
   return (
     <div
