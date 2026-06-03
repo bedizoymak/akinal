@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -119,6 +120,45 @@ const distributionColors = [
 
 const today = new Date().toISOString().slice(0, 10);
 
+function getStatementTerms(kind: FinancialStatementKind) {
+  if (kind === "employee") {
+    return {
+      detailTitle: "Personel Bilgileri",
+      sideTitle: "Belgeler",
+      sideDescription: "Personel ödeme, maaş, avans ve gider belgeleri hareket kayıtlarından takip edilir.",
+      chartCurrentTitle: "Bu Ay Personel Özeti",
+      chartAllTitle: "Tüm Zaman Personel Özeti",
+      tableDescription: "Maaş, ödeme, gider, avans ve belge hareketlerini tarih, proje, kategori, durum ve para birimine göre filtreleyin.",
+      emptyDocumentText: "Bu personel için belge bağlantısı olan hareket bulunmuyor.",
+      addLabel: "Personel Hareketi Ekle",
+    };
+  }
+
+  if (kind === "expense") {
+    return {
+      detailTitle: "Tedarikçi Bilgileri",
+      sideTitle: "Belgeler",
+      sideDescription: "Tedarikçi borç, ödeme, gider, fatura ve belge hareketleri bu kart üzerinden takip edilir.",
+      chartCurrentTitle: "Bu Ay Tedarikçi Özeti",
+      chartAllTitle: "Tüm Zaman Tedarikçi Özeti",
+      tableDescription: "Borç, ödeme, gider, fatura ve belge hareketlerini tarih, proje, kategori, durum ve para birimine göre filtreleyin.",
+      emptyDocumentText: "Bu tedarikçi için belge bağlantısı olan hareket bulunmuyor.",
+      addLabel: "Tedarikçi Hareketi Ekle",
+    };
+  }
+
+  return {
+    detailTitle: "Detay Bilgileri",
+    sideTitle: "Belgeler",
+    sideDescription: "Belge bağlantıları finansal hareket kayıtlarından takip edilir.",
+    chartCurrentTitle: kind === "customer" ? "Bu Ay Müşteri Özeti" : "Bu Ay Özet",
+    chartAllTitle: kind === "customer" ? "Tüm Zaman Müşteri Özeti" : "Tüm Zaman Özet",
+    tableDescription: "Gelir ve gider detaylarını tarih, ilgili kart, kategori, durum ve para birimine göre filtreleyin.",
+    emptyDocumentText: "Belge bağlantısı olan hareket bulunmuyor.",
+    addLabel: "Yeni Hareket Ekle",
+  };
+}
+
 function defaultCardType(kind: FinancialStatementKind): CardType {
   if (kind === "employee") return "employee";
   if (kind === "expense") return "expense";
@@ -195,13 +235,13 @@ function makeEntity(kind: FinancialStatementKind, row: AdminProjectLookup | Admi
   return {
     id: card.id,
     title: card.name,
-    eyebrow: "Gider Kartı Ekstresi",
-    description: "Sabit gider kartının tüm projelerdeki maliyet hareketlerini izleyin.",
+    eyebrow: "Tedarikçi Ekstresi",
+    description: "Tedarikçi borç, ödeme, gider, fatura ve belge hareketlerini izleyin.",
     backHref: "/admin/gider-kartlari",
-    backLabel: "Gider Kartlarına Dön",
-    fixedLabel: "Gider Kartı",
-    emptyMessage: "Bu gider kartı için finansal hareket bulunmuyor.",
-    tableTitle: "Gider Kartı Ekstresi",
+    backLabel: "Tedarikçilere Dön",
+    fixedLabel: "Tedarikçi",
+    emptyMessage: "Bu tedarikçi için finansal hareket bulunmuyor.",
+    tableTitle: "Tedarikçi Ekstresi",
     details: [
       { label: "Kategori", value: card.category },
       { label: "Durum", value: card.status },
@@ -320,6 +360,54 @@ function DetailList({ details }: { details: StatementEntity["details"] }) {
   );
 }
 
+function EntityInfoCard({ title, details }: { title: string; details: StatementEntity["details"] }) {
+  const visible = details.filter((detail) => detail.value);
+
+  return (
+    <div className="bg-card border border-border rounded-md p-5 space-y-3">
+      <h3 className="font-semibold">{title}</h3>
+      {visible.length ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          {visible.map((detail) => (
+            <div key={detail.label}>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{detail.label}</div>
+              <div className="mt-1 font-medium text-foreground">{detail.value}</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-sm text-muted-foreground">Detay bilgisi bulunmuyor.</div>
+      )}
+    </div>
+  );
+}
+
+function DocumentOverviewCard({ title, description, entries }: { title: string; description: string; entries: AdminFinancialEntry[] }) {
+  const documents = entries.filter((entry) => entry.document_url).slice(0, 4);
+
+  return (
+    <div className="bg-card border border-border rounded-md p-5">
+      <h3 className="font-semibold mb-2">{title}</h3>
+      <div className="text-sm text-muted-foreground">{description}</div>
+      <div className="mt-4 space-y-2">
+        {documents.map((entry) => (
+          <a
+            key={entry.id}
+            href={entry.document_url ?? undefined}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm transition-colors hover:bg-emerald-50/60"
+          >
+            <span className="truncate">{entry.title}</span>
+            <span className="text-xs font-semibold text-accent">Aç</span>
+          </a>
+        ))}
+        {documents.length === 0 && <div className="text-sm text-muted-foreground">Belge bağlantısı olan hareket bulunmuyor.</div>}
+      </div>
+    </div>
+  );
+}
+
 function toLookupMap<T extends { id: string }>(items: T[]): Map<string, T> {
   return new Map(items.map((item) => [item.id, item]));
 }
@@ -380,8 +468,8 @@ function getCardChartData(kind: FinancialStatementKind, entries: AdminFinancialE
 
   const realizedExpense = scoped.filter((entry) => entry.status === "Gerçekleşti" && entry.direction === "Gider").reduce((sum, entry) => sum + Number(entry.amount), 0);
   const plannedExpense = scoped.filter((entry) => entry.status === "Planlandı" && entry.direction === "Gider").reduce((sum, entry) => sum + Number(entry.amount), 0);
-  const realizedLabel = kind === "employee" ? "Gerçekleşen Ödeme" : "Gerçekleşen Gider";
-  const plannedLabel = kind === "employee" ? "Planlanan Ödeme" : "Planlanan Gider";
+  const realizedLabel = kind === "employee" ? "Gerçekleşen Ödeme" : "Gerçekleşen Ödeme / Gider";
+  const plannedLabel = kind === "employee" ? "Planlanan Ödeme" : "Planlanan Borç / Fatura";
 
   return [
     { name: realizedLabel, value: realizedExpense, color: chartColors.expense },
@@ -465,21 +553,22 @@ function SummaryCards({ kind, summary }: { kind: FinancialStatementKind; summary
 
   const isCustomer = kind === "customer";
   const isEmployee = kind === "employee";
+  const isSupplier = kind === "expense";
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <AdminMetricCard
-        label={isCustomer ? "Toplam Gerçekleşen Ödeme" : isEmployee ? "Toplam Gerçekleşen Ödeme" : "Toplam Gerçekleşen Gider"}
+        label={isCustomer ? "Toplam Gerçekleşen Ödeme" : isEmployee ? "Toplam Ödeme" : "Toplam Ödenen"}
         value={<MoneyLines totals={isCustomer ? summary.realizedIncome : summary.realizedExpense} tone={isCustomer ? "success" : "danger"} />}
-        description="Gerçekleşen hareketler"
+        description={isEmployee ? "Maaş, avans ve ödeme hareketleri" : isSupplier ? "Tedarikçi ödeme ve giderleri" : "Gerçekleşen hareketler"}
       />
       <AdminMetricCard
-        label={isCustomer ? "Toplam Planlanan Ödeme" : isEmployee ? "Toplam Planlanan Ödeme" : "Toplam Planlanan Gider"}
+        label={isCustomer ? "Toplam Planlanan Ödeme" : isEmployee ? "Planlanan Maaş / Ödeme" : "Planlanan Borç / Fatura"}
         value={<MoneyLines totals={isCustomer ? summary.plannedIncome : summary.plannedExpense} tone="warning" />}
         description="Planlanan hareketler"
       />
       <AdminMetricCard
-        label={isCustomer ? "Kalan Alacak" : isEmployee ? "Kalan Ödeme" : "Kalan Planlı Gider"}
+        label={isCustomer ? "Kalan Alacak" : isEmployee ? "Kalan Ödeme" : "Kalan Borç"}
         value={<MoneyLines totals={isCustomer ? summary.remainingIncome : summary.remainingExpense} />}
         description="Planlanan eksi gerçekleşen"
       />
@@ -674,6 +763,23 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
     return <AdminEmptyState title="Kayıt bulunamadı" description="Seçilen kayıt bulunamadı veya erişim yetkiniz yok." icon={FileText} />;
   }
 
+  const terms = getStatementTerms(kind);
+  const usesCardLayout = kind === "employee" || kind === "expense";
+  const chartCards = kind === "project" ? (
+    <>
+      <ChartCard title="Bu Ay Kârlılık" data={projectCurrentChart} currency={chartCurrency} />
+      <ChartCard title="Tüm Proje Kârlılık" data={projectAllChart} currency={chartCurrency} />
+    </>
+  ) : (
+    <>
+      <ChartCard title={terms.chartCurrentTitle} data={cardCurrentChart} currency={chartCurrency} />
+      <ChartCard title={terms.chartAllTitle} data={cardAllChart} currency={chartCurrency} />
+      <ChartCard title="Projelere Göre Dağılım" data={distributionChart} currency={chartCurrency} />
+    </>
+  );
+
+  const documentEntries = filteredEntries.filter((entry) => entry.document_url);
+
   return (
     <div className="space-y-6">
       <AdminPageHeader
@@ -690,38 +796,71 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
             </Button>
             <Button onClick={openCreate} className="bg-accent text-accent-foreground hover:bg-accent-glow">
               <Plus className="h-4 w-4" />
-              Yeni Hareket Ekle
+              {terms.addLabel}
             </Button>
           </>
         }
       />
 
-      <DetailList details={entity.details} />
+      {usesCardLayout ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <EntityInfoCard title={terms.detailTitle} details={entity.details} />
+          </div>
+          <DocumentOverviewCard title={terms.sideTitle} description={terms.sideDescription} entries={entries} />
+        </div>
+      ) : (
+        <DetailList details={entity.details} />
+      )}
       <SummaryCards kind={kind} summary={summary} />
 
       {entries.length === 0 ? (
         <AdminEmptyState title={entity.emptyMessage} description="Yeni finansal hareket ekleyerek ekstreyi oluşturmaya başlayabilirsiniz." icon={FileText} action={<Button onClick={openCreate}>Yeni Hareket Ekle</Button>} />
       ) : (
         <>
-          <div className={cn("grid gap-4", kind === "project" ? "lg:grid-cols-2" : "xl:grid-cols-3")}>
-            {kind === "project" ? (
-              <>
-                <ChartCard title="Bu Ay Kârlılık" data={projectCurrentChart} currency={chartCurrency} />
-                <ChartCard title="Tüm Proje Kârlılık" data={projectAllChart} currency={chartCurrency} />
-              </>
-            ) : (
-              <>
-                <ChartCard title={kind === "customer" ? "Bu Ay Müşteri Özeti" : kind === "employee" ? "Bu Ay Personel Özeti" : "Bu Ay Gider Kartı Özeti"} data={cardCurrentChart} currency={chartCurrency} />
-                <ChartCard title={kind === "customer" ? "Tüm Zaman Müşteri Özeti" : kind === "employee" ? "Tüm Zaman Personel Özeti" : "Tüm Zaman Gider Kartı Özeti"} data={cardAllChart} currency={chartCurrency} />
-                <ChartCard title="Projelere Göre Dağılım" data={distributionChart} currency={chartCurrency} />
-              </>
-            )}
-          </div>
+          {usesCardLayout ? (
+            <Tabs defaultValue="grafikler" className="space-y-4">
+              <TabsList className="flex flex-wrap">
+                <TabsTrigger value="grafikler">Grafikler</TabsTrigger>
+                <TabsTrigger value="belgeler">Belgeler</TabsTrigger>
+              </TabsList>
+              <TabsContent value="grafikler" className="mt-0">
+                <div className="grid gap-4 xl:grid-cols-3">
+                  {chartCards}
+                </div>
+              </TabsContent>
+              <TabsContent value="belgeler" className="mt-0">
+                <div className="overflow-x-auto rounded-md border border-border bg-card">
+                  <table className="min-w-[720px] w-full text-sm">
+                    <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                      <tr><th className="p-3">Tarih</th><th className="p-3">Başlık</th><th className="p-3">Proje</th><th className="p-3 text-right">Tutar</th><th className="p-3 text-right">Belge</th></tr>
+                    </thead>
+                    <tbody>
+                      {documentEntries.map((entry) => (
+                        <tr key={entry.id} className="border-t border-border transition-colors hover:bg-emerald-50/60">
+                          <td className="p-3 whitespace-nowrap">{formatDate(entry.entry_date)}</td>
+                          <td className="p-3"><div className="font-medium">{entry.title}</div>{entry.description && <div className="mt-1 max-w-xs truncate text-xs text-muted-foreground">{entry.description}</div>}</td>
+                          <td className="p-3">{getProjectName(entry.project_id, lookups)}</td>
+                          <td className="p-3 text-right font-semibold">{formatMoney(entry.amount, entry.currency_tag)}</td>
+                          <td className="p-3 text-right"><Button asChild size="sm" variant="ghost"><a href={entry.document_url ?? undefined} target="_blank" rel="noreferrer">Aç</a></Button></td>
+                        </tr>
+                      ))}
+                      {documentEntries.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">{terms.emptyDocumentText}</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className={cn("grid gap-4", kind === "project" ? "lg:grid-cols-2" : "xl:grid-cols-3")}>
+              {chartCards}
+            </div>
+          )}
 
           <AdminSection
             title={entity.tableTitle}
-            description="Gelir ve gider detaylarını tarih, ilgili kart, kategori, durum ve para birimine göre filtreleyin."
-            actions={<Button onClick={openCreate} className="bg-accent text-accent-foreground hover:bg-accent-glow"><Plus className="h-4 w-4" /> Yeni Hareket Ekle</Button>}
+            description={terms.tableDescription}
+            actions={<Button onClick={openCreate} className="bg-accent text-accent-foreground hover:bg-accent-glow"><Plus className="h-4 w-4" /> {terms.addLabel}</Button>}
           >
             <div className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <div className="relative">
@@ -790,7 +929,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
                 </thead>
                 <tbody>
                   {filteredEntries.map((entry) => (
-                    <tr key={entry.id} className="border-t border-border hover:bg-muted/30">
+                    <tr key={entry.id} className="border-t border-border transition-colors hover:bg-emerald-50/60">
                       <td className="p-3 whitespace-nowrap">{formatDate(entry.entry_date)}</td>
                       {kind === "project" ? (
                         <>
