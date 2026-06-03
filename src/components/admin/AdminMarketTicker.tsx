@@ -116,7 +116,7 @@ export default function AdminMarketTicker() {
 
   return (
     <div
-      className="hidden max-w-[58vw] items-center gap-1 overflow-hidden rounded-md border border-sidebar-border bg-sidebar-accent/80 px-2 py-1.5 text-sidebar-foreground shadow-sm ring-1 ring-accent/10 sm:flex xl:max-w-none"
+      className="hidden max-w-[58vw] items-center gap-1 overflow-hidden rounded-md border border-[hsl(142_45%_34%)] bg-[linear-gradient(135deg,hsl(142_48%_28%),hsl(142_45%_22%))] px-2 py-1.5 text-white shadow-sm ring-1 ring-[hsl(142_48%_42%/0.22)] sm:flex xl:max-w-none"
       title={rates?.stale ? "Piyasa verisi önbellekten veya güvenli yedekten gösteriliyor" : "Güncel piyasa verisi"}
     >
       {items.map((rate) => {
@@ -126,12 +126,12 @@ export default function AdminMarketTicker() {
         const flash = flashes[rate.code];
 
         return (
-          <div key={rate.code} className="flex min-w-0 flex-col gap-0.5 border-white/10 px-1.5 text-[10px] leading-none first:pl-0 last:pr-0 md:border-l md:first:border-l-0">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <span className="hidden whitespace-nowrap font-semibold text-sidebar-foreground/70 lg:inline">{rate.label}</span>
+          <div key={rate.code} className="grid min-w-0 grid-cols-[auto_auto] items-start gap-x-1.5 border-white/15 px-1.5 text-[10px] leading-none first:pl-0 last:pr-0 md:border-l md:first:border-l-0">
+            <span className="hidden whitespace-nowrap pt-1 font-semibold text-white/70 lg:inline">{rate.label}</span>
+            <div className="flex min-w-0 flex-col items-start gap-0.5">
               <span
                 className={cn(
-                  "rounded px-1 py-0.5 font-bold tabular-nums text-sidebar-foreground transition-colors duration-700",
+                  "rounded px-1 py-0.5 font-bold tabular-nums text-white transition-colors duration-700",
                   flash === "up" && "bg-accent/35 text-white shadow-[0_0_14px_hsl(var(--accent)/0.45)]",
                   flash === "down" && "bg-red-900/35 text-red-100 shadow-[0_0_14px_rgba(185,28,28,0.28)]",
                   !flash && "bg-transparent",
@@ -139,21 +139,21 @@ export default function AdminMarketTicker() {
               >
                 {formatRate(rate.value)}
               </span>
+              <span
+                className={cn(
+                  "hidden w-fit rounded px-1 py-0.5 font-semibold tabular-nums md:inline",
+                  isPositive && "bg-accent/20 text-green-100",
+                  isNegative && "bg-red-950/30 text-red-100",
+                  !isPositive && !isNegative && "bg-white/5 text-white/65",
+                )}
+              >
+                {formatChange(change)}
+              </span>
             </div>
-            <span
-              className={cn(
-                "hidden w-fit rounded px-1 py-0.5 font-semibold tabular-nums md:inline",
-                isPositive && "bg-accent/20 text-green-100",
-                isNegative && "bg-red-950/30 text-red-100",
-                !isPositive && !isNegative && "bg-white/5 text-sidebar-foreground/65",
-              )}
-            >
-              {formatChange(change)}
-            </span>
           </div>
         );
       })}
-      {rates?.stale && <span className="ml-1 hidden rounded bg-white/10 px-1 py-0.5 text-[10px] font-semibold text-sidebar-foreground/70 xl:inline">STALE</span>}
+      {rates?.stale && <span className="ml-1 hidden rounded bg-white/10 px-1 py-0.5 text-[10px] font-semibold text-white/70 xl:inline">STALE</span>}
     </div>
   );
 }
