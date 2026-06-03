@@ -8,9 +8,12 @@ require_method('GET');
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
+header('Expires: 0');
 
 const MARKET_RATES_CACHE_TTL = 5;
-const MARKET_RATES_SOURCE_URL = 'https://kur.doviz.com/';
+const MARKET_RATES_SOURCE_URL = 'https://api.genelpara.com/json/';
+const MARKET_RATES_DOVIZ_URL = MARKET_RATES_SOURCE_URL . '?list=doviz&sembol=USD,EUR';
+const MARKET_RATES_ALTIN_URL = MARKET_RATES_SOURCE_URL . '?list=altin&sembol=GA';
 
 $cacheFile = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'akinal_market_rates_cache.json';
 $cached = read_market_rates_cache($cacheFile);
@@ -35,15 +38,17 @@ json_success(fallback_market_rates());
 
 function fetch_market_rates(): ?array
 {
-    $html = fetch_market_rates_html(MARKET_RATES_SOURCE_URL);
-    if ($html === null || trim($html) === '') {
+    $currency = fetch_market_rates_json(MARKET_RATES_DOVIZ_URL);
+    $gold = fetch_market_rates_json(MARKET_RATES_ALTIN_URL);
+
+    if ($currency === null || $gold === null) {
         return null;
     }
 
     $rates = [
-        parse_market_rate($html, 'EURO', 'eur'),
-        parse_market_rate($html, 'DOLAR', 'usd'),
-        parse_market_rate($html, 'GRAM ALTIN', 'gold'),
+        parse_genelpara_rate($currency, 'EUR', 'EURO', 'eur'),
+        parse_genelpara_rate($currency, 'USD', 'DOLAR', 'usd'),
+        parse_genelpara_rate($gold, 'GA', 'GRAM ALTIN', 'gold'),
     ];
 
     foreach ($rates as $rate) {
@@ -60,8 +65,10 @@ function fetch_market_rates(): ?array
     ];
 }
 
-function fetch_market_rates_html(string $url): ?string
+function fetch_market_rates_json(string $url): ?array
 {
+    $body = null;
+
     if (function_exists('curl_init')) {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
@@ -71,42 +78,40 @@ function fetch_market_rates_html(string $url): ?string
             CURLOPT_TIMEOUT => 8,
             CURLOPT_USERAGENT => 'AkinalInsaatAdminTicker/1.0',
             CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_HTTPHEADER => ['Accept: text/html,application/xhtml+xml'],
+            CURLOPT_HTTPHEADER => ['Accept: application/json'],
         ]);
         $body = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if (is_string($body) && $status >= 200 && $status < 300) {
-            return $body;
+        if (!is_string($body) || $status < 200 || $status >= 300) {
+            $body = null;
         }
     }
 
-    $context = stream_context_create([
-        'http' => [
-            'timeout' => 8,
-            'header' => "User-Agent: AkinalInsaatAdminTicker/1.0\r\nAccept: text/html,application/xhtml+xml\r\n",
-        ],
-    ]);
-    $body = @file_get_contents($url, false, $context);
+    if ($body === null) {
+        $context = stream_context_create([
+            'http' => [
+                'timeout' => 8,
+                'header' => "User-Agent: AkinalInsaatAdminTicker/1.0\r\nAccept: application/json\r\n",
+            ],
+        ]);
+        $body = @file_get_contents($url, false, $context);
+    }
 
-    return is_string($body) ? $body : null;
+    if (!is_string($body) || trim($body) === '') {
+        return null;
+    }
+
+    $data = json_decode($body, true);
+    return is_array($data) && ($data['success'] ?? false) === true ? $data : null;
 }
 
-function parse_market_rate(string $html, string $label, string $code): array
+function parse_genelpara_rate(array $payload, string $symbol, string $label, string $code): array
 {
-    $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
-    $value = null;
-    $change = null;
-
-    if (preg_match('/' . preg_quote($label, '/') . '\s+([0-9.,]+)\s+%(-?[0-9.,]+)/u', $text, $matches)) {
-        $value = parse_tr_market_number($matches[1]);
-        $change = parse_tr_market_number($matches[2]);
-    } elseif (preg_match('/' . preg_quote($label, '/') . '.{0,180}?([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2,4}).{0,80}?%?\s*(-?[0-9]+,[0-9]+)/us', $text, $matches)) {
-        $value = parse_tr_market_number($matches[1]);
-        $change = parse_tr_market_number($matches[2]);
-    }
+    $item = $payload['data'][$symbol] ?? null;
+    $value = is_array($item) ? parse_market_number((string) ($item['satis'] ?? $item['alis'] ?? '')) : null;
+    $change = is_array($item) ? parse_market_number((string) ($item['degisim'] ?? '')) : null;
 
     return [
         'code' => $code,
@@ -116,9 +121,10 @@ function parse_market_rate(string $html, string $label, string $code): array
     ];
 }
 
-function parse_tr_market_number(string $value): ?float
+function parse_market_number(string $value): ?float
 {
-    $normalized = str_replace(['.', ','], ['', '.'], trim($value));
+    $value = trim(str_replace(['+', '%'], '', $value));
+    $normalized = str_replace(',', '.', $value);
     return is_numeric($normalized) ? (float) $normalized : null;
 }
 

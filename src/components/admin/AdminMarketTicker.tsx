@@ -26,8 +26,18 @@ function formatChange(value: number | null) {
   return `${value > 0 ? "+" : ""}${formatter.format(value)}%`;
 }
 
+function formatUpdatedAt(value: string | null) {
+  if (!value) return "--:--:--";
+  return new Intl.DateTimeFormat("tr-TR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date(value));
+}
+
 export default function AdminMarketTicker() {
   const [rates, setRates] = useState<AdminMarketRatesResponse | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,7 +46,10 @@ export default function AdminMarketTicker() {
     function loadRates() {
       getAdminMarketRates()
         .then((data) => {
-          if (!cancelled) setRates(data);
+          if (!cancelled) {
+            setRates(data);
+            setUpdatedAt(new Date().toISOString());
+          }
         })
         .catch(() => {
           if (!cancelled) {
@@ -46,6 +59,7 @@ export default function AdminMarketTicker() {
               stale: true,
               fetched_at: new Date().toISOString(),
             });
+            setUpdatedAt(new Date().toISOString());
           }
         });
     }
@@ -107,6 +121,9 @@ export default function AdminMarketTicker() {
           </div>
         );
       })}
+      <span className="ml-1 hidden whitespace-nowrap border-l border-sky-300/10 pl-1.5 text-[10px] font-semibold tabular-nums text-sky-100/55 lg:inline">
+        {formatUpdatedAt(updatedAt)}
+      </span>
       {rates?.stale && <span className="ml-1 hidden rounded bg-amber-300/15 px-1 py-0.5 text-[10px] font-semibold text-amber-100 xl:inline">STALE</span>}
     </div>
   );

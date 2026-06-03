@@ -682,6 +682,7 @@ export async function getAdminMarketRates(): Promise<AdminMarketRatesResponse> {
   return apiRequest<AdminMarketRatesResponse>(`/api/admin/market-rates.php?t=${Date.now()}`, {
     method: "GET",
     credentials: "include",
+    cache: "no-store",
   });
 }
 
