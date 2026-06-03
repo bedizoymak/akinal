@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getAdminMarketRates } from "@/lib/apiClient";
 import type { AdminMarketRatesResponse } from "@/lib/apiTypes";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,9 @@ const FALLBACK_RATES = [
 
 const VISIBLE_REFRESH_MS = 5000;
 const HIDDEN_REFRESH_MS = 30000;
+const FLASH_DURATION_MS = 700;
+
+type FlashDirection = "up" | "down";
 
 const formatter = new Intl.NumberFormat("tr-TR", {
   minimumFractionDigits: 2,
@@ -28,6 +31,9 @@ function formatChange(value: number | null) {
 
 export default function AdminMarketTicker() {
   const [rates, setRates] = useState<AdminMarketRatesResponse | null>(null);
+  const [flashes, setFlashes] = useState<Record<string, FlashDirection | undefined>>({});
+  const previousValues = useRef<Record<string, number | null>>({});
+  const flashTimeouts = useRef<Record<string, number | undefined>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -37,7 +43,28 @@ export default function AdminMarketTicker() {
       getAdminMarketRates()
         .then((data) => {
           if (!cancelled) {
+            const nextFlashes: Record<string, FlashDirection> = {};
+
+            data.rates.forEach((rate) => {
+              const previous = previousValues.current[rate.code];
+              if (typeof previous === "number" && typeof rate.value === "number" && previous !== rate.value) {
+                nextFlashes[rate.code] = rate.value > previous ? "up" : "down";
+              }
+              previousValues.current[rate.code] = rate.value;
+            });
+
             setRates(data);
+
+            Object.entries(nextFlashes).forEach(([code, direction]) => {
+              if (flashTimeouts.current[code] !== undefined) {
+                window.clearTimeout(flashTimeouts.current[code]);
+              }
+
+              setFlashes((current) => ({ ...current, [code]: direction }));
+              flashTimeouts.current[code] = window.setTimeout(() => {
+                setFlashes((current) => ({ ...current, [code]: undefined }));
+              }, FLASH_DURATION_MS);
+            });
           }
         })
         .catch(() => {
@@ -77,6 +104,11 @@ export default function AdminMarketTicker() {
       if (interval !== undefined) {
         window.clearInterval(interval);
       }
+      Object.values(flashTimeouts.current).forEach((timeout) => {
+        if (timeout !== undefined) {
+          window.clearTimeout(timeout);
+        }
+      });
     };
   }, []);
 
@@ -84,24 +116,34 @@ export default function AdminMarketTicker() {
 
   return (
     <div
-      className="hidden max-w-[58vw] items-center gap-1 overflow-hidden rounded-md border border-sky-300/15 bg-[#071d3a] px-2 py-1 text-white shadow-sm sm:flex xl:max-w-none"
+      className="hidden max-w-[58vw] items-center gap-1 overflow-hidden rounded-md border border-sidebar-border bg-sidebar-accent/80 px-2 py-1 text-sidebar-foreground shadow-sm ring-1 ring-accent/10 sm:flex xl:max-w-none"
       title={rates?.stale ? "Piyasa verisi önbellekten veya güvenli yedekten gösteriliyor" : "Güncel piyasa verisi"}
     >
       {items.map((rate) => {
         const change = rate.change_percent;
         const isPositive = typeof change === "number" && change > 0;
         const isNegative = typeof change === "number" && change < 0;
+        const flash = flashes[rate.code];
 
         return (
-          <div key={rate.code} className="flex min-w-0 items-center gap-1.5 border-sky-300/10 px-1.5 text-[10px] first:pl-0 last:pr-0 md:border-l md:first:border-l-0">
-            <span className="hidden whitespace-nowrap font-semibold text-sky-100/70 lg:inline">{rate.label}</span>
-            <span className="whitespace-nowrap font-bold tabular-nums text-white">{formatRate(rate.value)}</span>
+          <div key={rate.code} className="flex min-w-0 items-center gap-1.5 border-white/10 px-1.5 text-[10px] first:pl-0 last:pr-0 md:border-l md:first:border-l-0">
+            <span className="hidden whitespace-nowrap font-semibold text-sidebar-foreground/70 lg:inline">{rate.label}</span>
+            <span
+              className={cn(
+                "rounded px-1 py-0.5 font-bold tabular-nums text-sidebar-foreground transition-colors duration-700",
+                flash === "up" && "bg-accent/35 text-white shadow-[0_0_14px_hsl(var(--accent)/0.45)]",
+                flash === "down" && "bg-red-900/35 text-red-100 shadow-[0_0_14px_rgba(185,28,28,0.28)]",
+                !flash && "bg-transparent",
+              )}
+            >
+              {formatRate(rate.value)}
+            </span>
             <span
               className={cn(
                 "hidden rounded px-1 py-0.5 font-semibold tabular-nums md:inline",
-                isPositive && "bg-emerald-400/15 text-emerald-200",
-                isNegative && "bg-rose-400/15 text-rose-200",
-                !isPositive && !isNegative && "bg-white/10 text-sky-100/70",
+                isPositive && "bg-accent/20 text-green-100",
+                isNegative && "bg-red-950/30 text-red-100",
+                !isPositive && !isNegative && "bg-white/5 text-sidebar-foreground/65",
               )}
             >
               {formatChange(change)}
@@ -109,7 +151,7 @@ export default function AdminMarketTicker() {
           </div>
         );
       })}
-      {rates?.stale && <span className="ml-1 hidden rounded bg-amber-300/15 px-1 py-0.5 text-[10px] font-semibold text-amber-100 xl:inline">STALE</span>}
+      {rates?.stale && <span className="ml-1 hidden rounded bg-white/10 px-1 py-0.5 text-[10px] font-semibold text-sidebar-foreground/70 xl:inline">STALE</span>}
     </div>
   );
 }
