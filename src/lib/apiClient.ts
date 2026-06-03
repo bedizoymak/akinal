@@ -679,7 +679,7 @@ export async function getAdminNotifications(limit?: number): Promise<AdminNotifi
 }
 
 export async function getAdminMarketRates(): Promise<AdminMarketRatesResponse> {
-  return apiRequest<AdminMarketRatesResponse>("/api/admin/market-rates.php", {
+  return apiRequest<AdminMarketRatesResponse>(`/api/admin/market-rates.php?t=${Date.now()}`, {
     method: "GET",
     credentials: "include",
   });

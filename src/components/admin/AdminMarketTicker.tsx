@@ -9,6 +9,9 @@ const FALLBACK_RATES = [
   { code: "gold" as const, label: "GRAM ALTIN", value: null, change_percent: null },
 ];
 
+const VISIBLE_REFRESH_MS = 5000;
+const HIDDEN_REFRESH_MS = 30000;
+
 const formatter = new Intl.NumberFormat("tr-TR", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -28,6 +31,7 @@ export default function AdminMarketTicker() {
 
   useEffect(() => {
     let cancelled = false;
+    let interval: number | undefined;
 
     function loadRates() {
       getAdminMarketRates()
@@ -46,12 +50,31 @@ export default function AdminMarketTicker() {
         });
     }
 
+    function scheduleRefresh() {
+      if (interval !== undefined) {
+        window.clearInterval(interval);
+      }
+
+      interval = window.setInterval(loadRates, document.hidden ? HIDDEN_REFRESH_MS : VISIBLE_REFRESH_MS);
+    }
+
+    function handleVisibilityChange() {
+      if (!document.hidden) {
+        loadRates();
+      }
+      scheduleRefresh();
+    }
+
     loadRates();
-    const interval = window.setInterval(loadRates, 15000);
+    scheduleRefresh();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (interval !== undefined) {
+        window.clearInterval(interval);
+      }
     };
   }, []);
 

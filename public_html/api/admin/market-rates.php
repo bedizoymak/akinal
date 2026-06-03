@@ -6,7 +6,10 @@ require_once __DIR__ . '/helpers.php';
 require_admin();
 require_method('GET');
 
-const MARKET_RATES_CACHE_TTL = 15;
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+
+const MARKET_RATES_CACHE_TTL = 5;
 const MARKET_RATES_SOURCE_URL = 'https://kur.doviz.com/';
 
 $cacheFile = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'akinal_market_rates_cache.json';
