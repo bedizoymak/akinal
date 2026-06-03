@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,6 +23,7 @@ export default function AdminCustomers() {
   const [projectFilter, setProjectFilter] = useState("all");
   const [balanceFilter, setBalanceFilter] = useState("all");
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   async function load() {
     setLoading(true);
@@ -174,14 +175,18 @@ export default function AdminCustomers() {
             </thead>
             <tbody>
               {filtered.map((c) => (
-                <tr key={c.id} className="border-t border-border hover:bg-muted/30">
+                <tr
+                  key={c.id}
+                  className="cursor-pointer border-t border-border transition-colors hover:bg-emerald-50/60"
+                  onClick={() => navigate(`/admin/musteriler/${c.id}`)}
+                >
                   <td className="p-3">
                     <div className="font-semibold">{customerDisplayName(c)}</div>
                     <div className="text-xs text-muted-foreground">{displayLabel(c.customer_type)}</div>
                   </td>
                   <td className="p-3">
                     <div className="flex items-center gap-1 text-xs"><Phone className="h-3 w-3" /> {c.phone || "-"}</div>
-                    {c.whatsapp && <a href={whatsappLink(c.whatsapp, "Merhaba, Akinal İnşaat")} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-emerald-700"><MessageCircle className="h-3 w-3" /> {c.whatsapp}</a>}
+                    {c.whatsapp && <a href={whatsappLink(c.whatsapp, "Merhaba, Akinal İnşaat")} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-emerald-700" onClick={(event) => event.stopPropagation()}><MessageCircle className="h-3 w-3" /> {c.whatsapp}</a>}
                   </td>
                   <td className="p-3 text-xs">{c.projectNames.join(", ") || <span className="text-muted-foreground">—</span>}</td>
                   <td className="p-3 text-right font-medium">{formatTRY(c.totalDue)}</td>
@@ -189,7 +194,7 @@ export default function AdminCustomers() {
                   <td className={cn("p-3 text-right font-bold", c.balance > 0 ? "text-red-600" : "text-emerald-700")}>{formatTRY(c.balance)}</td>
                   <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(c.status))}>{displayLabel(c.status)}</span></td>
                   <td className="p-3">
-                    <div className="flex justify-end gap-1">
+                    <div className="flex justify-end gap-1" onClick={(event) => event.stopPropagation()}>
                       <Button asChild size="sm" variant="outline"><Link to={`/admin/musteriler/${c.id}/finans`}><FileText className="h-4 w-4" /> Finans</Link></Button>
                       <Button asChild size="sm" variant="ghost" title="Görüntüle"><Link to={`/admin/musteriler/${c.id}`}><Eye className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Görüntüle</span></Link></Button>
                       <Button asChild size="sm" variant="ghost" title="Düzenle"><Link to={`/admin/musteriler/${c.id}/duzenle`}><Edit className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Düzenle</span></Link></Button>
