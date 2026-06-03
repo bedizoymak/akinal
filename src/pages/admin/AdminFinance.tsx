@@ -9,7 +9,6 @@ import {
   formatDate,
   customerDisplayName,
   daysUntil,
-  exportCSV,
   whatsappLink,
   statusBadgeClass,
   derivePlanStatus,
@@ -23,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/AdminPage";
 import { getAdminFinanceSummary } from "@/lib/apiClient";
 import type { AdminExpense, AdminFinancialEntry, AdminPayment } from "@/lib/apiTypes";
+import logoImg from "@/assets/logo.png";
 
 function Stat({ label, value, color, sub }: any) {
   return (
@@ -52,6 +52,188 @@ function PieCard({ title, data }: any) {
       ) : <div className="flex min-h-[260px] items-center justify-center rounded-md bg-surface-light px-6 text-center text-sm text-muted-foreground">Bu grafik için finans kaydı bulunmuyor. Finansal hareket eklendiğinde dağılım otomatik oluşacak.</div>}
     </div>
   );
+}
+
+async function imageUrlToDataUrl(url: string) {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(String(reader.result));
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function exportFinanceSummaryPDF({
+  stats,
+  overdueReceivables,
+}: {
+  stats: {
+    totalReceived: number;
+    totalReceivable: number;
+    totalExpense: number;
+    totalPayable: number;
+    net: number;
+    expectedThisMonth: number;
+    receivedThisMonth: number;
+    expenseThisMonth: number;
+  };
+  overdueReceivables: number;
+}) {
+  const [{ default: pdfMake }, vfsFonts] = await Promise.all([
+    import("pdfmake/build/pdfmake"),
+    import("pdfmake/build/vfs_fonts"),
+  ]);
+  const vfs = (vfsFonts as any).default?.pdfMake?.vfs
+    ?? (vfsFonts as any).pdfMake?.vfs
+    ?? (vfsFonts as any).default?.vfs
+    ?? (vfsFonts as any).vfs;
+  (pdfMake as any).vfs = vfs;
+
+  const logoDataUrl = await imageUrlToDataUrl(logoImg);
+  const reportDate = formatDate(new Date());
+  const fileDate = new Date().toISOString().slice(0, 10);
+  const green = "#25703D";
+  const darkGreen = "#174D2B";
+  const softGreen = "#EAF5EE";
+  const red = "#B91C1C";
+  const amber = "#B7791F";
+  const netColor = stats.net >= 0 ? green : red;
+  const summaryRows = [
+    ["Gerçekleşen Gelir", formatTRY(stats.totalReceived), "Tahsil edilmiş gelir", green],
+    ["Gerçekleşen Gider", formatTRY(stats.totalExpense), "Kaydedilmiş gider", red],
+    ["Net Durum", formatTRY(stats.net), "Gelir eksi gider", netColor],
+    ["Beklenen Tahsilat", formatTRY(stats.expectedThisMonth), "Bu ay beklenen", amber],
+    ["Vadesi Geçen Alacak", formatTRY(overdueReceivables), "Vadesi geçmiş açık tutar", red],
+  ];
+  const summaryTile = ([label, value, meta, color]: string[]) => ({
+    width: "*",
+    table: {
+      widths: ["*"],
+      body: [[
+        {
+          stack: [
+            { text: String(label).toLocaleUpperCase("tr-TR"), style: "tileLabel" },
+            { text: String(value), style: "tileValue", color },
+            { text: String(meta), style: "tileMeta" },
+          ],
+          fillColor: softGreen,
+          border: [true, true, true, true],
+          borderColor: ["#D7E8DC", "#D7E8DC", "#D7E8DC", "#D7E8DC"],
+          margin: [6, 6, 6, 6],
+        },
+      ]],
+    },
+    layout: {
+      hLineColor: () => "#D7E8DC",
+      vLineColor: () => "#D7E8DC",
+      paddingLeft: () => 0,
+      paddingRight: () => 0,
+      paddingTop: () => 0,
+      paddingBottom: () => 0,
+    },
+  });
+
+  const documentDefinition = {
+    pageSize: "A4",
+    pageMargins: [36, 34, 36, 38],
+    defaultStyle: {
+      font: "Roboto",
+      fontSize: 9,
+      color: "#1F2933",
+    },
+    styles: {
+      brand: { fontSize: 11, bold: true, color: green },
+      title: { fontSize: 22, bold: true, color: "#111827", margin: [0, 2, 0, 4] },
+      meta: { fontSize: 9, color: "#667085" },
+      sectionTitle: { fontSize: 13, bold: true, color: darkGreen, margin: [0, 18, 0, 8] },
+      tileLabel: { fontSize: 8, bold: true, color: "#5F6B5F" },
+      tileValue: { fontSize: 14, bold: true, margin: [0, 5, 0, 4] },
+      tileMeta: { fontSize: 8, color: "#6B7280" },
+      tableHeader: { bold: true, color: "#FFFFFF", fillColor: green },
+    },
+    content: [
+      {
+        columns: [
+          {
+            width: "*",
+            stack: [
+              { text: "Akınal İnşaat", style: "brand" },
+              { text: "Finans Özeti", style: "title" },
+              { text: `Rapor tarihi: ${reportDate}`, style: "meta" },
+            ],
+          },
+          logoDataUrl
+            ? { image: logoDataUrl, width: 92, alignment: "right", margin: [0, 0, 0, 0] }
+            : { text: "AKINAL", alignment: "right", bold: true, color: green, fontSize: 16 },
+        ],
+      },
+      {
+        canvas: [
+          { type: "line", x1: 0, y1: 12, x2: 523, y2: 12, lineWidth: 1, lineColor: "#D7E8DC" },
+        ],
+      },
+      { text: "Yönetim Özeti", style: "sectionTitle" },
+      {
+        columns: summaryRows.slice(0, 3).map(summaryTile),
+        columnGap: 8,
+      },
+      {
+        columns: summaryRows.slice(3).map(summaryTile),
+        columnGap: 8,
+        margin: [0, 10, 0, 0],
+      },
+      { text: "Finans Kalemleri", style: "sectionTitle" },
+      {
+        table: {
+          headerRows: 1,
+          widths: ["*", "auto", "*"],
+          body: [
+            [
+              { text: "Kalem", style: "tableHeader" },
+              { text: "Tutar", style: "tableHeader" },
+              { text: "Açıklama", style: "tableHeader" },
+            ],
+            ["Gelir", formatTRY(stats.totalReceived), "Gerçekleşen tahsilatlar"],
+            ["Gider", formatTRY(stats.totalExpense), "Gerçekleşen giderler"],
+            ["Net Durum", formatTRY(stats.net), "Gerçekleşen gelir eksi gider"],
+            ["Beklenen Tahsilat", formatTRY(stats.expectedThisMonth), "İçinde bulunulan ay için beklenen tahsilat"],
+            ["Vadesi Geçen Alacak", formatTRY(overdueReceivables), "Vadesi geçmiş ve açık alacaklar"],
+            ["Planlanan Gelir", formatTRY(stats.totalReceivable), "Tüm planlanan gelir kayıtları"],
+            ["Planlanan Gider", formatTRY(stats.totalPayable), "Tüm planlanan gider kayıtları"],
+          ],
+        },
+        layout: {
+          fillColor: (rowIndex: number) => rowIndex > 0 && rowIndex % 2 === 0 ? "#F7FAF8" : null,
+          hLineColor: () => "#D7E8DC",
+          vLineColor: () => "#D7E8DC",
+          paddingLeft: () => 8,
+          paddingRight: () => 8,
+          paddingTop: () => 6,
+          paddingBottom: () => 6,
+        },
+      },
+      {
+        text: "Bu rapor Akınal İnşaat yönetim panelindeki güncel finans kayıtlarından otomatik oluşturulmuştur.",
+        style: "meta",
+        margin: [0, 16, 0, 0],
+      },
+    ],
+    footer: (currentPage: number, pageCount: number) => ({
+      columns: [
+        { text: "Akınal İnşaat Yönetim Paneli", color: "#667085", fontSize: 8 },
+        { text: `${currentPage} / ${pageCount}`, alignment: "right", color: "#667085", fontSize: 8 },
+      ],
+      margin: [36, 0, 36, 0],
+    }),
+  };
+
+  (pdfMake as any).createPdf(documentDefinition).download(`finans-ozeti-${fileDate}.pdf`);
 }
 
 function expenseToFinancialEntry(expense: AdminExpense): AdminFinancialEntry {
@@ -202,16 +384,8 @@ export default function AdminFinance() {
   const overdueList = upcoming.filter((p) => p.days < 0).sort((a, b) => a.days - b.days);
 
   function downloadSummary() {
-    exportCSV("finans-ozeti.csv", [
-      { "Kalem": "Gerçekleşen Gelir", "Tutar": stats.totalReceived },
-      { "Kalem": "Planlanan Gelir", "Tutar": stats.totalReceivable },
-      { "Kalem": "Gerçekleşen Gider", "Tutar": stats.totalExpense },
-      { "Kalem": "Planlanan Gider", "Tutar": stats.totalPayable },
-      { "Kalem": "Net Durum", "Tutar": stats.net },
-      { "Kalem": "Bu Ay Beklenen Tahsilat", "Tutar": stats.expectedThisMonth },
-      { "Kalem": "Bu Ay Gerçekleşen Gelir", "Tutar": stats.receivedThisMonth },
-      { "Kalem": "Bu Ay Gerçekleşen Gider", "Tutar": stats.expenseThisMonth },
-    ]);
+    const overdueReceivables = overdueList.reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
+    exportFinanceSummaryPDF({ stats, overdueReceivables });
   }
 
   if (loading) return <div className="rounded-md border border-border bg-card py-12 text-center text-sm text-muted-foreground shadow-card-soft">Finans verileri hazırlanıyor...</div>;
