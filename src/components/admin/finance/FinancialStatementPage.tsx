@@ -119,6 +119,14 @@ const distributionColors = [
 ];
 
 const today = new Date().toISOString().slice(0, 10);
+const ACCOUNT_GROUPS = [
+  { value: "Resmi", tab: "resmi", label: "Resmi Hesap" },
+  { value: "Gayri Resmi", tab: "gayri-resmi", label: "Gayri Resmi Hesap" },
+] as const;
+
+function entryAccountGroup(entry: AdminFinancialEntry): "Resmi" | "Gayri Resmi" {
+  return entry.group_tag === "Gayri Resmi" ? "Gayri Resmi" : "Resmi";
+}
 
 function getStatementTerms(kind: FinancialStatementKind) {
   if (kind === "employee") {
@@ -581,6 +589,86 @@ function SummaryCards({ kind, summary }: { kind: FinancialStatementKind; summary
   );
 }
 
+function AccountMovementTable({
+  title,
+  emptyMessage,
+  entries,
+  lookups,
+  onEdit,
+  onDelete,
+}: {
+  title: string;
+  emptyMessage: string;
+  entries: AdminFinancialEntry[];
+  lookups: FinanceLookups;
+  onEdit: (entry: AdminFinancialEntry) => void;
+  onDelete: (entry: AdminFinancialEntry) => void;
+}) {
+  return (
+    <div className="bg-card border border-border rounded-md overflow-x-auto">
+      <table className="min-w-[760px] w-full text-sm">
+        <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+          <tr>
+            <th className="p-3 text-left">Tarih</th>
+            <th className="p-3 text-left">Başlık</th>
+            <th className="p-3 text-left">Proje</th>
+            <th className="p-3">Durum</th>
+            <th className="p-3 text-right">Tutar</th>
+            <th className="p-3 text-right">İşlem</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map((entry) => (
+            <tr key={entry.id} className="border-t border-border transition-colors hover:bg-emerald-50/60">
+              <td className="p-3 whitespace-nowrap">{formatDate(entry.entry_date)}</td>
+              <td className="p-3">
+                <div className="font-medium">{entry.title}</div>
+                {entry.description && <div className="mt-1 max-w-xs truncate text-xs text-muted-foreground">{entry.description}</div>}
+              </td>
+              <td className="p-3">{getProjectName(entry.project_id, lookups)}</td>
+              <td className="p-3"><span className={cn("rounded-md border px-2 py-0.5 text-xs font-semibold", statusBadgeClass(entry.status))}>{entry.status}</span></td>
+              <td className="p-3 text-right font-semibold">{formatMoney(entry.amount, entry.currency_tag)}</td>
+              <td className="p-3">
+                <div className="flex justify-end gap-1">
+                  <Button size="sm" variant="ghost" onClick={() => onEdit(entry)} title="Düzenle"><Edit className="h-4 w-4" /><span className="sr-only sm:not-sr-only sm:ml-1">Düzenle</span></Button>
+                  <Button size="sm" variant="ghost" onClick={() => onDelete(entry)} title="Sil"><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only sm:not-sr-only sm:ml-1">Sil</span></Button>
+                </div>
+              </td>
+            </tr>
+          ))}
+          {entries.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">{emptyMessage}</td></tr>}
+        </tbody>
+      </table>
+      <div className="border-t border-border px-3 py-2 text-xs font-semibold text-muted-foreground">{title}</div>
+    </div>
+  );
+}
+
+function AccountDocumentTable({ entries, emptyMessage, lookups }: { entries: AdminFinancialEntry[]; emptyMessage: string; lookups: FinanceLookups }) {
+  const documents = entries.filter((entry) => entry.document_url);
+
+  return (
+    <div className="bg-card border border-border rounded-md overflow-x-auto">
+      <table className="min-w-[640px] w-full text-sm">
+        <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+          <tr><th className="p-3 text-left">Belge</th><th className="p-3 text-left">Proje</th><th className="p-3">Tarih</th><th className="p-3 text-right">İşlem</th></tr>
+        </thead>
+        <tbody>
+          {documents.map((entry) => (
+            <tr key={entry.id} className="border-t border-border transition-colors hover:bg-emerald-50/60">
+              <td className="p-3"><div className="font-medium">{entry.title}</div><div className="text-xs text-muted-foreground">{formatMoney(entry.amount, entry.currency_tag)}</div></td>
+              <td className="p-3">{getProjectName(entry.project_id, lookups)}</td>
+              <td className="p-3">{formatDate(entry.entry_date)}</td>
+              <td className="p-3 text-right"><Button asChild size="sm" variant="ghost"><a href={entry.document_url ?? undefined} target="_blank" rel="noreferrer">Aç</a></Button></td>
+            </tr>
+          ))}
+          {documents.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">{emptyMessage}</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 type FinancialStatementPageProps = {
   kind: FinancialStatementKind;
   entityId: string;
@@ -645,6 +733,20 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
 
   const summary = useMemo(() => getSummary(entries), [entries]);
   const chartCurrency = useMemo(() => chooseChartCurrency(entries), [entries]);
+  const accountData = useMemo(() => ACCOUNT_GROUPS.map((account) => {
+    const scopedEntries = entries.filter((entry) => entryAccountGroup(entry) === account.value);
+    const accountSummary = getSummary(scopedEntries);
+    const plannedEntries = scopedEntries.filter((entry) => entry.status === "Planlandı");
+    const realizedEntries = scopedEntries.filter((entry) => entry.status === "Gerçekleşti");
+    return {
+      ...account,
+      entries: scopedEntries,
+      plannedEntries,
+      realizedEntries,
+      summary: accountSummary,
+      chart: getCardChartData(kind, scopedEntries, chartCurrency),
+    };
+  }), [chartCurrency, entries, kind]);
 
   const filteredEntries = useMemo(() => entries.filter((entry) => {
     if (fromDate && entry.entry_date < fromDate) return false;
@@ -778,8 +880,6 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
     </>
   );
 
-  const documentEntries = filteredEntries.filter((entry) => entry.document_url);
-
   return (
     <div className="space-y-6">
       <AdminPageHeader
@@ -812,44 +912,48 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
       ) : (
         <DetailList details={entity.details} />
       )}
-      <SummaryCards kind={kind} summary={summary} />
+      {!usesCardLayout && <SummaryCards kind={kind} summary={summary} />}
 
-      {entries.length === 0 ? (
+      {entries.length === 0 && !usesCardLayout ? (
         <AdminEmptyState title={entity.emptyMessage} description="Yeni finansal hareket ekleyerek ekstreyi oluşturmaya başlayabilirsiniz." icon={FileText} action={<Button onClick={openCreate}>Yeni Hareket Ekle</Button>} />
       ) : (
         <>
           {usesCardLayout ? (
-            <Tabs defaultValue="grafikler" className="space-y-4">
+            <Tabs defaultValue="resmi" className="space-y-4">
               <TabsList className="flex flex-wrap">
-                <TabsTrigger value="grafikler">Grafikler</TabsTrigger>
-                <TabsTrigger value="belgeler">Belgeler</TabsTrigger>
+                {accountData.map((account) => <TabsTrigger key={account.tab} value={account.tab}>{account.label}</TabsTrigger>)}
               </TabsList>
-              <TabsContent value="grafikler" className="mt-0">
-                <div className="grid gap-4 xl:grid-cols-3">
-                  {chartCards}
-                </div>
-              </TabsContent>
-              <TabsContent value="belgeler" className="mt-0">
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                  <table className="min-w-[720px] w-full text-sm">
-                    <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                      <tr><th className="p-3">Tarih</th><th className="p-3">Başlık</th><th className="p-3">Proje</th><th className="p-3 text-right">Tutar</th><th className="p-3 text-right">Belge</th></tr>
-                    </thead>
-                    <tbody>
-                      {documentEntries.map((entry) => (
-                        <tr key={entry.id} className="border-t border-border transition-colors hover:bg-emerald-50/60">
-                          <td className="p-3 whitespace-nowrap">{formatDate(entry.entry_date)}</td>
-                          <td className="p-3"><div className="font-medium">{entry.title}</div>{entry.description && <div className="mt-1 max-w-xs truncate text-xs text-muted-foreground">{entry.description}</div>}</td>
-                          <td className="p-3">{getProjectName(entry.project_id, lookups)}</td>
-                          <td className="p-3 text-right font-semibold">{formatMoney(entry.amount, entry.currency_tag)}</td>
-                          <td className="p-3 text-right"><Button asChild size="sm" variant="ghost"><a href={entry.document_url ?? undefined} target="_blank" rel="noreferrer">Aç</a></Button></td>
-                        </tr>
-                      ))}
-                      {documentEntries.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">{terms.emptyDocumentText}</td></tr>}
-                    </tbody>
-                  </table>
-                </div>
-              </TabsContent>
+              {accountData.map((account) => (
+                <TabsContent key={account.tab} value={account.tab} className="mt-0 space-y-5">
+                  <SummaryCards kind={kind} summary={account.summary} />
+
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                    <div className="lg:col-span-2 space-y-4">
+                      <AccountMovementTable
+                        title={kind === "employee" ? "Ödeme planı, maaş ve avans kayıtları" : "Borç, gider ve fatura kayıtları"}
+                        emptyMessage={`${account.label} için planlanan hareket bulunmuyor.`}
+                        entries={account.plannedEntries}
+                        lookups={lookups}
+                        onEdit={openEdit}
+                        onDelete={deleteEntry}
+                      />
+                      <AccountMovementTable
+                        title={kind === "employee" ? "Gerçekleşen ödeme, maaş ve avans kayıtları" : "Gerçekleşen ödeme ve tedarikçi hareketleri"}
+                        emptyMessage={`${account.label} için gerçekleşen ödeme bulunmuyor.`}
+                        entries={account.realizedEntries}
+                        lookups={lookups}
+                        onEdit={openEdit}
+                        onDelete={deleteEntry}
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <ChartCard title={`${account.label} ${kind === "employee" ? "Personel Özeti" : "Tedarikçi Özeti"}`} data={account.chart} currency={chartCurrency} />
+                      <AccountDocumentTable entries={account.entries} emptyMessage={`${account.label} için belge bulunmuyor.`} lookups={lookups} />
+                    </div>
+                  </div>
+                </TabsContent>
+              ))}
             </Tabs>
           ) : (
             <div className={cn("grid gap-4", kind === "project" ? "lg:grid-cols-2" : "xl:grid-cols-3")}>
@@ -857,7 +961,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
             </div>
           )}
 
-          <AdminSection
+          {!usesCardLayout && <AdminSection
             title={entity.tableTitle}
             description={terms.tableDescription}
             actions={<Button onClick={openCreate} className="bg-accent text-accent-foreground hover:bg-accent-glow"><Plus className="h-4 w-4" /> {terms.addLabel}</Button>}
@@ -979,7 +1083,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
                 </tbody>
               </table>
             </div>
-          </AdminSection>
+          </AdminSection>}
         </>
       )}
 
