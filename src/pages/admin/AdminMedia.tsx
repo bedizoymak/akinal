@@ -21,10 +21,10 @@ import { cn } from "@/lib/utils";
 
 function sourceLabel(image: AdminMediaImage) {
   if (image.source_label) return image.source_label;
-  if (image.source_type === "filesystem") return "Uploaded file";
-  if (image.source_type === "site_setting") return "Site setting";
-  if (image.source_type === "project_cover") return "Project cover";
-  return "Project gallery";
+  if (image.source_type === "filesystem") return "Yüklenen Dosya";
+  if (image.source_type === "site_setting") return "Site Ayarı";
+  if (image.source_type === "project_cover") return "Proje Görseli";
+  return "Proje Galerisi";
 }
 
 function displayName(image: AdminMediaImage) {

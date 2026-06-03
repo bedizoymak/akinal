@@ -157,7 +157,7 @@ export default function AdminSqlEditor() {
     <div className="space-y-5">
       <AdminPageHeader
         eyebrow="Sistem"
-        title="SQL Editor"
+        title="SQL Editörü"
         description="Canlı MySQL veritabanında tek SQL ifadesi çalıştırın. Bu araç yalnızca yetkili admin kullanımı içindir."
       />
 

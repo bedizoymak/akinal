@@ -50,22 +50,22 @@ async function apiGet<T>(path: string): Promise<T> {
       },
     });
   } catch (error) {
-    throw new Error(error instanceof Error ? error.message : "API request failed.");
+    throw new Error(error instanceof Error ? error.message : "API isteği başarısız oldu.");
   }
 
   let payload: ApiResponse<T>;
   try {
     payload = await response.json();
   } catch {
-    throw new Error(`API returned an invalid JSON response (${response.status}).`);
+    throw new Error(`API geçersiz JSON yanıtı döndürdü (${response.status}).`);
   }
 
   if (!response.ok) {
-    throw new Error(payload.message || `API request failed with status ${response.status}.`);
+    throw new Error(payload.message || `API isteği ${response.status} durum koduyla başarısız oldu.`);
   }
 
   if (!payload.success) {
-    throw new Error(payload.message || "API request was not successful.");
+    throw new Error(payload.message || "API isteği başarılı olmadı.");
   }
 
   return (payload.data ?? ({} as T)) as T;
@@ -85,22 +85,22 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T
       },
     });
   } catch (error) {
-    throw new Error(error instanceof Error ? error.message : "API request failed.");
+    throw new Error(error instanceof Error ? error.message : "API isteği başarısız oldu.");
   }
 
   let payload: ApiResponse<T>;
   try {
     payload = await response.json();
   } catch {
-    throw new Error(`API returned an invalid JSON response (${response.status}).`);
+    throw new Error(`API geçersiz JSON yanıtı döndürdü (${response.status}).`);
   }
 
   if (!response.ok) {
-    throw new Error(payload.message || `API request failed with status ${response.status}.`);
+    throw new Error(payload.message || `API isteği ${response.status} durum koduyla başarısız oldu.`);
   }
 
   if (!payload.success) {
-    throw new Error(payload.message || "API request was not successful.");
+    throw new Error(payload.message || "API isteği başarılı olmadı.");
   }
 
   return (payload.data ?? ({} as T)) as T;
