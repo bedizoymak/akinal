@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,7 @@ type AdminMetricCardProps = {
   description?: ReactNode;
   icon?: LucideIcon;
   tone?: "default" | "success" | "warning" | "danger" | "accent";
+  to?: string;
 };
 
 const metricToneClass = {
@@ -94,11 +96,18 @@ function AutoFitMetricValue({ children, className }: { children: ReactNode; clas
   );
 }
 
-export function AdminMetricCard({ label, value, description, icon: Icon, tone = "default" }: AdminMetricCardProps) {
+export function AdminMetricCard({ label, value, description, icon: Icon, tone = "default", to }: AdminMetricCardProps) {
   const complexValue = typeof value !== "string" && typeof value !== "number";
+  const Wrapper = to ? Link : "div";
 
   return (
-    <div className="relative flex min-h-[138px] w-full min-w-0 max-w-full flex-col justify-between overflow-hidden rounded-md border border-border/80 bg-card p-5 shadow-sm transition-colors hover:border-foreground/20">
+    <Wrapper
+      {...(to ? { to } : {})}
+      className={cn(
+        "relative flex min-h-[138px] w-full min-w-0 max-w-full flex-col justify-between overflow-hidden rounded-md border border-border/80 bg-card p-5 text-current shadow-sm transition-colors duration-200 hover:border-foreground/20",
+        to && "cursor-pointer hover:border-accent/60 hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/45 focus-visible:ring-offset-2",
+      )}
+    >
       <div className={cn("absolute inset-x-0 top-0 h-1", metricAccentClass[tone])} />
       <div className="min-w-0">
         <div className="flex items-start justify-between gap-4">
@@ -116,7 +125,7 @@ export function AdminMetricCard({ label, value, description, icon: Icon, tone = 
         )}
       </div>
       {description && <div className="mt-4 overflow-hidden text-ellipsis whitespace-nowrap border-t border-border/60 pt-3 text-xs leading-relaxed text-muted-foreground">{description}</div>}
-    </div>
+    </Wrapper>
   );
 }
 
