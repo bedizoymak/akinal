@@ -21,6 +21,7 @@ import {
   Wallet,
 } from "lucide-react";
 import NotificationBell from "@/components/admin/NotificationBell";
+import AdminMarketTicker from "@/components/admin/AdminMarketTicker";
 import logoImg from "@/assets/logo.png";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -241,6 +242,7 @@ export default function AdminLayout() {
               <div className="truncate font-display text-lg font-bold md:text-xl">{page.title}</div>
             </div>
             <div className="ml-auto flex items-center gap-2">
+              <AdminMarketTicker />
               <NotificationBell />
             </div>
           </div>

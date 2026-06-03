@@ -20,6 +20,7 @@ import type {
   AdminFinancialStatementKind,
   AdminFinancialStatementResponse,
   AdminFinanceSummaryResponse,
+  AdminMarketRatesResponse,
   AdminNotification,
   AdminNotificationsResponse,
   AdminReportsResponse,
@@ -675,6 +676,13 @@ export async function getAdminNotifications(limit?: number): Promise<AdminNotifi
     unread_count: data.unread_count || 0,
     total_count: data.total_count || 0,
   };
+}
+
+export async function getAdminMarketRates(): Promise<AdminMarketRatesResponse> {
+  return apiRequest<AdminMarketRatesResponse>("/api/admin/market-rates.php", {
+    method: "GET",
+    credentials: "include",
+  });
 }
 
 export async function updateAdminNotificationRead(id: string, isRead = true): Promise<AdminNotification> {

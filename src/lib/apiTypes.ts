@@ -374,6 +374,20 @@ export interface AdminNotificationsResponse {
   total_count?: number;
 }
 
+export interface AdminMarketRate {
+  code: "gold" | "usd" | "eur";
+  label: string;
+  value: number | null;
+  change_percent: number | null;
+}
+
+export interface AdminMarketRatesResponse {
+  rates: AdminMarketRate[];
+  source: string;
+  stale: boolean;
+  fetched_at: string;
+}
+
 export interface AdminReportsResponse {
   customers: AdminCustomer[];
   payment_plans: AdminPaymentPlan[];
