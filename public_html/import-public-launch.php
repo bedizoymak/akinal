@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 const IMPORT_CONFIRM_TOKEN = 'IMPORT_PUBLIC_LAUNCH';
 const IMPORT_SQL_FILE = __DIR__ . '/import-data/import-public-launch.sql';
+const ENABLE_SETUP_TOOL = false;
 
 $forbiddenPatterns = [
     '/\bDROP\b/i',
@@ -22,6 +23,13 @@ $forbiddenPatterns = [
 
 header('Content-Type: text/plain; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
+
+if (!ENABLE_SETUP_TOOL) {
+    http_response_code(403);
+    echo "This public launch importer is disabled for launch readiness.\n";
+    echo "Enable it only in a temporary setup copy, run the import, then delete that copy immediately.\n";
+    exit;
+}
 
 if (($_GET['confirm'] ?? '') !== IMPORT_CONFIRM_TOKEN) {
     http_response_code(403);

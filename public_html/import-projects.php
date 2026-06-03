@@ -12,6 +12,14 @@ declare(strict_types=1);
 
 const IMPORT_CONFIRM_TOKEN = 'IMPORT_AKINAL_PROJECTS';
 const IMPORT_JSON_PATH = __DIR__ . '/import-data/akinal-projeler-export-2026-05-30-07-11.json';
+const ENABLE_SETUP_TOOL = false;
+
+if (!ENABLE_SETUP_TOOL) {
+    output_import_report([
+        'status' => 'disabled',
+        'message' => 'Importer is disabled for launch readiness. Enable only in a temporary setup copy, run once, then delete it.',
+    ], 403);
+}
 
 if (($_GET['confirm'] ?? '') !== IMPORT_CONFIRM_TOKEN) {
     output_import_report([

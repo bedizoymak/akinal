@@ -6,6 +6,10 @@ require_once __DIR__ . '/helpers.php';
 require_admin();
 require_method('POST');
 
+if (!defined('ENABLE_DEMO_IMPORT') || ENABLE_DEMO_IMPORT !== true) {
+    json_error('Demo import üretim ortamında devre dışı.', 403);
+}
+
 if (!defined('DEMO_IMPORT_TOKEN') || DEMO_IMPORT_TOKEN === '' || DEMO_IMPORT_TOKEN === 'LONG_RANDOM_DEMO_IMPORT_TOKEN_HERE') {
     json_error('Demo import token is not configured.', 500);
 }

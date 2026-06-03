@@ -16,6 +16,15 @@ $charset = 'utf8mb4';
 
 $dsn = "mysql:host={$host};dbname={$database};charset={$charset}";
 
+const ENABLE_SETUP_TOOL = false;
+
+if (!ENABLE_SETUP_TOOL) {
+    http_response_code(403);
+    echo "<pre>This installer is disabled for launch readiness.\n";
+    echo "Enable it only in a temporary setup copy, run the install, then delete that copy immediately.</pre>";
+    exit;
+}
+
 if (($_GET['confirm'] ?? '') !== 'INSTALL_AKINAL_SCHEMA') {
     echo "<pre>This installer is locked.\n";
     echo "To run it intentionally, open install-schema.php?confirm=INSTALL_AKINAL_SCHEMA.\n";

@@ -2,12 +2,20 @@
 declare(strict_types=1);
 
 const CREATE_ADMIN_CONFIRM = 'CREATE_AKINAL_ADMIN';
+const ENABLE_SETUP_TOOL = false;
 
 header('X-Content-Type-Options: nosniff');
+header('Content-Type: text/plain; charset=utf-8');
+
+if (!ENABLE_SETUP_TOOL) {
+    http_response_code(403);
+    echo "This admin creation tool is disabled for launch readiness.\n";
+    echo "Enable it only in a temporary setup copy, create the admin, then delete that copy immediately.\n";
+    exit;
+}
 
 if (($_GET['confirm'] ?? '') !== CREATE_ADMIN_CONFIRM) {
     http_response_code(403);
-    header('Content-Type: text/plain; charset=utf-8');
     echo "Refused.\n";
     echo "Open with ?confirm=" . CREATE_ADMIN_CONFIRM . " to create the first admin user.\n";
     exit;

@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import logoImg from "@/assets/logo.png";
 
 type JsonLd = Record<string, unknown>;
 
@@ -29,7 +30,7 @@ const NAVIGATION_ITEMS = [
 
 function getOrigin() {
   if (typeof window !== "undefined") return window.location.origin;
-  return "";
+  return "https://akinalinsaat.com";
 }
 
 function getCurrentPath() {
@@ -74,6 +75,7 @@ export default function Seo({ title, description, canonical, noIndex, structured
   const titleBrand = settings.company_name || "Site";
   const pageTitle = title ? `${titleBrand} | ${title}` : settings.seo_title;
   const pageDescription = description || settings.seo_description;
+  const imageUrl = toAbsoluteUrl(settings.favicon_url || logoImg, origin);
   const sameAs = [settings.instagram_url, settings.facebook_url, settings.linkedin_url].filter(Boolean);
 
   const organizationSchema = stripEmpty({
@@ -146,9 +148,11 @@ export default function Seo({ title, description, canonical, noIndex, structured
       <meta property="og:url" content={canonicalUrl} />
       <meta property="og:site_name" content={settings.company_name} />
       <meta property="og:locale" content="tr_TR" />
-      <meta name="twitter:card" content="summary" />
+      <meta property="og:image" content={imageUrl} />
+      <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={pageTitle} />
       <meta name="twitter:description" content={pageDescription} />
+      <meta name="twitter:image" content={imageUrl} />
       {jsonLd.map((item, index) => (
         <script key={index} type="application/ld+json">
           {JSON.stringify(item)}

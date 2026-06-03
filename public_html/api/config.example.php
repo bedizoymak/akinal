@@ -32,3 +32,8 @@ define('VAPID_PRIVATE_KEY', "-----BEGIN EC PRIVATE KEY-----\nVAPID_PRIVATE_KEY_P
 define('VAPID_SUBJECT', 'mailto:admin@akinalinsaat.com');
 
 define('TURNSTILE_SECRET_KEY', 'TURNSTILE_SECRET_KEY_HERE');
+
+// Dangerous launch/setup tools are disabled by default in committed files.
+// Set these to true only in a temporary, trusted setup copy when absolutely needed.
+define('ENABLE_ADMIN_SQL_EDITOR', false);
+define('ENABLE_DEMO_IMPORT', false);

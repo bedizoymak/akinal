@@ -5,7 +5,6 @@ import {
   Bell,
   CalendarClock,
   ChevronRight,
-  Database,
   FileBarChart,
   FolderKanban,
   HardHat,
@@ -75,7 +74,6 @@ const NAV_GROUPS = [
     title: "Sistem",
     items: [
       { to: "/admin/ayarlar", label: "Ayarlar", description: "Site ayarları", icon: Settings },
-      { to: "/admin/sql-editor", label: "SQL Editor", description: "Veritabanı sorguları", icon: Database },
     ],
   },
 ];
@@ -111,7 +109,6 @@ const PAGE_META: PageMeta[] = [
   { path: "/admin/talepler", title: "İletişim Talepleri", group: "Operasyon" },
   { path: "/admin/bildirimler", title: "Bildirimler", group: "Operasyon" },
   { path: "/admin/ayarlar", title: "Ayarlar", group: "Sistem" },
-  { path: "/admin/sql-editor", title: "SQL Editor", group: "Sistem" },
   { path: "/admin", title: "Genel Bakış", group: "Genel", exact: true },
 ];
 

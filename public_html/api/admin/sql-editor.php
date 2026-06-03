@@ -6,6 +6,10 @@ require_once __DIR__ . '/helpers.php';
 $admin = require_admin();
 require_method('POST');
 
+if (!defined('ENABLE_ADMIN_SQL_EDITOR') || ENABLE_ADMIN_SQL_EDITOR !== true) {
+    json_error('SQL editör üretim ortamında devre dışı.', 403);
+}
+
 try {
     $input = read_admin_json_body();
     $sql = trim((string) ($input['sql'] ?? ''));

@@ -41,7 +41,6 @@ const AdminFinance = lazy(() => import("./pages/admin/AdminFinance"));
 const AdminProjectFinance = lazy(() => import("./pages/admin/AdminProjectFinance"));
 const AdminNotifications = lazy(() => import("./pages/admin/AdminNotifications"));
 const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
-const AdminSqlEditor = lazy(() => import("./pages/admin/AdminSqlEditor"));
 
 const queryClient = new QueryClient();
 
@@ -79,24 +78,23 @@ const App = () => (
                 <Route path="bildirimler" element={<AdminNotifications />} />
                 <Route path="raporlar" element={<AdminReports />} />
                 <Route path="ayarlar" element={<AdminSettings />} />
-                <Route path="sql-editor" element={<AdminSqlEditor />} />
               </Route>
 
               <Route element={<PublicLayout />}>
                 <Route path="/" element={<Home />} />
-              <Route path="/hakkimizda" element={<About />} />
-              <Route path="/hizmetlerimiz" element={<Services />} />
-              <Route path="/hizmetlerimiz/:slug" element={<ServiceDetail />} />
-              <Route path="/projelerimiz" element={<Projects />} />
-              <Route path="/projeler" element={<Projects />} />
-              <Route path="/projelerimiz/:slug" element={<ProjectDetail />} />
-              <Route path="/kentsel-donusum" element={<UrbanTransformation />} />
-              <Route path="/iletisim" element={<Contact />} />
-              <Route path="/gizlilik-politikasi" element={<LegalPage />} />
-              <Route path="/cerez-politikasi" element={<LegalPage />} />
-              <Route path="/kullanim-sartlari" element={<LegalPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Route>
+                <Route path="/hakkimizda" element={<About />} />
+                <Route path="/hizmetlerimiz" element={<Services />} />
+                <Route path="/hizmetlerimiz/:slug" element={<ServiceDetail />} />
+                <Route path="/projelerimiz" element={<Projects />} />
+                <Route path="/projeler" element={<Projects />} />
+                <Route path="/projelerimiz/:slug" element={<ProjectDetail />} />
+                <Route path="/kentsel-donusum" element={<UrbanTransformation />} />
+                <Route path="/iletisim" element={<Contact />} />
+                <Route path="/gizlilik-politikasi" element={<LegalPage />} />
+                <Route path="/cerez-politikasi" element={<LegalPage />} />
+                <Route path="/kullanim-sartlari" element={<LegalPage />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
             </Routes>
           </Suspense>
         </BrowserRouter>
