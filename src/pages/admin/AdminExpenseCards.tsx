@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Edit, FileText, Layers, Plus, Search, Tags, Trash2 } from "lucide-react";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,7 @@ function formFromCard(card: AdminExpenseCard): ExpenseCardForm {
 
 export default function AdminExpenseCards() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [items, setItems] = useState<AdminExpenseCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -211,7 +212,11 @@ export default function AdminExpenseCards() {
             </thead>
             <tbody>
               {filtered.map((card) => (
-                <tr key={card.id} className="border-t border-border hover:bg-muted/30">
+                <tr
+                  key={card.id}
+                  className="cursor-pointer border-t border-border transition-colors hover:bg-emerald-50/60"
+                  onClick={() => navigate(`/admin/gider-kartlari/${card.id}/finans`)}
+                >
                   <td className="p-3 font-semibold">{card.name}</td>
                   <td className="p-3">{card.category || <span className="text-muted-foreground">—</span>}</td>
                   <td className="max-w-md truncate p-3 text-muted-foreground">{card.description || "—"}</td>
@@ -221,7 +226,7 @@ export default function AdminExpenseCards() {
                     </span>
                   </td>
                   <td className="p-3">
-                    <div className="flex justify-end gap-1">
+                    <div className="flex justify-end gap-1" onClick={(event) => event.stopPropagation()}>
                       <Button asChild size="sm" variant="outline"><Link to={`/admin/gider-kartlari/${card.id}/finans`}><FileText className="h-4 w-4" /> Finans</Link></Button>
                       <Button size="sm" variant="ghost" onClick={() => openEdit(card)} title="Düzenle"><Edit className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Düzenle</span></Button>
                       <Button size="sm" variant="ghost" onClick={() => deleteCard(card)} title="Sil"><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only xl:not-sr-only xl:ml-1">Sil</span></Button>
