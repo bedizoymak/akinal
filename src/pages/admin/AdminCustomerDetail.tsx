@@ -71,6 +71,7 @@ export default function AdminCustomerDetail() {
   const [docs, setDocs] = useState<any[]>([]);
   const [newNote, setNewNote] = useState("");
   const { toast } = useToast();
+  const today = new Date().toISOString().slice(0, 10);
 
   async function load() {
     if (!id) return;
@@ -112,10 +113,22 @@ export default function AdminCustomerDetail() {
         .filter((plan) => daysUntil(plan.due_date) >= 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal" && plan.remain > 0)
         .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")))[0];
       const upcoming = upcomingPlan?.remain || 0;
-      result[account.value] = { totalDue, totalPaid, balance, overdue, upcoming, plans: enrichedPlans, pays: accountPays };
+      const accountSummaryPlans = enrichedPlans.filter((plan) => {
+        const dueDate = String(plan.due_date || "");
+        const paid = safeNumber(plan.paid);
+        const isPaid = plan.computed === "Ödendi" || paid > 0;
+        const isDueOrPast = dueDate !== "" && dueDate <= today;
+        return isPaid || isDueOrPast;
+      });
+      const futurePlans = enrichedPlans.filter((plan) => {
+        const dueDate = String(plan.due_date || "");
+        const paid = safeNumber(plan.paid);
+        return dueDate > today && paid <= 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal";
+      });
+      result[account.value] = { totalDue, totalPaid, balance, overdue, upcoming, plans: enrichedPlans, accountSummaryPlans, futurePlans, pays: accountPays };
       return result;
     }, {} as Record<string, any>);
-  }, [plans, pays]);
+  }, [plans, pays, today]);
 
   const combinedPaymentChart = useMemo(() => {
     const official = accountSummaries.resmi || { totalPaid: 0, balance: 0, overdue: 0 };
@@ -208,7 +221,31 @@ export default function AdminCustomerDetail() {
         </TabsList>
 
         {ACCOUNT_TABS.map((account) => {
-          const summary = accountSummaries[account.value] || { totalDue: 0, totalPaid: 0, balance: 0, overdue: 0, upcoming: 0, plans: [], pays: [] };
+          const summary = accountSummaries[account.value] || { totalDue: 0, totalPaid: 0, balance: 0, overdue: 0, upcoming: 0, plans: [], accountSummaryPlans: [], futurePlans: [], pays: [] };
+          const renderPlanRows = (rows: any[], emptyMessage: string) => (
+            <div className="bg-card border border-border rounded-md overflow-x-auto">
+              <table className="min-w-[760px] w-full text-sm">
+                <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Başlık</th><th className="p-3 text-left">Vade</th><th className="p-3 text-right">Tutar</th><th className="p-3 text-right">Ödenen</th><th className="p-3 text-right">Kalan</th><th className="p-3">Durum</th></tr></thead>
+                <tbody>
+                  {rows.map((p: any) => {
+                    const isLate = String(p.due_date || "") < today && p.computed !== "Ödendi" && p.computed !== "İptal" && safeNumber(p.remain) > 0;
+                    const label = isLate ? "Geciken Ödeme" : displayLabel(p.computed);
+                    return (
+                      <tr key={p.id} className="border-t border-border">
+                        <td className="p-3"><div className="font-medium">{p.title}</div>{p.description && <div className="text-xs text-muted-foreground">{p.description}</div>}</td>
+                        <td className="p-3">{formatDate(p.due_date)}</td>
+                        <td className="p-3 text-right">{formatTRY(p.amount)}</td>
+                        <td className="p-3 text-right text-emerald-700">{formatTRY(p.paid)}</td>
+                        <td className="p-3 text-right font-bold">{formatTRY(p.remain)}</td>
+                        <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(isLate ? "Vadesi Geçti" : p.computed))}>{label}</span></td>
+                      </tr>
+                    );
+                  })}
+                  {rows.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">{emptyMessage}</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          );
           return (
             <TabsContent key={account.value} value={account.value} className="mt-4 space-y-5">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -225,48 +262,16 @@ export default function AdminCustomerDetail() {
                     <div className="flex justify-end mb-3">
                       <Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to={`/admin/odeme-planlari?musteri=${id}&hesap=${account.value}`}><Plus className="h-4 w-4 mr-1" /> Ödeme Ekle</Link></Button>
                     </div>
-                    <div className="bg-card border border-border rounded-md overflow-x-auto">
-                      <table className="min-w-[760px] w-full text-sm">
-                        <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Başlık</th><th className="p-3 text-left">Vade</th><th className="p-3 text-right">Tutar</th><th className="p-3 text-right">Ödenen</th><th className="p-3 text-right">Kalan</th><th className="p-3">Durum</th></tr></thead>
-                        <tbody>
-                          {summary.plans.map((p: any) => {
-                            return (
-                              <tr key={p.id} className="border-t border-border">
-                                <td className="p-3"><div className="font-medium">{p.title}</div>{p.description && <div className="text-xs text-muted-foreground">{p.description}</div>}</td>
-                                <td className="p-3">{formatDate(p.due_date)}</td>
-                                <td className="p-3 text-right">{formatTRY(p.amount)}</td>
-                                <td className="p-3 text-right text-emerald-700">{formatTRY(p.paid)}</td>
-                                <td className="p-3 text-right font-bold">{formatTRY(p.remain)}</td>
-                                <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(p.computed))}>{displayLabel(p.computed)}</span></td>
-                              </tr>
-                            );
-                          })}
-                          {summary.plans.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Bu hesap türü için ödeme planı bulunmuyor.</td></tr>}
-                        </tbody>
-                      </table>
-                    </div>
                   </div>
 
                   <div>
-                    <div className="flex justify-end mb-3">
-                      <Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to={`/admin/tahsilatlar?musteri=${id}&hesap=${account.value}&yeni=1`}><Plus className="h-4 w-4 mr-1" /> Yeni Tahsilat Ekle</Link></Button>
-                    </div>
-                    <div className="bg-card border border-border rounded-md overflow-x-auto">
-                      <table className="min-w-[680px] w-full text-sm">
-                        <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Tarih</th><th className="p-3 text-right">Tutar</th><th className="p-3">Yöntem</th><th className="p-3 text-left">Açıklama</th></tr></thead>
-                        <tbody>
-                          {summary.pays.map((p: any) => (
-                            <tr key={p.id} className="border-t border-border">
-                              <td className="p-3">{formatDate(p.payment_date)}</td>
-                              <td className="p-3 text-right text-emerald-700 font-medium">{formatTRY(p.amount)}</td>
-                              <td className="p-3">{p.payment_method}</td>
-                              <td className="p-3 text-muted-foreground">{p.description || "-"}</td>
-                            </tr>
-                          ))}
-                          {summary.pays.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">Bu hesap türü için tahsilat kaydı yok.</td></tr>}
-                        </tbody>
-                      </table>
-                    </div>
+                    <h3 className="mb-3 font-semibold">Hesap Özeti</h3>
+                    {renderPlanRows(summary.accountSummaryPlans, "Bu hesap türü için hesap özeti kaydı bulunmuyor.")}
+                  </div>
+
+                  <div>
+                    <h3 className="mb-3 font-semibold">Gelecek Ödemeler</h3>
+                    {renderPlanRows(summary.futurePlans, "Bu hesap türü için gelecek ödeme bulunmuyor.")}
                   </div>
                 </div>
 
