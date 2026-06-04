@@ -20,6 +20,7 @@ export default function AdminPaymentPlans() {
   const [params] = useSearchParams();
   const preCustomer = params.get("musteri") || "";
   const preAccountType = params.get("hesap") === "gayri_resmi" ? "gayri_resmi" : "resmi";
+  const editPlanId = params.get("duzenle") || "";
   const [plans, setPlans] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
@@ -50,7 +51,12 @@ export default function AdminPaymentPlans() {
     }
   }
   useEffect(() => { load(); }, []);
-  useEffect(() => { if (preCustomer) { setForm((f: any) => ({ ...f, customer_id: preCustomer, account_type: preAccountType })); setOpen(true); } }, [preCustomer, preAccountType]);
+  useEffect(() => { if (preCustomer && !editPlanId) { setForm((f: any) => ({ ...f, customer_id: preCustomer, account_type: preAccountType })); setOpen(true); } }, [preCustomer, preAccountType, editPlanId]);
+  useEffect(() => {
+    if (!editPlanId || loading) return;
+    const plan = plans.find((item) => item.id === editPlanId);
+    if (plan) openEdit(plan);
+  }, [editPlanId, loading, plans]);
 
   function openNew() { setForm({ ...empty, customer_id: filterCustomer !== "all" ? filterCustomer : "", account_type: preAccountType }); setEditId(null); setOpen(true); }
   function openEdit(p: any) { setForm({ ...p, account_type: p.account_type || "resmi", project_id: p.project_id || "", amount: String(p.amount), notes: p.notes || "", description: p.description || "" }); setEditId(p.id); setOpen(true); }

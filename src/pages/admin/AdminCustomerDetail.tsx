@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -72,6 +72,7 @@ export default function AdminCustomerDetail() {
   const [newNote, setNewNote] = useState("");
   const { toast } = useToast();
   const today = new Date().toISOString().slice(0, 10);
+  const navigate = useNavigate();
 
   async function load() {
     if (!id) return;
@@ -131,23 +132,37 @@ export default function AdminCustomerDetail() {
   }, [plans, pays, today]);
 
   const combinedPaymentChart = useMemo(() => {
-    const official = accountSummaries.resmi || { totalPaid: 0, balance: 0, overdue: 0 };
-    const unofficial = accountSummaries.gayri_resmi || { totalPaid: 0, balance: 0, overdue: 0 };
-    const officialRemaining = Math.max(0, official.balance);
-    const unofficialRemaining = Math.max(0, unofficial.balance);
-    const overdue = Math.max(0, Number(official.overdue || 0) + Number(unofficial.overdue || 0));
-    const total = Number(official.totalPaid || 0) + Number(unofficial.totalPaid || 0) + officialRemaining + unofficialRemaining;
+    const accountChartValues = (summary: any) => {
+      const accountSummaryRows = summary?.accountSummaryPlans || [];
+      const futureRows = summary?.futurePlans || [];
+      const paid = accountSummaryRows.reduce((sum: number, plan: any) => {
+        const paidAmount = plan.computed === "Ödendi" ? safeNumber(plan.amount) : Math.min(safeNumber(plan.amount), safeNumber(plan.paid));
+        return sum + Math.max(0, paidAmount);
+      }, 0);
+      const overdue = accountSummaryRows
+        .filter((plan: any) => String(plan.due_date || "") < today && plan.computed !== "Ödendi" && plan.computed !== "İptal")
+        .reduce((sum: number, plan: any) => sum + Math.max(0, safeNumber(plan.remain)), 0);
+      const currentRemaining = accountSummaryRows
+        .filter((plan: any) => String(plan.due_date || "") >= today && plan.computed !== "Ödendi" && plan.computed !== "İptal")
+        .reduce((sum: number, plan: any) => sum + Math.max(0, safeNumber(plan.remain)), 0);
+      const futureRemaining = futureRows.reduce((sum: number, plan: any) => sum + Math.max(0, safeNumber(plan.remain)), 0);
+      return { paid, overdue, remaining: currentRemaining + futureRemaining };
+    };
+    const official = accountChartValues(accountSummaries.resmi);
+    const unofficial = accountChartValues(accountSummaries.gayri_resmi);
+    const overdue = official.overdue + unofficial.overdue;
+    const total = official.paid + unofficial.paid + official.remaining + unofficial.remaining + overdue;
 
     return [
-      { name: "Resmi ödenen", value: Number(official.totalPaid || 0), color: "#15803d" },
-      { name: "Gayri resmi ödenen", value: Number(unofficial.totalPaid || 0), color: "#22c55e" },
-      { name: "Resmi kalan", value: Math.max(0, officialRemaining - Number(official.overdue || 0)), color: "#2563eb" },
-      { name: "Gayri resmi kalan", value: Math.max(0, unofficialRemaining - Number(unofficial.overdue || 0)), color: "#60a5fa" },
+      { name: "Resmi ödenen", value: official.paid, color: "#15803d" },
+      { name: "Gayri resmi ödenen", value: unofficial.paid, color: "#22c55e" },
+      { name: "Resmi kalan", value: official.remaining, color: "#2563eb" },
+      { name: "Gayri resmi kalan", value: unofficial.remaining, color: "#60a5fa" },
       { name: "Geciken ödeme", value: overdue, color: "#dc2626" },
     ]
       .filter((item) => item.value > 0)
       .map((item) => ({ ...item, percentLabel: percentLabel(item.value, total) }));
-  }, [accountSummaries]);
+  }, [accountSummaries, today]);
 
   async function addNote() {
     if (!id || !newNote.trim()) return;
@@ -222,6 +237,9 @@ export default function AdminCustomerDetail() {
 
         {ACCOUNT_TABS.map((account) => {
           const summary = accountSummaries[account.value] || { totalDue: 0, totalPaid: 0, balance: 0, overdue: 0, upcoming: 0, plans: [], accountSummaryPlans: [], futurePlans: [], pays: [] };
+          const openPaymentPlanEdit = (planId: string) => {
+            navigate(`/admin/odeme-planlari?musteri=${id}&hesap=${account.value}&duzenle=${planId}`);
+          };
           const renderPlanRows = (rows: any[], emptyMessage: string) => (
             <div className="bg-card border border-border rounded-md overflow-x-auto">
               <table className="min-w-[760px] w-full text-sm">
@@ -231,7 +249,12 @@ export default function AdminCustomerDetail() {
                     const isLate = String(p.due_date || "") < today && p.computed !== "Ödendi" && p.computed !== "İptal" && safeNumber(p.remain) > 0;
                     const label = isLate ? "Geciken Ödeme" : displayLabel(p.computed);
                     return (
-                      <tr key={p.id} className="border-t border-border">
+                      <tr
+                        key={p.id}
+                        className="cursor-pointer border-t border-border transition-colors hover:bg-accent/5"
+                        onClick={() => openPaymentPlanEdit(p.id)}
+                        title="Ödemeyi düzenle"
+                      >
                         <td className="p-3"><div className="font-medium">{p.title}</div>{p.description && <div className="text-xs text-muted-foreground">{p.description}</div>}</td>
                         <td className="p-3">{formatDate(p.due_date)}</td>
                         <td className="p-3 text-right">{formatTRY(p.amount)}</td>
