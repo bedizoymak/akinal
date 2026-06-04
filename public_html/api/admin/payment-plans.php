@@ -72,7 +72,7 @@ function plan_payload(array $input): array
         'amount' => (float) ($input['amount'] ?? 0),
         'account_type' => account_type($input),
         'due_date' => require_non_empty($input, 'due_date', 'Vade tarihi zorunludur.'),
-        'status' => nullable_string($input, 'status') === 'İptal' ? 'İptal' : 'Bekliyor',
+        'status' => payment_plan_status($input),
         'notes' => nullable_string($input, 'notes'),
     ];
 }
@@ -81,6 +81,12 @@ function account_type(array $input): string
 {
     $value = (string) ($input['account_type'] ?? 'resmi');
     return in_array($value, ['resmi', 'gayri_resmi'], true) ? $value : 'resmi';
+}
+
+function payment_plan_status(array $input): string
+{
+    $value = nullable_string($input, 'status') ?? 'Bekliyor';
+    return in_array($value, ['Ödendi', 'Bekliyor', 'Vadesi Geçti', 'Kısmi Ödendi', 'İptal'], true) ? $value : 'Bekliyor';
 }
 
 function ensure_account_type_column(): void
@@ -112,7 +118,7 @@ function sync_customer_account_plan_statuses(string $customerId, string $account
     )['paid'] ?? 0);
     $statement = db()->prepare('UPDATE ak_payment_plans SET status = :status WHERE id = :id');
     foreach ($plans as $plan) {
-        if (($plan['status'] ?? null) === 'İptal') {
+        if (($plan['status'] ?? null) === 'İptal' || ($plan['status'] ?? null) === 'Ödendi') {
             continue;
         }
         $amount = (float) $plan['amount'];

@@ -478,6 +478,7 @@ export function summarizeFinance(input: FinanceSummaryInput): FinanceSummary {
 
 export function derivePlanStatus(plan: { amount: number | string; due_date: string; status: string }, paid: number): string {
   if (plan.status === "İptal") return "İptal";
+  if (plan.status === "Ödendi") return "Ödendi";
   if (paid <= 0) {
     if (daysUntil(plan.due_date) < 0) return "Vadesi Geçti";
     return "Bekliyor";

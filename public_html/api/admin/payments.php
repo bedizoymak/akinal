@@ -115,7 +115,7 @@ function sync_customer_account_plan_statuses(string $customerId, string $account
     )['paid'] ?? 0);
     $statement = db()->prepare('UPDATE ak_payment_plans SET status = :status WHERE id = :id');
     foreach ($plans as $plan) {
-        if (($plan['status'] ?? null) === 'İptal') {
+        if (($plan['status'] ?? null) === 'İptal' || ($plan['status'] ?? null) === 'Ödendi') {
             continue;
         }
         $amount = (float) $plan['amount'];
