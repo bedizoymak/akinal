@@ -79,6 +79,13 @@ export default function AdminCustomerDetail() {
   const [planForm, setPlanForm] = useState<any>({ account_type: "resmi", project_id: "", title: "", description: "", amount: "", due_date: "", status: "Bekliyor", notes: "" });
   const { toast } = useToast();
   const today = new Date().toISOString().slice(0, 10);
+  const refreshCustomerDetail = async () => {
+    await load();
+  };
+  const clearAccountLocalFinance = (account: "resmi" | "gayri_resmi") => {
+    setPlans((current) => current.filter((plan) => accountType(plan.account_type) !== account));
+    setPays((current) => current.filter((payment) => accountType(payment.account_type) !== account));
+  };
 
   async function load() {
     if (!id) return;
@@ -218,7 +225,8 @@ export default function AdminCustomerDetail() {
       toast({ title: "Ödeme eklendi" });
     }
     setPlanDialogOpen(false);
-    load();
+    clearAccountLocalFinance(accountType(planForm.account_type));
+    await refreshCustomerDetail();
   }
   async function deletePaymentPlanFromModal() {
     if (!editingPlanId) return;
@@ -228,7 +236,8 @@ export default function AdminCustomerDetail() {
       toast({ title: "Ödeme kaydı silindi" });
       setPlanDialogOpen(false);
       setEditingPlanId(null);
-      load();
+      clearAccountLocalFinance(accountType(planForm.account_type));
+      await refreshCustomerDetail();
     } catch (error) {
       toast({
         title: "Ödeme kaydı silinemedi",
@@ -295,7 +304,15 @@ export default function AdminCustomerDetail() {
 
       <Tabs defaultValue="resmi">
         <TabsList className="flex flex-wrap">
-          {ACCOUNT_TABS.map((account) => <TabsTrigger key={account.value} value={account.value}>{account.label}</TabsTrigger>)}
+          {ACCOUNT_TABS.map((account) => (
+            <TabsTrigger
+              key={account.value}
+              value={account.value}
+              className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-sm"
+            >
+              {account.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         {ACCOUNT_TABS.map((account) => {
