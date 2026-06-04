@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { AdminPageHeader } from "@/components/admin/AdminPage";
-import { createAdminCustomerNote, createAdminPaymentPlan, deleteAdminCustomerNote, getAdminCustomerDetail, updateAdminPaymentPlan } from "@/lib/apiClient";
+import { createAdminCustomerNote, createAdminPaymentPlan, deleteAdminCustomerNote, deleteAdminPaymentPlan, getAdminCustomerDetail, updateAdminPaymentPlan } from "@/lib/apiClient";
 
 function Stat({ label, value, color }: any) {
   return (
@@ -219,6 +219,23 @@ export default function AdminCustomerDetail() {
     }
     setPlanDialogOpen(false);
     load();
+  }
+  async function deletePaymentPlanFromModal() {
+    if (!editingPlanId) return;
+    if (!confirm("Bu ödeme kaydını silmek istediğinize emin misiniz?")) return;
+    try {
+      await deleteAdminPaymentPlan(editingPlanId);
+      toast({ title: "Ödeme kaydı silindi" });
+      setPlanDialogOpen(false);
+      setEditingPlanId(null);
+      load();
+    } catch (error) {
+      toast({
+        title: "Ödeme kaydı silinemedi",
+        description: error instanceof Error ? error.message : "Kayıt başka bir yerde kullanılıyor olabilir. Lütfen bağlantılı kayıtları kontrol edin.",
+        variant: "destructive",
+      });
+    }
   }
 
   if (!customer) return <div className="rounded-md border border-border bg-card py-12 text-center text-sm text-muted-foreground shadow-card-soft">Müşteri bilgileri hazırlanıyor...</div>;
@@ -430,8 +447,11 @@ export default function AdminCustomerDetail() {
             <div className="md:col-span-2"><Label>Not</Label><Textarea value={planForm.notes} onChange={(event) => setPlanForm((form: any) => ({ ...form, notes: event.target.value }))} rows={2} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPlanDialogOpen(false)}>İptal</Button>
-            <Button onClick={savePaymentPlan} className="bg-accent hover:bg-accent-glow text-accent-foreground">Kaydet</Button>
+            {editingPlanId && <Button variant="destructive" onClick={deletePaymentPlanFromModal}>Sil</Button>}
+            <div className="flex flex-1 justify-end gap-2">
+              <Button variant="outline" onClick={() => setPlanDialogOpen(false)}>İptal</Button>
+              <Button onClick={savePaymentPlan} className="bg-accent hover:bg-accent-glow text-accent-foreground">Kaydet</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
