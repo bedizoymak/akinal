@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Edit, Mail, MapPin, MessageCircle, Phone, Plus, Trash2 } from "lucide-react";
-import { customerDisplayName, displayLabel, formatTRY, formatDate, statusBadgeClass, daysUntil, whatsappLink } from "@/lib/finance";
+import { accountType, allocateCollectionsToPlans, customerDisplayName, derivePlanStatus, displayLabel, formatTRY, formatDate, statusBadgeClass, daysUntil, safeNumber, whatsappLink } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
@@ -24,10 +24,6 @@ const ACCOUNT_TABS = [
   { value: "resmi", label: "Resmi Hesap" },
   { value: "gayri_resmi", label: "Gayri Resmi Hesap" },
 ] as const;
-
-function accountType(value: any): "resmi" | "gayri_resmi" {
-  return value === "gayri_resmi" ? "gayri_resmi" : "resmi";
-}
 
 function percentLabel(value: number, total: number): string {
   if (total <= 0) return "%0";
@@ -99,19 +95,24 @@ export default function AdminCustomerDetail() {
     return ACCOUNT_TABS.reduce((result, account) => {
       const accountPlans = plans.filter((plan) => accountType(plan.account_type) === account.value);
       const accountPays = pays.filter((payment) => accountType(payment.account_type) === account.value);
-      const totalDue = accountPlans.reduce((s, p) => s + Number(p.amount), 0);
-      const totalPaid = accountPays.reduce((s, p) => s + Number(p.amount), 0);
-    const balance = totalDue - totalPaid;
-      const overdue = accountPlans.filter((p) => daysUntil(p.due_date) < 0 && p.status !== "Ödendi" && p.status !== "İptal").reduce((s, p) => {
-        const paid = accountPays.filter((x) => x.payment_plan_id === p.id).reduce((a, x) => a + Number(x.amount), 0);
-      return s + Math.max(0, Number(p.amount) - paid);
-    }, 0);
-      const upcoming = accountPlans.filter((p) => { const d = daysUntil(p.due_date); return d >= 0 && d <= 30 && p.status !== "Ödendi" && p.status !== "İptal"; })
-      .reduce((s, p) => {
-          const paid = accountPays.filter((x) => x.payment_plan_id === p.id).reduce((a, x) => a + Number(x.amount), 0);
-        return s + Math.max(0, Number(p.amount) - paid);
-      }, 0);
-      result[account.value] = { totalDue, totalPaid, balance, overdue, upcoming, plans: accountPlans, pays: accountPays };
+      const allocatedPaid = allocateCollectionsToPlans(accountPlans, accountPays);
+      const enrichedPlans = accountPlans.map((plan) => {
+        const paid = allocatedPaid.get(plan.id) || 0;
+        const remain = Math.max(0, safeNumber(plan.amount) - paid);
+        const computed = derivePlanStatus(plan, paid);
+        return { ...plan, paid, remain, computed };
+      });
+      const totalDue = accountPlans.reduce((s, p) => s + safeNumber(p.amount), 0);
+      const totalPaid = accountPays.reduce((s, p) => s + safeNumber(p.amount), 0);
+      const balance = totalDue - totalPaid;
+      const overdue = enrichedPlans
+        .filter((plan) => daysUntil(plan.due_date) < 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal")
+        .reduce((sum, plan) => sum + plan.remain, 0);
+      const upcomingPlan = enrichedPlans
+        .filter((plan) => daysUntil(plan.due_date) >= 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal" && plan.remain > 0)
+        .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")))[0];
+      const upcoming = upcomingPlan?.remain || 0;
+      result[account.value] = { totalDue, totalPaid, balance, overdue, upcoming, plans: enrichedPlans, pays: accountPays };
       return result;
     }, {} as Record<string, any>);
   }, [plans, pays]);
@@ -229,16 +230,14 @@ export default function AdminCustomerDetail() {
                         <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Başlık</th><th className="p-3 text-left">Vade</th><th className="p-3 text-right">Tutar</th><th className="p-3 text-right">Ödenen</th><th className="p-3 text-right">Kalan</th><th className="p-3">Durum</th></tr></thead>
                         <tbody>
                           {summary.plans.map((p: any) => {
-                            const paid = summary.pays.filter((x: any) => x.payment_plan_id === p.id).reduce((a: number, x: any) => a + Number(x.amount), 0);
-                            const remain = Math.max(0, Number(p.amount) - paid);
                             return (
                               <tr key={p.id} className="border-t border-border">
                                 <td className="p-3"><div className="font-medium">{p.title}</div>{p.description && <div className="text-xs text-muted-foreground">{p.description}</div>}</td>
                                 <td className="p-3">{formatDate(p.due_date)}</td>
                                 <td className="p-3 text-right">{formatTRY(p.amount)}</td>
-                                <td className="p-3 text-right text-emerald-700">{formatTRY(paid)}</td>
-                                <td className="p-3 text-right font-bold">{formatTRY(remain)}</td>
-                                <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(p.status))}>{displayLabel(p.status)}</span></td>
+                                <td className="p-3 text-right text-emerald-700">{formatTRY(p.paid)}</td>
+                                <td className="p-3 text-right font-bold">{formatTRY(p.remain)}</td>
+                                <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(p.computed))}>{displayLabel(p.computed)}</span></td>
                               </tr>
                             );
                           })}

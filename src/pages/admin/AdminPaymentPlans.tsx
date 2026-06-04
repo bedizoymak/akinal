@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { PAYMENT_PLAN_STATUSES, formatTRY, formatDate, statusBadgeClass, customerDisplayName, daysUntil, exportCSV, whatsappLink, derivePlanStatus } from "@/lib/finance";
+import { PAYMENT_PLAN_STATUSES, accountType, allocateCollectionsToPlans, formatTRY, formatDate, statusBadgeClass, customerDisplayName, daysUntil, exportCSV, whatsappLink, derivePlanStatus, safeNumber } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { Plus, Edit, Trash2, Download, MessageCircle, CalendarClock, AlertTriangle, Wallet, CheckCircle2, Loader2 } from "lucide-react";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
@@ -85,14 +85,39 @@ export default function AdminPaymentPlans() {
     toast({ title: "Silindi" }); load();
   }
 
-  const enriched = useMemo(() => plans.map((p) => {
-    const paid = pays.filter((x) => x.payment_plan_id === p.id).reduce((s, x) => s + Number(x.amount), 0);
-    const remain = Math.max(0, Number(p.amount) - paid);
+  const enriched = useMemo(() => {
+    const allocationByPlanId = new Map<string, number>();
+    const groups = new Map<string, { plans: any[]; payments: any[] }>();
+
+    plans.forEach((plan) => {
+      const key = `${plan.customer_id || ""}:${accountType(plan.account_type)}`;
+      const group = groups.get(key) || { plans: [], payments: [] };
+      group.plans.push(plan);
+      groups.set(key, group);
+    });
+
+    pays.forEach((payment) => {
+      const key = `${payment.customer_id || ""}:${accountType(payment.account_type)}`;
+      const group = groups.get(key) || { plans: [], payments: [] };
+      group.payments.push(payment);
+      groups.set(key, group);
+    });
+
+    groups.forEach((group) => {
+      allocateCollectionsToPlans(group.plans, group.payments).forEach((paid, planId) => {
+        allocationByPlanId.set(planId, paid);
+      });
+    });
+
+    return plans.map((p) => {
+    const paid = allocationByPlanId.get(p.id) || 0;
+    const remain = Math.max(0, safeNumber(p.amount) - paid);
     const computed = derivePlanStatus(p, paid);
     const customer = customers.find((c) => c.id === p.customer_id);
     const project = projects.find((pr) => pr.id === p.project_id);
     return { ...p, paid, remain, computed, customer, project };
-  }), [plans, pays, customers, projects]);
+  });
+  }, [plans, pays, customers, projects]);
 
   const filtered = enriched.filter((p) => {
     if (filterCustomer !== "all" && p.customer_id !== filterCustomer) return false;
@@ -105,10 +130,10 @@ export default function AdminPaymentPlans() {
   });
 
   const summary = {
-    total: enriched.reduce((sum, plan) => sum + Number(plan.amount || 0), 0),
+    total: enriched.reduce((sum, plan) => sum + safeNumber(plan.amount), 0),
     paid: enriched.reduce((sum, plan) => sum + plan.paid, 0),
     remaining: enriched.reduce((sum, plan) => sum + plan.remain, 0),
-    overdue: enriched.filter((plan) => plan.computed === "Gecikti").reduce((sum, plan) => sum + plan.remain, 0),
+    overdue: enriched.filter((plan) => plan.computed === "Vadesi Geçti").reduce((sum, plan) => sum + plan.remain, 0),
     completed: enriched.filter((plan) => plan.computed === "Ödendi").length,
   };
 

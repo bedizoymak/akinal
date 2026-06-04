@@ -15,7 +15,7 @@ try {
             'payment_plans' => fetch_all('SELECT * FROM ak_payment_plans ORDER BY due_date ASC'),
             'customers' => fetch_all('SELECT * FROM ak_customers ORDER BY created_at DESC'),
             'projects' => fetch_all('SELECT id, title FROM ak_projects ORDER BY sort_order ASC, created_at DESC'),
-            'payments' => fetch_all('SELECT payment_plan_id, amount FROM ak_payments'),
+            'payments' => fetch_all('SELECT customer_id, payment_plan_id, amount, account_type, payment_date FROM ak_payments'),
         ]);
     }
 
@@ -25,13 +25,20 @@ try {
         $payload = plan_payload($input);
         $payload['id'] = $id;
         insert_row('ak_payment_plans', $payload);
+        sync_customer_account_plan_statuses($payload['customer_id'], $payload['account_type']);
         json_success(['payment_plan' => fetch_one('SELECT * FROM ak_payment_plans WHERE id = :id', ['id' => $id])], 201);
     }
 
     if ($method === 'PATCH') {
         $input = read_admin_json_body();
         $id = require_non_empty($input, 'id', 'Ödeme planı bulunamadı.');
-        update_row('ak_payment_plans', plan_payload($input), $id);
+        $previous = fetch_one('SELECT customer_id, account_type FROM ak_payment_plans WHERE id = :id', ['id' => $id]);
+        $payload = plan_payload($input);
+        update_row('ak_payment_plans', $payload, $id);
+        sync_customer_account_plan_statuses($payload['customer_id'], $payload['account_type']);
+        if ($previous && ((string) $previous['customer_id'] !== $payload['customer_id'] || account_type($previous) !== $payload['account_type'])) {
+            sync_customer_account_plan_statuses((string) $previous['customer_id'], account_type($previous));
+        }
         json_success(['payment_plan' => fetch_one('SELECT * FROM ak_payment_plans WHERE id = :id', ['id' => $id])]);
     }
 
@@ -41,7 +48,11 @@ try {
             $input = read_admin_json_body();
             $id = require_non_empty($input, 'id', 'Ödeme planı bulunamadı.');
         }
+        $previous = fetch_one('SELECT customer_id, account_type FROM ak_payment_plans WHERE id = :id', ['id' => $id]);
         db()->prepare('DELETE FROM ak_payment_plans WHERE id = :id')->execute(['id' => $id]);
+        if ($previous) {
+            sync_customer_account_plan_statuses((string) $previous['customer_id'], account_type($previous));
+        }
         json_success(['deleted' => true]);
     }
 
@@ -61,7 +72,7 @@ function plan_payload(array $input): array
         'amount' => (float) ($input['amount'] ?? 0),
         'account_type' => account_type($input),
         'due_date' => require_non_empty($input, 'due_date', 'Vade tarihi zorunludur.'),
-        'status' => nullable_string($input, 'status') ?? 'Bekliyor',
+        'status' => nullable_string($input, 'status') === 'İptal' ? 'İptal' : 'Bekliyor',
         'notes' => nullable_string($input, 'notes'),
     ];
 }
@@ -87,3 +98,35 @@ function fetch_all(string $sql, array $params = []): array { $stmt = db()->prepa
 function fetch_one(string $sql, array $params = []): ?array { $rows = fetch_all($sql . ' LIMIT 1', $params); return $rows[0] ?? null; }
 function insert_row(string $table, array $payload): void { $columns = array_keys($payload); db()->prepare('INSERT INTO ' . $table . ' (`' . implode('`, `', $columns) . '`) VALUES (:' . implode(', :', $columns) . ')')->execute($payload); }
 function update_row(string $table, array $payload, string $id): void { $sets = array_map(static fn($field) => "`{$field}` = :{$field}", array_keys($payload)); $payload['id'] = $id; db()->prepare('UPDATE ' . $table . ' SET ' . implode(', ', $sets) . ' WHERE id = :id')->execute($payload); }
+
+function sync_customer_account_plan_statuses(string $customerId, string $accountType): void
+{
+    if ($customerId === '') return;
+    $plans = fetch_all(
+        'SELECT id, amount, due_date, status FROM ak_payment_plans WHERE customer_id = :customer_id AND account_type = :account_type ORDER BY due_date ASC',
+        ['customer_id' => $customerId, 'account_type' => $accountType]
+    );
+    $remainingCollection = (float) (fetch_one(
+        'SELECT COALESCE(SUM(amount),0) AS paid FROM ak_payments WHERE customer_id = :customer_id AND account_type = :account_type',
+        ['customer_id' => $customerId, 'account_type' => $accountType]
+    )['paid'] ?? 0);
+    $statement = db()->prepare('UPDATE ak_payment_plans SET status = :status WHERE id = :id');
+    foreach ($plans as $plan) {
+        if (($plan['status'] ?? null) === 'İptal') {
+            continue;
+        }
+        $amount = (float) $plan['amount'];
+        $paid = min($amount, max(0, $remainingCollection));
+        $remainingCollection -= $paid;
+        $status = derive_plan_status($amount, (string) $plan['due_date'], $paid);
+        $statement->execute(['id' => $plan['id'], 'status' => $status]);
+    }
+}
+
+function derive_plan_status(float $amount, string $dueDate, float $paid): string
+{
+    if ($paid <= 0) {
+        return $dueDate < date('Y-m-d') ? 'Vadesi Geçti' : 'Bekliyor';
+    }
+    return $paid >= $amount ? 'Ödendi' : 'Kısmi Ödendi';
+}

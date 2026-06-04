@@ -1,6 +1,6 @@
 export const CUSTOMER_TYPES = ["Bireysel", "Firma", "Arsa Sahibi", "Daire Sahibi", "Yatırımcı", "Diğer"] as const;
 export const CUSTOMER_STATUSES = ["Aktif", "Beklemede", "Tamamlandı", "Pasif"] as const;
-export const PAYMENT_PLAN_STATUSES = ["Bekliyor", "Kısmi Ödendi", "Ödendi", "Gecikti", "İptal"] as const;
+export const PAYMENT_PLAN_STATUSES = ["Bekliyor", "Kısmi Ödendi", "Ödendi", "Vadesi Geçti", "İptal"] as const;
 export const PAYMENT_METHODS = ["Nakit", "Havale / EFT", "Kredi Kartı", "Çek", "Senet", "Diğer"] as const;
 export const CURRENCIES = ["TRY", "USD", "EUR"] as const;
 export const GROUP_TAGS = ["Resmi", "Gayri Resmi"] as const;
@@ -35,6 +35,8 @@ export type CardType = typeof CARD_TYPES[number];
 export type LegacyPaymentLike = {
   amount?: number | string | null;
   payment_plan_id?: string | null;
+  customer_id?: string | null;
+  account_type?: string | null;
 };
 
 export type PaymentPlanLike = {
@@ -42,6 +44,8 @@ export type PaymentPlanLike = {
   amount?: number | string | null;
   due_date?: string | null;
   status?: string | null;
+  customer_id?: string | null;
+  account_type?: string | null;
 };
 
 export type FinancialEntryLike = {
@@ -157,6 +161,7 @@ export function statusBadgeClass(status: string): string {
     case "Ödendi": return "bg-emerald-100 text-emerald-700 border-emerald-200";
     case "Bekliyor": return "bg-slate-100 text-slate-700 border-slate-200";
     case "Kısmi Ödendi": return "bg-amber-100 text-amber-700 border-amber-200";
+    case "Vadesi Geçti": return "bg-red-100 text-red-700 border-red-200";
     case "Gecikti": return "bg-red-100 text-red-700 border-red-200";
     case "İptal": return "bg-zinc-100 text-zinc-500 border-zinc-200";
     case "Aktif": return "bg-emerald-100 text-emerald-700 border-emerald-200";
@@ -474,9 +479,33 @@ export function summarizeFinance(input: FinanceSummaryInput): FinanceSummary {
 export function derivePlanStatus(plan: { amount: number | string; due_date: string; status: string }, paid: number): string {
   if (plan.status === "İptal") return "İptal";
   if (paid <= 0) {
-    if (daysUntil(plan.due_date) < 0) return "Gecikti";
+    if (daysUntil(plan.due_date) < 0) return "Vadesi Geçti";
     return "Bekliyor";
   }
   if (paid >= safeNumber(plan.amount)) return "Ödendi";
   return "Kısmi Ödendi";
+}
+
+export function accountType(value: unknown): "resmi" | "gayri_resmi" {
+  return value === "gayri_resmi" ? "gayri_resmi" : "resmi";
+}
+
+export function allocateCollectionsToPlans<TPlan extends PaymentPlanLike, TPayment extends LegacyPaymentLike>(
+  plans: TPlan[],
+  payments: TPayment[],
+): Map<string, number> {
+  const allocations = new Map<string, number>();
+  const activePlans = plans
+    .filter((plan) => plan.id && !isCanceledStatus(plan.status))
+    .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")));
+
+  let remainingCollection = sumBy(payments, (payment) => payment.amount);
+  for (const plan of activePlans) {
+    const planId = String(plan.id);
+    const paid = Math.min(safeNumber(plan.amount), Math.max(0, remainingCollection));
+    allocations.set(planId, paid);
+    remainingCollection -= paid;
+  }
+
+  return allocations;
 }

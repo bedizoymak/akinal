@@ -344,7 +344,7 @@ export default function AdminFinance() {
   ];
 
   const statusPie = useMemo(() => {
-    const counts = { "Ödendi": 0, "Bekliyor": 0, "Kısmi Ödendi": 0, "Gecikti": 0 } as Record<string, number>;
+    const counts = { "Ödendi": 0, "Bekliyor": 0, "Kısmi Ödendi": 0, "Vadesi Geçti": 0 } as Record<string, number>;
     plans.forEach((p) => {
       const paid = paidForPlan(p.id, pays);
       const computed = derivePlanStatus(p, paid);
@@ -354,7 +354,7 @@ export default function AdminFinance() {
       { name: "Ödendi", value: counts["Ödendi"], color: FINANCE_COLORS.paid },
       { name: "Bekliyor", value: counts["Bekliyor"], color: FINANCE_COLORS.pending },
       { name: "Kısmi Ödendi", value: counts["Kısmi Ödendi"], color: FINANCE_COLORS.partial },
-      { name: "Gecikti", value: counts["Gecikti"], color: FINANCE_COLORS.overdue },
+      { name: "Vadesi Geçti", value: counts["Vadesi Geçti"], color: FINANCE_COLORS.overdue },
     ];
   }, [plans, pays]);
 
