@@ -157,7 +157,7 @@ export default function AdminCustomerDetail() {
         const paid = safeNumber(plan.paid);
         return dueDate > today && paid <= 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal";
       });
-      result[account.value] = { totalDue, totalPaid, totalAmount, balance, overdue, upcoming, plans: enrichedPlans, accountSummaryPlans, futurePlans, pays: accountPays };
+      result[account.value] = { totalDue, totalPaid, totalAmount, balance, overdue, upcoming, plans: enrichedPlans, accountSummaryPlans, futurePlans, chartFuturePlans: futureUnpaidPlans, pays: accountPays };
       return result;
     }, {} as Record<string, any>);
   }, [plans, pays, today]);
@@ -165,7 +165,7 @@ export default function AdminCustomerDetail() {
   const accountPaymentCharts = useMemo(() => {
     const buildChart = (summary: any, accountLabel: string, colors: { paid: string; remaining: string }) => {
       const accountSummaryRows = summary?.accountSummaryPlans || [];
-      const futureRows = summary?.futurePlans || [];
+      const futureRows = summary?.chartFuturePlans || [];
       const paid = accountSummaryRows.reduce((sum: number, plan: any) => {
         const paidAmount = plan.computed === "Ödendi" ? safeNumber(plan.amount) : Math.min(safeNumber(plan.amount), safeNumber(plan.paid));
         return sum + Math.max(0, paidAmount);
@@ -355,7 +355,7 @@ export default function AdminCustomerDetail() {
         </TabsList>
 
         {ACCOUNT_TABS.map((account) => {
-          const summary = accountSummaries[account.value] || { totalDue: 0, totalPaid: 0, totalAmount: 0, balance: 0, overdue: 0, upcoming: 0, plans: [], accountSummaryPlans: [], futurePlans: [], pays: [] };
+          const summary = accountSummaries[account.value] || { totalDue: 0, totalPaid: 0, totalAmount: 0, balance: 0, overdue: 0, upcoming: 0, plans: [], accountSummaryPlans: [], futurePlans: [], chartFuturePlans: [], pays: [] };
           const accountPaymentChart = accountPaymentCharts[account.value] || [];
           const renderPlanRows = (rows: any[], emptyMessage: string) => (
             <div className="bg-card border border-border rounded-md overflow-x-auto">
