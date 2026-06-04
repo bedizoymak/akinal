@@ -199,6 +199,13 @@ export interface AdminPaymentPlan {
   description: string | null;
   amount: number | string;
   paid_amount?: number | string | null;
+  payment_method?: string | null;
+  transaction_reference?: string | null;
+  card_note?: string | null;
+  cheque_maturity_date?: string | null;
+  cheque_no?: string | null;
+  bank_name?: string | null;
+  promissory_maturity_date?: string | null;
   account_type?: "resmi" | "gayri_resmi" | string | null;
   due_date: string | null;
   status: string | null;

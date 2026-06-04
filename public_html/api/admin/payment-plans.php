@@ -74,6 +74,13 @@ function plan_payload(array $input): array
         'description' => nullable_string($input, 'description'),
         'amount' => (float) ($input['amount'] ?? 0),
         'paid_amount' => normalized_paid_amount($input),
+        'payment_method' => payment_method($input),
+        'transaction_reference' => nullable_string($input, 'transaction_reference'),
+        'card_note' => nullable_string($input, 'card_note'),
+        'cheque_maturity_date' => payment_method($input) === 'Çek' ? require_non_empty($input, 'cheque_maturity_date', 'Çek vade tarihi zorunludur.') : null,
+        'cheque_no' => payment_method($input) === 'Çek' ? nullable_string($input, 'cheque_no') : null,
+        'bank_name' => payment_method($input) === 'Çek' ? nullable_string($input, 'bank_name') : null,
+        'promissory_maturity_date' => payment_method($input) === 'Senet' ? require_non_empty($input, 'promissory_maturity_date', 'Senet vade tarihi zorunludur.') : null,
         'account_type' => account_type($input),
         'due_date' => require_non_empty($input, 'due_date', 'Vade tarihi zorunludur.'),
         'status' => payment_plan_status($input),
@@ -91,6 +98,12 @@ function payment_plan_status(array $input): string
 {
     $value = nullable_string($input, 'status') ?? 'Bekliyor';
     return in_array($value, ['Ödendi', 'Bekliyor', 'Vadesi Geçti', 'Kısmi Ödendi'], true) ? $value : 'Bekliyor';
+}
+
+function payment_method(array $input): string
+{
+    $value = nullable_string($input, 'payment_method') ?? 'Nakit';
+    return in_array($value, ['Nakit', 'Banka Havalesi / EFT', 'Kredi Kartı', 'Çek', 'Senet'], true) ? $value : 'Nakit';
 }
 
 function normalized_paid_amount(array $input): float
@@ -118,6 +131,22 @@ function ensure_account_type_column(): void
     $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE 'paid_amount'");
     if (!$statement || !$statement->fetch()) {
         db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN paid_amount DECIMAL(15,2) NOT NULL DEFAULT 0 AFTER amount");
+    }
+
+    $columns = [
+        'payment_method' => "ALTER TABLE ak_payment_plans ADD COLUMN payment_method VARCHAR(40) NOT NULL DEFAULT 'Nakit' AFTER paid_amount",
+        'transaction_reference' => "ALTER TABLE ak_payment_plans ADD COLUMN transaction_reference VARCHAR(120) NULL AFTER payment_method",
+        'card_note' => "ALTER TABLE ak_payment_plans ADD COLUMN card_note VARCHAR(255) NULL AFTER transaction_reference",
+        'cheque_maturity_date' => "ALTER TABLE ak_payment_plans ADD COLUMN cheque_maturity_date DATE NULL AFTER card_note",
+        'cheque_no' => "ALTER TABLE ak_payment_plans ADD COLUMN cheque_no VARCHAR(80) NULL AFTER cheque_maturity_date",
+        'bank_name' => "ALTER TABLE ak_payment_plans ADD COLUMN bank_name VARCHAR(120) NULL AFTER cheque_no",
+        'promissory_maturity_date' => "ALTER TABLE ak_payment_plans ADD COLUMN promissory_maturity_date DATE NULL AFTER bank_name",
+    ];
+    foreach ($columns as $column => $sql) {
+        $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE '{$column}'");
+        if (!$statement || !$statement->fetch()) {
+            db()->exec($sql);
+        }
     }
 
     $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE 'employee_id'");

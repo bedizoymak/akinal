@@ -28,10 +28,22 @@ const ACCOUNT_TABS = [
   { value: "resmi", label: "Resmi Hesap" },
   { value: "gayri_resmi", label: "Gayri Resmi Hesap" },
 ] as const;
+const PAYMENT_METHODS = ["Nakit", "Banka Havalesi / EFT", "Kredi Kartı", "Çek", "Senet"] as const;
+const defaultPaymentMeta = { payment_method: "Nakit", transaction_reference: "", card_note: "", cheque_maturity_date: "", cheque_no: "", bank_name: "", promissory_maturity_date: "" };
 
 function percentLabel(value: number, total: number): string {
   if (total <= 0) return "%0";
   return `%${((value / total) * 100).toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+}
+
+function maturityBadge(plan: any): string | null {
+  if (plan.payment_method === "Çek" && plan.cheque_maturity_date) {
+    return plan.cheque_maturity_date > new Date().toISOString().slice(0, 10) ? `Çek Beklemede · ${formatDate(plan.cheque_maturity_date)}` : `Çek · ${formatDate(plan.cheque_maturity_date)}`;
+  }
+  if (plan.payment_method === "Senet" && plan.promissory_maturity_date) {
+    return plan.promissory_maturity_date > new Date().toISOString().slice(0, 10) ? `Senet Beklemede · ${formatDate(plan.promissory_maturity_date)}` : `Senet · ${formatDate(plan.promissory_maturity_date)}`;
+  }
+  return null;
 }
 
 function renderChartCallout(props: any) {
@@ -76,7 +88,7 @@ export default function AdminCustomerDetail() {
   const [newNote, setNewNote] = useState("");
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
-  const [planForm, setPlanForm] = useState<any>({ account_type: "resmi", project_id: "", title: "", description: "", amount: "", paid_amount: "", due_date: "", status: "Bekliyor", notes: "" });
+  const [planForm, setPlanForm] = useState<any>({ account_type: "resmi", project_id: "", title: "", description: "", amount: "", paid_amount: "", due_date: "", status: "Bekliyor", notes: "", ...defaultPaymentMeta });
   const { toast } = useToast();
   const today = new Date().toISOString().slice(0, 10);
   const refreshCustomerDetail = async () => {
@@ -196,7 +208,7 @@ export default function AdminCustomerDetail() {
   }
   function openNewPayment(account: "resmi" | "gayri_resmi") {
     setEditingPlanId(null);
-    setPlanForm({ account_type: account, project_id: "", title: "", description: "", amount: "", paid_amount: "", due_date: "", status: "Bekliyor", notes: "" });
+    setPlanForm({ account_type: account, project_id: "", title: "", description: "", amount: "", paid_amount: "", due_date: "", status: "Bekliyor", notes: "", ...defaultPaymentMeta });
     setPlanDialogOpen(true);
   }
   function openEditPayment(plan: any) {
@@ -211,6 +223,13 @@ export default function AdminCustomerDetail() {
       due_date: plan.due_date || "",
       status: plan.status || "Bekliyor",
       notes: plan.notes || "",
+      payment_method: plan.payment_method || "Nakit",
+      transaction_reference: plan.transaction_reference || "",
+      card_note: plan.card_note || "",
+      cheque_maturity_date: plan.cheque_maturity_date || "",
+      cheque_no: plan.cheque_no || "",
+      bank_name: plan.bank_name || "",
+      promissory_maturity_date: plan.promissory_maturity_date || "",
     });
     setPlanDialogOpen(true);
   }
@@ -223,6 +242,14 @@ export default function AdminCustomerDetail() {
     const paidAmount = Number(planForm.paid_amount || 0);
     if (planForm.status === "Kısmi Ödendi" && (!(paidAmount > 0) || !(paidAmount < amount))) {
       toast({ title: "Ödenen Tutar, 0'dan büyük ve toplam tutardan küçük olmalıdır", variant: "destructive" });
+      return;
+    }
+    if (planForm.payment_method === "Çek" && !planForm.cheque_maturity_date) {
+      toast({ title: "Çek vade tarihi zorunludur", variant: "destructive" });
+      return;
+    }
+    if (planForm.payment_method === "Senet" && !planForm.promissory_maturity_date) {
+      toast({ title: "Senet vade tarihi zorunludur", variant: "destructive" });
       return;
     }
     const payload = {
@@ -335,7 +362,7 @@ export default function AdminCustomerDetail() {
           const renderPlanRows = (rows: any[], emptyMessage: string) => (
             <div className="bg-card border border-border rounded-md overflow-x-auto">
               <table className="min-w-[760px] w-full text-sm">
-                <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Başlık</th><th className="p-3 text-left">Vade</th><th className="p-3 text-right">Tutar</th><th className="p-3 text-right">Ödenen</th><th className="p-3 text-right">Kalan</th><th className="p-3">Durum</th></tr></thead>
+                <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Başlık</th><th className="p-3 text-left">Vade</th><th className="p-3 text-left">Ödeme Yöntemi</th><th className="p-3 text-right">Tutar</th><th className="p-3 text-right">Ödenen</th><th className="p-3 text-right">Kalan</th><th className="p-3">Durum</th></tr></thead>
                 <tbody>
                   {rows.map((p: any) => {
                     const isLate = String(p.due_date || "") < today && p.computed !== "Ödendi" && p.computed !== "İptal" && safeNumber(p.remain) > 0;
@@ -349,6 +376,10 @@ export default function AdminCustomerDetail() {
                       >
                         <td className="p-3"><div className="font-medium">{p.title}</div>{p.description && <div className="text-xs text-muted-foreground">{p.description}</div>}</td>
                         <td className="p-3">{formatDate(p.due_date)}</td>
+                        <td className="p-3">
+                          <div className="font-medium">{p.payment_method || "Nakit"}</div>
+                          {maturityBadge(p) && <div className="mt-1 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700" title={maturityBadge(p) || undefined}>{maturityBadge(p)}</div>}
+                        </td>
                         <td className="p-3 text-right">{formatTRY(p.amount)}</td>
                         <td className="p-3 text-right text-emerald-700">{formatTRY(p.paid)}</td>
                         <td className="p-3 text-right font-bold">{formatTRY(p.remain)}</td>
@@ -356,7 +387,7 @@ export default function AdminCustomerDetail() {
                       </tr>
                     );
                   })}
-                  {rows.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">{emptyMessage}</td></tr>}
+                  {rows.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">{emptyMessage}</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -476,6 +507,23 @@ export default function AdminCustomerDetail() {
                 <SelectContent>{["Bekliyor", "Kısmi Ödendi", "Ödendi", "Vadesi Geçti"].map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Ödeme Yöntemi *</Label>
+              <Select value={planForm.payment_method || "Nakit"} onValueChange={(value) => setPlanForm((form: any) => ({ ...form, payment_method: value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{PAYMENT_METHODS.map((method) => <SelectItem key={method} value={method}>{method}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            {planForm.payment_method === "Banka Havalesi / EFT" && <div><Label>İşlem Referansı</Label><Input value={planForm.transaction_reference} onChange={(event) => setPlanForm((form: any) => ({ ...form, transaction_reference: event.target.value }))} /></div>}
+            {planForm.payment_method === "Kredi Kartı" && <div><Label>Kart Notu</Label><Input value={planForm.card_note} onChange={(event) => setPlanForm((form: any) => ({ ...form, card_note: event.target.value }))} /></div>}
+            {planForm.payment_method === "Çek" && (
+              <>
+                <div><Label>Çek Vade Tarihi *</Label><Input type="date" value={planForm.cheque_maturity_date} onChange={(event) => setPlanForm((form: any) => ({ ...form, cheque_maturity_date: event.target.value }))} /></div>
+                <div><Label>Çek No</Label><Input value={planForm.cheque_no} onChange={(event) => setPlanForm((form: any) => ({ ...form, cheque_no: event.target.value }))} /></div>
+                <div><Label>Banka</Label><Input value={planForm.bank_name} onChange={(event) => setPlanForm((form: any) => ({ ...form, bank_name: event.target.value }))} /></div>
+              </>
+            )}
+            {planForm.payment_method === "Senet" && <div><Label>Senet Vade Tarihi *</Label><Input type="date" value={planForm.promissory_maturity_date} onChange={(event) => setPlanForm((form: any) => ({ ...form, promissory_maturity_date: event.target.value }))} /></div>}
             <div className="md:col-span-2"><Label>Açıklama</Label><Textarea value={planForm.description} onChange={(event) => setPlanForm((form: any) => ({ ...form, description: event.target.value }))} rows={2} /></div>
             <div className="md:col-span-2"><Label>Not</Label><Textarea value={planForm.notes} onChange={(event) => setPlanForm((form: any) => ({ ...form, notes: event.target.value }))} rows={2} /></div>
           </div>

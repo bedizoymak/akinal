@@ -117,10 +117,20 @@ type PlanFormState = {
   description: string;
   amount: string;
   paid_amount: string;
+  payment_method: string;
+  transaction_reference: string;
+  card_note: string;
+  cheque_maturity_date: string;
+  cheque_no: string;
+  bank_name: string;
+  promissory_maturity_date: string;
   due_date: string;
   status: string;
   notes: string;
 };
+
+const PAYMENT_METHODS = ["Nakit", "Banka Havalesi / EFT", "Kredi Kartı", "Çek", "Senet"] as const;
+const defaultPaymentMeta = { payment_method: "Nakit", transaction_reference: "", card_note: "", cheque_maturity_date: "", cheque_no: "", bank_name: "", promissory_maturity_date: "" };
 
 const chartColors = {
   income: "hsl(145, 55%, 25%)",
@@ -431,6 +441,17 @@ function paymentOwnerMatches(kind: FinancialStatementKind, entityId: string, pay
   if (kind === "expense") return payment.expense_card_id === entityId;
   if (kind === "customer") return payment.customer_id === entityId;
   return false;
+}
+
+function maturityBadge(plan: AdminPaymentPlan): string | null {
+  const todayValue = new Date().toISOString().slice(0, 10);
+  if (plan.payment_method === "Çek" && plan.cheque_maturity_date) {
+    return plan.cheque_maturity_date > todayValue ? `Çek Beklemede · ${formatDate(plan.cheque_maturity_date)}` : `Çek · ${formatDate(plan.cheque_maturity_date)}`;
+  }
+  if (plan.payment_method === "Senet" && plan.promissory_maturity_date) {
+    return plan.promissory_maturity_date > todayValue ? `Senet Beklemede · ${formatDate(plan.promissory_maturity_date)}` : `Senet · ${formatDate(plan.promissory_maturity_date)}`;
+  }
+  return null;
 }
 
 function planOwnerPayload(kind: FinancialStatementKind, entityId: string) {
@@ -763,7 +784,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
   const [form, setForm] = useState<EntryFormState>(() => emptyForm(kind, entityId));
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
-  const [planForm, setPlanForm] = useState<PlanFormState>({ account_type: "resmi", project_id: "", title: "", description: "", amount: "", paid_amount: "", due_date: "", status: "Bekliyor", notes: "" });
+  const [planForm, setPlanForm] = useState<PlanFormState>({ account_type: "resmi", project_id: "", title: "", description: "", amount: "", paid_amount: "", due_date: "", status: "Bekliyor", notes: "", ...defaultPaymentMeta });
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
@@ -910,7 +931,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
 
   function openNewPayment(account: "resmi" | "gayri_resmi") {
     setEditingPlanId(null);
-    setPlanForm({ account_type: account, project_id: "", title: "", description: "", amount: "", paid_amount: "", due_date: "", status: "Bekliyor", notes: "" });
+    setPlanForm({ account_type: account, project_id: "", title: "", description: "", amount: "", paid_amount: "", due_date: "", status: "Bekliyor", notes: "", ...defaultPaymentMeta });
     setFormError("");
     setPlanDialogOpen(true);
   }
@@ -927,6 +948,13 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
       due_date: plan.due_date || "",
       status: plan.status || "Bekliyor",
       notes: plan.notes || "",
+      payment_method: plan.payment_method || "Nakit",
+      transaction_reference: plan.transaction_reference || "",
+      card_note: plan.card_note || "",
+      cheque_maturity_date: plan.cheque_maturity_date || "",
+      cheque_no: plan.cheque_no || "",
+      bank_name: plan.bank_name || "",
+      promissory_maturity_date: plan.promissory_maturity_date || "",
     });
     setFormError("");
     setPlanDialogOpen(true);
@@ -1006,6 +1034,14 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
       setFormError("Ödenen Tutar, 0'dan büyük ve toplam tutardan küçük olmalıdır.");
       return;
     }
+    if (planForm.payment_method === "Çek" && !planForm.cheque_maturity_date) {
+      setFormError("Çek vade tarihi zorunludur.");
+      return;
+    }
+    if (planForm.payment_method === "Senet" && !planForm.promissory_maturity_date) {
+      setFormError("Senet vade tarihi zorunludur.");
+      return;
+    }
 
     setSaving(true);
     setFormError("");
@@ -1058,6 +1094,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
             <tr>
               <th className="p-3 text-left">Vade</th>
               <th className="p-3 text-left">Başlık</th>
+              <th className="p-3 text-left">Ödeme Yöntemi</th>
               <th className="p-3 text-right">Tutar</th>
               <th className="p-3 text-right">Ödenen</th>
               <th className="p-3 text-right">Kalan</th>
@@ -1075,6 +1112,10 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
                     <div className="font-medium">{plan.title}</div>
                     {plan.description && <div className="mt-1 max-w-xs truncate text-xs text-muted-foreground">{plan.description}</div>}
                   </td>
+                  <td className="p-3">
+                    <div className="font-medium">{plan.payment_method || "Nakit"}</div>
+                    {maturityBadge(plan) && <div className="mt-1 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700" title={maturityBadge(plan) || undefined}>{maturityBadge(plan)}</div>}
+                  </td>
                   <td className="p-3 text-right font-semibold">{formatMoney(plan.amount, "TRY")}</td>
                   <td className="p-3 text-right text-emerald-700">{formatMoney(plan.paid || 0, "TRY")}</td>
                   <td className="p-3 text-right text-red-600">{formatMoney(plan.remain || 0, "TRY")}</td>
@@ -1082,7 +1123,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
                 </tr>
               );
             })}
-            {rows.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">{emptyMessage}</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">{emptyMessage}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -1514,6 +1555,29 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
                 <SelectContent>{["Bekliyor", "Kısmi Ödendi", "Ödendi", "Vadesi Geçti"].map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Ödeme Yöntemi *</Label>
+              <Select value={planForm.payment_method || "Nakit"} onValueChange={(value) => setPlanForm((current) => ({ ...current, payment_method: value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{PAYMENT_METHODS.map((method) => <SelectItem key={method} value={method}>{method}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            {planForm.payment_method === "Banka Havalesi / EFT" && (
+              <div><Label>İşlem Referansı</Label><Input value={planForm.transaction_reference} onChange={(event) => setPlanForm((current) => ({ ...current, transaction_reference: event.target.value }))} /></div>
+            )}
+            {planForm.payment_method === "Kredi Kartı" && (
+              <div><Label>Kart Notu</Label><Input value={planForm.card_note} onChange={(event) => setPlanForm((current) => ({ ...current, card_note: event.target.value }))} /></div>
+            )}
+            {planForm.payment_method === "Çek" && (
+              <>
+                <div><Label>Çek Vade Tarihi *</Label><Input type="date" value={planForm.cheque_maturity_date} onChange={(event) => setPlanForm((current) => ({ ...current, cheque_maturity_date: event.target.value }))} /></div>
+                <div><Label>Çek No</Label><Input value={planForm.cheque_no} onChange={(event) => setPlanForm((current) => ({ ...current, cheque_no: event.target.value }))} /></div>
+                <div><Label>Banka</Label><Input value={planForm.bank_name} onChange={(event) => setPlanForm((current) => ({ ...current, bank_name: event.target.value }))} /></div>
+              </>
+            )}
+            {planForm.payment_method === "Senet" && (
+              <div><Label>Senet Vade Tarihi *</Label><Input type="date" value={planForm.promissory_maturity_date} onChange={(event) => setPlanForm((current) => ({ ...current, promissory_maturity_date: event.target.value }))} /></div>
+            )}
             <div className="md:col-span-2">
               <Label>Açıklama</Label>
               <Textarea value={planForm.description} onChange={(event) => setPlanForm((current) => ({ ...current, description: event.target.value }))} />

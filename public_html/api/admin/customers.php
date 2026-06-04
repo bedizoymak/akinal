@@ -90,6 +90,7 @@ function ensure_account_type_columns(): void
     ensure_account_type_column('ak_payment_plans', 'amount');
     ensure_account_type_column('ak_payments', 'amount');
     ensure_paid_amount_column();
+    ensure_payment_method_columns();
 }
 
 function ensure_paid_amount_column(): void
@@ -100,6 +101,25 @@ function ensure_paid_amount_column(): void
     }
 
     db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN paid_amount DECIMAL(15,2) NOT NULL DEFAULT 0 AFTER amount");
+}
+
+function ensure_payment_method_columns(): void
+{
+    $columns = [
+        'payment_method' => "ALTER TABLE ak_payment_plans ADD COLUMN payment_method VARCHAR(40) NOT NULL DEFAULT 'Nakit' AFTER paid_amount",
+        'transaction_reference' => "ALTER TABLE ak_payment_plans ADD COLUMN transaction_reference VARCHAR(120) NULL AFTER payment_method",
+        'card_note' => "ALTER TABLE ak_payment_plans ADD COLUMN card_note VARCHAR(255) NULL AFTER transaction_reference",
+        'cheque_maturity_date' => "ALTER TABLE ak_payment_plans ADD COLUMN cheque_maturity_date DATE NULL AFTER card_note",
+        'cheque_no' => "ALTER TABLE ak_payment_plans ADD COLUMN cheque_no VARCHAR(80) NULL AFTER cheque_maturity_date",
+        'bank_name' => "ALTER TABLE ak_payment_plans ADD COLUMN bank_name VARCHAR(120) NULL AFTER cheque_no",
+        'promissory_maturity_date' => "ALTER TABLE ak_payment_plans ADD COLUMN promissory_maturity_date DATE NULL AFTER bank_name",
+    ];
+    foreach ($columns as $column => $sql) {
+        $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE '{$column}'");
+        if (!$statement || !$statement->fetch()) {
+            db()->exec($sql);
+        }
+    }
 }
 
 function ensure_account_type_column(string $table, string $afterColumn): void
