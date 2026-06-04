@@ -21,11 +21,7 @@ $cacheFile = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATO
 $cached = read_market_rates_cache($cacheFile);
 $debug = (string) ($_GET['debug'] ?? '') === '1';
 
-if (!$debug && $cached !== null && (time() - (int) ($cached['cached_at'] ?? 0)) < MARKET_RATES_CACHE_TTL) {
-    json_success($cached['payload']);
-}
-
-$fresh = fetch_market_rates($debug);
+$fresh = fetch_market_rates_from_genelpara_website($debug);
 if ($fresh !== null) {
     if (!$debug) {
         write_market_rates_cache($cacheFile, $fresh);
@@ -36,19 +32,27 @@ if ($fresh !== null) {
 if ($cached !== null) {
     $payload = $cached['payload'];
     $payload['stale'] = true;
+    if ($debug) {
+        $payload['debug'] = build_market_rates_debug($payload, true);
+    }
     json_success($payload);
 }
 
-json_success(fallback_market_rates());
-
-function fetch_market_rates(bool $debug = false): ?array
-{
-    return fetch_market_rates_from_genelpara_website($debug) ?? fetch_market_rates_from_doviz($debug) ?? fetch_market_rates_from_genelpara($debug);
+$fallback = fetch_market_rates_from_fallback_sources($debug);
+if ($fallback !== null) {
+    $fallback['stale'] = true;
+    json_success($fallback);
 }
+
+json_success(fallback_market_rates($debug));
 
 function fetch_market_rates_from_genelpara_website(bool $debug = false): ?array
 {
-    $html = fetch_market_rates_body(MARKET_RATES_GENELPARA_WEBSITE_URL, 'text/html,application/xhtml+xml');
+    $fetchedAt = gmdate('c');
+    $html = fetch_market_rates_body(
+        add_market_rates_cache_buster(MARKET_RATES_GENELPARA_WEBSITE_URL),
+        'text/html,application/xhtml+xml'
+    );
     if ($html === null || trim($html) === '') {
         return null;
     }
@@ -70,14 +74,19 @@ function fetch_market_rates_from_genelpara_website(bool $debug = false): ?array
         'rates' => $rates,
         'source' => MARKET_RATES_GENELPARA_WEBSITE_URL,
         'stale' => false,
-        'fetched_at' => gmdate('c'),
+        'fetched_at' => $fetchedAt,
     ];
 
     if ($debug) {
-        $payload['debug'] = $debugItems;
+        $payload['debug'] = build_market_rates_debug($payload, false, $debugItems);
     }
 
     return $payload;
+}
+
+function fetch_market_rates_from_fallback_sources(bool $debug = false): ?array
+{
+    return fetch_market_rates_from_doviz($debug) ?? fetch_market_rates_from_genelpara($debug);
 }
 
 function fetch_market_rates_from_doviz(bool $debug = false): ?array
@@ -110,11 +119,7 @@ function fetch_market_rates_from_doviz(bool $debug = false): ?array
     ];
 
     if ($debug) {
-        $payload['debug'] = [
-            'price_source' => MARKET_RATES_DOVIZ_SOURCE_URL,
-            'percent_source' => MARKET_RATES_GENELPARA_SOURCE_URL,
-            'raw_percent_fields' => $percentDebug,
-        ];
+        $payload['debug'] = build_market_rates_debug($payload, false);
     }
 
     return $payload;
@@ -150,11 +155,7 @@ function fetch_market_rates_from_genelpara(bool $debug = false): ?array
     ];
 
     if ($debug) {
-        $payload['debug'] = [
-            'price_source' => MARKET_RATES_GENELPARA_SOURCE_URL,
-            'percent_source' => MARKET_RATES_GENELPARA_SOURCE_URL,
-            'raw_percent_fields' => $percentDebug,
-        ];
+        $payload['debug'] = build_market_rates_debug($payload, false);
     }
 
     return $payload;
@@ -162,7 +163,7 @@ function fetch_market_rates_from_genelpara(bool $debug = false): ?array
 
 function fetch_market_rates_json(string $url): ?array
 {
-    $body = fetch_market_rates_body($url, 'application/json');
+    $body = fetch_market_rates_body(add_market_rates_cache_buster($url), 'application/json');
 
     if (!is_string($body) || trim($body) === '') {
         return null;
@@ -185,7 +186,11 @@ function fetch_market_rates_body(string $url, string $accept): ?string
             CURLOPT_TIMEOUT => 8,
             CURLOPT_USERAGENT => 'AkinalInsaatAdminTicker/1.0',
             CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_HTTPHEADER => ['Accept: ' . $accept],
+            CURLOPT_HTTPHEADER => [
+                'Accept: ' . $accept,
+                'Cache-Control: no-cache, no-store, must-revalidate',
+                'Pragma: no-cache',
+            ],
         ]);
         $body = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -200,13 +205,19 @@ function fetch_market_rates_body(string $url, string $accept): ?string
         $context = stream_context_create([
             'http' => [
                 'timeout' => 8,
-                'header' => "User-Agent: AkinalInsaatAdminTicker/1.0\r\nAccept: " . $accept . "\r\n",
+                'header' => "User-Agent: AkinalInsaatAdminTicker/1.0\r\nAccept: " . $accept . "\r\nCache-Control: no-cache, no-store, must-revalidate\r\nPragma: no-cache\r\n",
             ],
         ]);
         $body = @file_get_contents($url, false, $context);
     }
 
     return is_string($body) ? $body : null;
+}
+
+function add_market_rates_cache_buster(string $url): string
+{
+    $separator = str_contains($url, '?') ? '&' : '?';
+    return $url . $separator . '_=' . rawurlencode((string) microtime(true));
 }
 
 function parse_doviz_rate(string $html, string $label, string $code, string $socketKey): array
@@ -252,8 +263,10 @@ function parse_genelpara_visible_rate(
 
     $debugItems[$code] = [
         'source_used' => MARKET_RATES_GENELPARA_WEBSITE_URL,
-        'raw_price' => $rawPrice,
-        'raw_percent' => $rawPercent,
+        'raw_visible_values' => [
+            'price' => $rawPrice,
+            'percent' => $rawPercent,
+        ],
         'normalized_price' => $value,
         'normalized_percent' => $change,
     ];
@@ -264,6 +277,38 @@ function parse_genelpara_visible_rate(
         'value' => $value,
         'change_percent' => $change,
     ];
+}
+
+function build_market_rates_debug(array $payload, bool $cacheHit, array $visibleDebugItems = []): array
+{
+    $debug = [];
+    foreach (($payload['rates'] ?? []) as $rate) {
+        if (!is_array($rate)) {
+            continue;
+        }
+
+        $code = (string) ($rate['code'] ?? '');
+        if ($code === '') {
+            continue;
+        }
+
+        $visibleDebug = $visibleDebugItems[$code] ?? [];
+        $debug[$code] = [
+            'source_used' => (string) ($visibleDebug['source_used'] ?? ($payload['source'] ?? '')),
+            'fetched_at' => (string) ($payload['fetched_at'] ?? ''),
+            'cache_hit' => $cacheHit,
+            'raw_visible_values' => $visibleDebug['raw_visible_values'] ?? [
+                'price' => '',
+                'percent' => '',
+            ],
+            'final_returned_values' => [
+                'value' => $rate['value'] ?? null,
+                'change_percent' => $rate['change_percent'] ?? null,
+            ],
+        ];
+    }
+
+    return $debug;
 }
 
 function parse_genelpara_rate(array $payload, string $symbol, string $label, string $code, array &$percentDebug = []): array
@@ -332,9 +377,9 @@ function parse_market_number(string $value): ?float
     return is_numeric($normalized) ? (float) $normalized : null;
 }
 
-function fallback_market_rates(): array
+function fallback_market_rates(bool $debug = false): array
 {
-    return [
+    $payload = [
         'rates' => [
             ['code' => 'eur', 'label' => 'EURO', 'value' => null, 'change_percent' => null],
             ['code' => 'usd', 'label' => 'DOLAR', 'value' => null, 'change_percent' => null],
@@ -344,6 +389,12 @@ function fallback_market_rates(): array
         'stale' => true,
         'fetched_at' => gmdate('c'),
     ];
+
+    if ($debug) {
+        $payload['debug'] = build_market_rates_debug($payload, false);
+    }
+
+    return $payload;
 }
 
 function read_market_rates_cache(string $cacheFile): ?array
