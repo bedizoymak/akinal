@@ -18,14 +18,17 @@ const MARKET_RATES_GENELPARA_ALTIN_URL = MARKET_RATES_GENELPARA_SOURCE_URL . '?l
 
 $cacheFile = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'akinal_market_rates_cache.json';
 $cached = read_market_rates_cache($cacheFile);
+$debug = (string) ($_GET['debug'] ?? '') === '1';
 
-if ($cached !== null && (time() - (int) ($cached['cached_at'] ?? 0)) < MARKET_RATES_CACHE_TTL) {
+if (!$debug && $cached !== null && (time() - (int) ($cached['cached_at'] ?? 0)) < MARKET_RATES_CACHE_TTL) {
     json_success($cached['payload']);
 }
 
-$fresh = fetch_market_rates();
+$fresh = fetch_market_rates($debug);
 if ($fresh !== null) {
-    write_market_rates_cache($cacheFile, $fresh);
+    if (!$debug) {
+        write_market_rates_cache($cacheFile, $fresh);
+    }
     json_success($fresh);
 }
 
@@ -37,12 +40,12 @@ if ($cached !== null) {
 
 json_success(fallback_market_rates());
 
-function fetch_market_rates(): ?array
+function fetch_market_rates(bool $debug = false): ?array
 {
-    return fetch_market_rates_from_doviz() ?? fetch_market_rates_from_genelpara();
+    return fetch_market_rates_from_doviz($debug) ?? fetch_market_rates_from_genelpara($debug);
 }
 
-function fetch_market_rates_from_doviz(): ?array
+function fetch_market_rates_from_doviz(bool $debug = false): ?array
 {
     $html = fetch_market_rates_body(MARKET_RATES_DOVIZ_SOURCE_URL, 'text/html,application/xhtml+xml');
     if ($html === null || trim($html) === '') {
@@ -61,15 +64,28 @@ function fetch_market_rates_from_doviz(): ?array
         }
     }
 
-    return [
+    $percentDebug = [];
+    $rates = apply_genelpara_percent_changes($rates, $percentDebug);
+
+    $payload = [
         'rates' => $rates,
         'source' => MARKET_RATES_DOVIZ_SOURCE_URL,
         'stale' => false,
         'fetched_at' => gmdate('c'),
     ];
+
+    if ($debug) {
+        $payload['debug'] = [
+            'price_source' => MARKET_RATES_DOVIZ_SOURCE_URL,
+            'percent_source' => MARKET_RATES_GENELPARA_SOURCE_URL,
+            'raw_percent_fields' => $percentDebug,
+        ];
+    }
+
+    return $payload;
 }
 
-function fetch_market_rates_from_genelpara(): ?array
+function fetch_market_rates_from_genelpara(bool $debug = false): ?array
 {
     $currency = fetch_market_rates_json(MARKET_RATES_GENELPARA_DOVIZ_URL);
     $gold = fetch_market_rates_json(MARKET_RATES_GENELPARA_ALTIN_URL);
@@ -78,10 +94,11 @@ function fetch_market_rates_from_genelpara(): ?array
         return null;
     }
 
+    $percentDebug = [];
     $rates = [
-        parse_genelpara_rate($currency, 'EUR', 'EURO', 'eur'),
-        parse_genelpara_rate($currency, 'USD', 'DOLAR', 'usd'),
-        parse_genelpara_rate($gold, 'GA', 'GRAM ALTIN', 'gold'),
+        parse_genelpara_rate($currency, 'EUR', 'EURO', 'eur', $percentDebug),
+        parse_genelpara_rate($currency, 'USD', 'DOLAR', 'usd', $percentDebug),
+        parse_genelpara_rate($gold, 'GA', 'GRAM ALTIN', 'gold', $percentDebug),
     ];
 
     foreach ($rates as $rate) {
@@ -90,12 +107,22 @@ function fetch_market_rates_from_genelpara(): ?array
         }
     }
 
-    return [
+    $payload = [
         'rates' => $rates,
         'source' => MARKET_RATES_GENELPARA_SOURCE_URL,
         'stale' => false,
         'fetched_at' => gmdate('c'),
     ];
+
+    if ($debug) {
+        $payload['debug'] = [
+            'price_source' => MARKET_RATES_GENELPARA_SOURCE_URL,
+            'percent_source' => MARKET_RATES_GENELPARA_SOURCE_URL,
+            'raw_percent_fields' => $percentDebug,
+        ];
+    }
+
+    return $payload;
 }
 
 function fetch_market_rates_json(string $url): ?array
@@ -168,11 +195,26 @@ function parse_doviz_rate(string $html, string $label, string $code, string $soc
     ];
 }
 
-function parse_genelpara_rate(array $payload, string $symbol, string $label, string $code): array
+function parse_genelpara_rate(array $payload, string $symbol, string $label, string $code, array &$percentDebug = []): array
 {
     $item = $payload['data'][$symbol] ?? null;
     $value = is_array($item) ? parse_market_number((string) ($item['satis'] ?? $item['alis'] ?? '')) : null;
-    $change = is_array($item) ? parse_market_number((string) ($item['degisim'] ?? '')) : null;
+    $change = is_array($item) ? parse_market_number((string) ($item['oran'] ?? '')) : null;
+
+    if (is_array($item)) {
+        $percentDebug[$code] = [
+            'symbol' => $symbol,
+            'label' => $label,
+            'used_field' => 'oran',
+            'used_raw_value' => (string) ($item['oran'] ?? ''),
+            'parsed_value' => $change,
+            'available_fields' => [
+                'degisim' => (string) ($item['degisim'] ?? ''),
+                'oran' => (string) ($item['oran'] ?? ''),
+                'yon' => (string) ($item['yon'] ?? ''),
+            ],
+        ];
+    }
 
     return [
         'code' => $code,
@@ -180,6 +222,34 @@ function parse_genelpara_rate(array $payload, string $symbol, string $label, str
         'value' => $value,
         'change_percent' => $change,
     ];
+}
+
+function apply_genelpara_percent_changes(array $rates, array &$percentDebug): array
+{
+    $currency = fetch_market_rates_json(MARKET_RATES_GENELPARA_DOVIZ_URL);
+    $gold = fetch_market_rates_json(MARKET_RATES_GENELPARA_ALTIN_URL);
+
+    if ($currency === null || $gold === null) {
+        return $rates;
+    }
+
+    $percentRates = [
+        parse_genelpara_rate($currency, 'EUR', 'EURO', 'eur', $percentDebug),
+        parse_genelpara_rate($currency, 'USD', 'DOLAR', 'usd', $percentDebug),
+        parse_genelpara_rate($gold, 'GA', 'GRAM ALTIN', 'gold', $percentDebug),
+    ];
+
+    $percentByCode = [];
+    foreach ($percentRates as $rate) {
+        $percentByCode[$rate['code']] = $rate['change_percent'];
+    }
+
+    return array_map(static function (array $rate) use ($percentByCode): array {
+        if (array_key_exists($rate['code'], $percentByCode)) {
+            $rate['change_percent'] = $percentByCode[$rate['code']];
+        }
+        return $rate;
+    }, $rates);
 }
 
 function parse_market_number(string $value): ?float
