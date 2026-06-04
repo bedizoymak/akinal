@@ -192,6 +192,8 @@ export interface AdminCustomerProjectLink {
 export interface AdminPaymentPlan {
   id: string;
   customer_id: string | null;
+  employee_id?: string | null;
+  expense_card_id?: string | null;
   project_id: string | null;
   title: string | null;
   description: string | null;
@@ -207,6 +209,8 @@ export interface AdminPaymentPlan {
 export interface AdminPayment {
   id: string;
   customer_id: string | null;
+  employee_id?: string | null;
+  expense_card_id?: string | null;
   project_id: string | null;
   payment_plan_id: string | null;
   amount: number | string;
@@ -305,6 +309,8 @@ export interface AdminFinancialStatementResponse {
   customers: AdminCustomerLookup[];
   employees: AdminEmployee[];
   expense_cards: AdminExpenseCard[];
+  payment_plans?: AdminPaymentPlan[];
+  payments?: AdminPayment[];
 }
 
 export interface AdminCustomerNote {

@@ -18,6 +18,10 @@ import {
   ENTRY_DIRECTIONS,
   ENTRY_STATUSES,
   GROUP_TAGS,
+  accountType,
+  allocateCollectionsToPlans,
+  daysUntil,
+  derivePlanStatus,
   displayLabel,
   formatDate,
   formatMoney,
@@ -45,15 +49,20 @@ import {
 } from "@/lib/financialEntries";
 import {
   createAdminFinancialEntry,
+  createAdminPaymentPlan,
   deleteAdminFinancialEntry,
+  deleteAdminPaymentPlan,
   getAdminFinancialStatement,
   updateAdminFinancialEntry,
+  updateAdminPaymentPlan,
 } from "@/lib/apiClient";
 import type {
   AdminCustomerLookup,
   AdminEmployee,
   AdminExpenseCard,
   AdminFinancialEntry,
+  AdminPayment,
+  AdminPaymentPlan,
   AdminProjectLookup,
 } from "@/lib/apiTypes";
 import { cn } from "@/lib/utils";
@@ -99,6 +108,17 @@ type ChartDatum = {
 
 type DistributionDatum = ChartDatum & {
   id: string;
+};
+
+type PlanFormState = {
+  account_type: "resmi" | "gayri_resmi";
+  project_id: string;
+  title: string;
+  description: string;
+  amount: string;
+  due_date: string;
+  status: string;
+  notes: string;
 };
 
 const chartColors = {
@@ -366,6 +386,53 @@ function DetailList({ details }: { details: StatementEntity["details"] }) {
       ))}
     </div>
   );
+}
+
+function PlanChartCard({ title, data }: { title: string; data: ChartDatum[] }) {
+  const visibleData = data.filter((item) => item.value > 0);
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-5 shadow-card-soft">
+      <h3 className="mb-3 font-display text-lg font-bold tracking-normal">{title}</h3>
+      {visibleData.length ? (
+        <ResponsiveContainer width="100%" height={260}>
+          <PieChart>
+            <Pie data={visibleData} dataKey="value" nameKey="name" innerRadius={48} outerRadius={92} paddingAngle={2}>
+              {visibleData.map((item) => <Cell key={item.name} fill={item.color} />)}
+            </Pie>
+            <Tooltip formatter={(value: unknown) => formatMoney(Number(value), "TRY")} />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="flex h-[260px] items-center justify-center rounded-md bg-surface-light px-6 text-center text-sm text-muted-foreground">
+          Bu grafik için ödeme kaydı bulunmuyor.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function planOwnerMatches(kind: FinancialStatementKind, entityId: string, plan: AdminPaymentPlan): boolean {
+  if (kind === "employee") return plan.employee_id === entityId;
+  if (kind === "expense") return plan.expense_card_id === entityId;
+  if (kind === "customer") return plan.customer_id === entityId;
+  return false;
+}
+
+function paymentOwnerMatches(kind: FinancialStatementKind, entityId: string, payment: AdminPayment): boolean {
+  if (kind === "employee") return payment.employee_id === entityId;
+  if (kind === "expense") return payment.expense_card_id === entityId;
+  if (kind === "customer") return payment.customer_id === entityId;
+  return false;
+}
+
+function planOwnerPayload(kind: FinancialStatementKind, entityId: string) {
+  return {
+    customer_id: kind === "customer" ? entityId : null,
+    employee_id: kind === "employee" ? entityId : null,
+    expense_card_id: kind === "expense" ? entityId : null,
+  };
 }
 
 function EntityInfoCard({ title, details }: { title: string; details: StatementEntity["details"] }) {
@@ -682,10 +749,15 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
   const [customers, setCustomers] = useState<AdminCustomerLookup[]>([]);
   const [employees, setEmployees] = useState<AdminEmployee[]>([]);
   const [expenseCards, setExpenseCards] = useState<AdminExpenseCard[]>([]);
+  const [paymentPlans, setPaymentPlans] = useState<AdminPaymentPlan[]>([]);
+  const [payments, setPayments] = useState<AdminPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<EntryFormState>(() => emptyForm(kind, entityId));
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [planForm, setPlanForm] = useState<PlanFormState>({ account_type: "resmi", project_id: "", title: "", description: "", amount: "", due_date: "", status: "Bekliyor", notes: "" });
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
@@ -718,6 +790,8 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
       setCustomers(data.customers ?? []);
       setEmployees(data.employees ?? []);
       setExpenseCards(data.expense_cards ?? []);
+      setPaymentPlans(data.payment_plans ?? []);
+      setPayments(data.payments ?? []);
     } catch {
       const message = "Veriler alınırken bir problem oluştu. Lütfen bağlantınızı kontrol edip tekrar deneyin.";
       setError(message);
@@ -747,6 +821,41 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
       chart: getCardChartData(kind, scopedEntries, chartCurrency),
     };
   }), [chartCurrency, entries, kind]);
+
+  const planAccountData = useMemo(() => ACCOUNT_GROUPS.map((account) => {
+    const accountValue = account.value === "Gayri Resmi" ? "gayri_resmi" : "resmi";
+    const scopedPlans = paymentPlans.filter((plan) => planOwnerMatches(kind, entityId, plan) && accountType(plan.account_type) === accountValue);
+    const planIds = new Set(scopedPlans.map((plan) => String(plan.id)));
+    const scopedPayments = payments.filter((payment) => paymentOwnerMatches(kind, entityId, payment) && accountType(payment.account_type) === accountValue && planIds.has(String(payment.payment_plan_id || "")));
+    const allocatedPaid = allocateCollectionsToPlans(scopedPlans, scopedPayments);
+    const enrichedPlans = scopedPlans.map((plan) => {
+      const amount = Number(plan.amount || 0);
+      const allocatedAmount = allocatedPaid.get(plan.id) || 0;
+      const paid = plan.status === "Ödendi" ? amount : Math.min(amount, allocatedAmount);
+      const remain = Math.max(0, amount - paid);
+      const computed = derivePlanStatus({ amount, due_date: plan.due_date || "", status: plan.status || "Bekliyor" }, paid);
+      return { ...plan, paid, remain, computed };
+    });
+    const unpaidPlans = enrichedPlans.filter((plan) => plan.computed !== "Ödendi" && plan.computed !== "İptal" && plan.remain > 0);
+    const futureUnpaidPlans = unpaidPlans.filter((plan) => String(plan.due_date || "") > today);
+    const accountSummaryPlans = enrichedPlans.filter((plan) => {
+      const dueDate = String(plan.due_date || "");
+      const isPaid = plan.computed === "Ödendi" || Number(plan.paid || 0) > 0;
+      return isPaid || (dueDate !== "" && dueDate <= today);
+    });
+    const futurePlans = enrichedPlans.filter((plan) => String(plan.due_date || "") > today && Number(plan.paid || 0) <= 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal");
+    const paid = enrichedPlans.reduce((sum, plan) => sum + Number(plan.paid || 0), 0);
+    const overdue = enrichedPlans.filter((plan) => daysUntil(plan.due_date || "") < 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal").reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
+    const futureRemaining = futureUnpaidPlans.reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
+    const balance = unpaidPlans.reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
+    const upcoming = [...futureUnpaidPlans].sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")))[0]?.remain || 0;
+    const chart = [
+      { name: "Ödenen", value: paid, color: chartColors.income },
+      { name: "Kalan", value: Math.max(0, balance - overdue), color: chartColors.planned },
+      { name: "Vadesi Geçen", value: overdue, color: chartColors.expense },
+    ];
+    return { ...account, account_type: accountValue, accountSummaryPlans, futurePlans, paid, overdue, futureRemaining, balance, upcoming, chart };
+  }), [entityId, kind, paymentPlans, payments]);
 
   const filteredEntries = useMemo(() => entries.filter((entry) => {
     if (fromDate && entry.entry_date < fromDate) return false;
@@ -786,6 +895,29 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
     setForm(formFromEntry(entry));
     setFormError("");
     setDialogOpen(true);
+  }
+
+  function openNewPayment(account: "resmi" | "gayri_resmi") {
+    setEditingPlanId(null);
+    setPlanForm({ account_type: account, project_id: "", title: "", description: "", amount: "", due_date: "", status: "Bekliyor", notes: "" });
+    setFormError("");
+    setPlanDialogOpen(true);
+  }
+
+  function openEditPayment(plan: AdminPaymentPlan & { paid?: number; remain?: number; computed?: string }) {
+    setEditingPlanId(plan.id);
+    setPlanForm({
+      account_type: accountType(plan.account_type),
+      project_id: plan.project_id || "",
+      title: plan.title || "",
+      description: plan.description || "",
+      amount: String(plan.amount || ""),
+      due_date: plan.due_date || "",
+      status: plan.status || "Bekliyor",
+      notes: plan.notes || "",
+    });
+    setFormError("");
+    setPlanDialogOpen(true);
   }
 
   function updateForm<K extends keyof EntryFormState>(key: K, value: EntryFormState[K]) {
@@ -851,7 +983,92 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
     await load();
   }
 
+  async function savePaymentPlan() {
+    if (!planForm.title || !planForm.amount || !planForm.due_date) {
+      setFormError("Başlık, tutar ve vade tarihi zorunludur.");
+      return;
+    }
+
+    setSaving(true);
+    setFormError("");
+    try {
+      const payload = {
+        ...planOwnerPayload(kind, entityId),
+        ...planForm,
+        project_id: planForm.project_id || null,
+        amount: Number(planForm.amount),
+      };
+      if (editingPlanId) {
+        await updateAdminPaymentPlan({ ...payload, id: editingPlanId });
+        toast({ title: "Ödeme güncellendi." });
+      } else {
+        await createAdminPaymentPlan(payload);
+        toast({ title: "Ödeme eklendi." });
+      }
+      setPlanDialogOpen(false);
+      await load();
+    } catch {
+      toast({ title: "Kaydedilemedi.", description: "Ödeme kaydı kaydedilirken bir problem oluştu.", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deletePaymentPlanFromModal() {
+    if (!editingPlanId) return;
+    if (!confirm("Bu ödeme kaydını silmek istediğinize emin misiniz?")) return;
+    try {
+      await deleteAdminPaymentPlan(editingPlanId);
+      toast({ title: "Ödeme kaydı silindi." });
+      setPlanDialogOpen(false);
+      setEditingPlanId(null);
+      await load();
+    } catch {
+      toast({ title: "Ödeme kaydı silinemedi.", description: "Kayıt başka bir yerde kullanılıyor olabilir.", variant: "destructive" });
+    }
+  }
+
   const dialogTitle = form.id ? "Hareketi Düzenle" : "Yeni Hareket Ekle";
+  const planDialogTitle = editingPlanId ? "Ödemeyi Düzenle" : "Ödeme Ekle";
+
+  function renderPlanRows(rows: Array<AdminPaymentPlan & { paid?: number; remain?: number; computed?: string }>, emptyMessage: string) {
+    return (
+      <div className="overflow-x-auto rounded-md border border-border">
+        <table className="min-w-[760px] w-full text-sm">
+          <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+            <tr>
+              <th className="p-3 text-left">Vade</th>
+              <th className="p-3 text-left">Başlık</th>
+              <th className="p-3 text-right">Tutar</th>
+              <th className="p-3 text-right">Ödenen</th>
+              <th className="p-3 text-right">Kalan</th>
+              <th className="p-3">Durum</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((plan) => {
+              const isLate = String(plan.due_date || "") < today && plan.computed !== "Ödendi" && plan.computed !== "İptal" && Number(plan.remain || 0) > 0;
+              const label = isLate ? "Geciken Ödeme" : plan.computed || plan.status || "Bekliyor";
+              return (
+                <tr key={plan.id} onClick={() => openEditPayment(plan)} className="cursor-pointer border-t border-border transition-colors hover:bg-emerald-50/60">
+                  <td className="p-3 whitespace-nowrap">{formatDate(plan.due_date)}</td>
+                  <td className="p-3">
+                    <div className="font-medium">{plan.title}</div>
+                    {plan.description && <div className="mt-1 max-w-xs truncate text-xs text-muted-foreground">{plan.description}</div>}
+                  </td>
+                  <td className="p-3 text-right font-semibold">{formatMoney(plan.amount, "TRY")}</td>
+                  <td className="p-3 text-right text-emerald-700">{formatMoney(plan.paid || 0, "TRY")}</td>
+                  <td className="p-3 text-right text-red-600">{formatMoney(plan.remain || 0, "TRY")}</td>
+                  <td className="p-3"><span className={cn("rounded-md border px-2 py-0.5 text-xs font-semibold", statusBadgeClass(isLate ? "Vadesi Geçti" : label))}>{label}</span></td>
+                </tr>
+              );
+            })}
+            {rows.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">{emptyMessage}</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 
   if (loading) {
     return <div className="py-12 text-center text-sm text-muted-foreground">Yükleniyor...</div>;
@@ -921,35 +1138,32 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
           {usesCardLayout ? (
             <Tabs defaultValue="resmi" className="space-y-4">
               <TabsList className="flex flex-wrap">
-                {accountData.map((account) => <TabsTrigger key={account.tab} value={account.tab}>{account.label}</TabsTrigger>)}
+                {planAccountData.map((account) => <TabsTrigger key={account.tab} value={account.tab}>{account.label}</TabsTrigger>)}
               </TabsList>
-              {accountData.map((account) => (
+              {planAccountData.map((account) => (
                 <TabsContent key={account.tab} value={account.tab} className="mt-0 space-y-5">
-                  <SummaryCards kind={kind} summary={account.summary} />
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                    <AdminMetricCard label={kind === "employee" ? "Planlanan Ödeme" : "Planlanan Borç"} value={formatMoney(account.futureRemaining, "TRY")} description="Gelecek unpaid kayıtlar" />
+                    <AdminMetricCard label={kind === "employee" ? "Ödenen" : "Ödenen Tutar"} value={formatMoney(account.paid, "TRY")} description="Ödenmiş kayıtlar" />
+                    <AdminMetricCard label={kind === "employee" ? "Kalan Ödeme" : "Kalan Borç"} value={formatMoney(account.balance, "TRY")} description="Ödenmemiş kalan tutar" />
+                    <AdminMetricCard label="Vadesi Geçen Tutar" value={formatMoney(account.overdue, "TRY")} description="Geciken unpaid tutar" />
+                    <AdminMetricCard label="Yaklaşan Ödeme" value={formatMoney(account.upcoming, "TRY")} description="En yakın gelecek ödeme" />
+                  </div>
 
                   <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                     <div className="lg:col-span-2 space-y-4">
-                      <AccountMovementTable
-                        title={kind === "employee" ? "Ödeme planı, maaş ve avans kayıtları" : "Borç, gider ve fatura kayıtları"}
-                        emptyMessage={`${account.label} için planlanan hareket bulunmuyor.`}
-                        entries={account.plannedEntries}
-                        lookups={lookups}
-                        onEdit={openEdit}
-                        onDelete={deleteEntry}
-                      />
-                      <AccountMovementTable
-                        title={kind === "employee" ? "Gerçekleşen ödeme, maaş ve avans kayıtları" : "Gerçekleşen ödeme ve tedarikçi hareketleri"}
-                        emptyMessage={`${account.label} için gerçekleşen ödeme bulunmuyor.`}
-                        entries={account.realizedEntries}
-                        lookups={lookups}
-                        onEdit={openEdit}
-                        onDelete={deleteEntry}
-                      />
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h3 className="font-semibold">Hesap Özeti</h3>
+                        <Button onClick={() => openNewPayment(account.account_type)} className="bg-accent text-accent-foreground hover:bg-accent-glow"><Plus className="h-4 w-4" /> Ödeme Ekle</Button>
+                      </div>
+                      {renderPlanRows(account.accountSummaryPlans, `${account.label} için hesap özeti kaydı bulunmuyor.`)}
+                      <h3 className="font-semibold">Gelecek Ödemeler</h3>
+                      {renderPlanRows(account.futurePlans, `${account.label} için gelecek ödeme bulunmuyor.`)}
                     </div>
 
                     <div className="space-y-4">
-                      <ChartCard title={`${account.label} ${kind === "employee" ? "Personel Özeti" : "Tedarikçi Özeti"}`} data={account.chart} currency={chartCurrency} />
-                      <AccountDocumentTable entries={account.entries} emptyMessage={`${account.label} için belge bulunmuyor.`} lookups={lookups} />
+                      <PlanChartCard title={`${account.label} Ödeme Durumu`} data={account.chart} />
+                      <AccountDocumentTable entries={entries.filter((entry) => entryAccountGroup(entry) === account.value)} emptyMessage={`${account.label} için belge bulunmuyor.`} lookups={lookups} />
                     </div>
                   </div>
                 </TabsContent>
@@ -1226,6 +1440,71 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
             <Button onClick={saveEntry} disabled={saving} className="bg-accent text-accent-foreground hover:bg-accent-glow">
               {saving ? "Kaydediliyor..." : "Kaydet"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{planDialogTitle}</DialogTitle>
+          </DialogHeader>
+
+          {formError && <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{formError}</div>}
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <Label>Hesap Türü</Label>
+              <Select value={planForm.account_type} onValueChange={(value) => setPlanForm((current) => ({ ...current, account_type: accountType(value) }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="resmi">Resmi Hesap</SelectItem><SelectItem value="gayri_resmi">Gayri Resmi Hesap</SelectItem></SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Proje</Label>
+              <Select value={planForm.project_id || "none"} onValueChange={(value) => setPlanForm((current) => ({ ...current, project_id: value === "none" ? "" : value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Proje seçin</SelectItem>
+                  {projects.map((project) => <SelectItem key={project.id} value={project.id}>{project.title}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2">
+              <Label>Başlık *</Label>
+              <Input value={planForm.title} onChange={(event) => setPlanForm((current) => ({ ...current, title: event.target.value }))} />
+            </div>
+            <div>
+              <Label>Tutar *</Label>
+              <Input type="number" value={planForm.amount} onChange={(event) => setPlanForm((current) => ({ ...current, amount: event.target.value }))} />
+            </div>
+            <div>
+              <Label>Vade Tarihi *</Label>
+              <Input type="date" value={planForm.due_date} onChange={(event) => setPlanForm((current) => ({ ...current, due_date: event.target.value }))} />
+            </div>
+            <div>
+              <Label>Durum</Label>
+              <Select value={planForm.status || "Bekliyor"} onValueChange={(value) => setPlanForm((current) => ({ ...current, status: value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{["Bekliyor", "Kısmi Ödendi", "Ödendi", "Vadesi Geçti", "İptal"].map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2">
+              <Label>Açıklama</Label>
+              <Textarea value={planForm.description} onChange={(event) => setPlanForm((current) => ({ ...current, description: event.target.value }))} />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Notlar</Label>
+              <Textarea value={planForm.notes} onChange={(event) => setPlanForm((current) => ({ ...current, notes: event.target.value }))} />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:justify-between">
+            {editingPlanId ? <Button variant="destructive" onClick={deletePaymentPlanFromModal}>Sil</Button> : <span />}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setPlanDialogOpen(false)}>İptal</Button>
+              <Button onClick={savePaymentPlan} disabled={saving} className="bg-accent text-accent-foreground hover:bg-accent-glow">Kaydet</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

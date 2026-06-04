@@ -27,6 +27,8 @@ try {
             'customers' => fetch_all_statement_rows('SELECT id, customer_type, full_name, company_name, phone, email, tax_or_identity_number, status FROM ak_customers ORDER BY created_at DESC'),
             'employees' => fetch_all_statement_rows('SELECT * FROM ak_employees ORDER BY full_name ASC'),
             'expense_cards' => fetch_all_statement_rows('SELECT * FROM ak_expense_cards ORDER BY name ASC'),
+            'payment_plans' => fetch_statement_payment_plans($kind, $entityId),
+            'payments' => fetch_statement_payments($kind, $entityId),
         ]);
     }
 
@@ -160,6 +162,45 @@ function fetch_statement_entries(string $kind, string $id): array
     });
 
     return $entries;
+}
+
+function fetch_statement_payment_plans(string $kind, string $id): array
+{
+    if (!in_array($kind, ['customer', 'employee', 'expense'], true)) {
+        return [];
+    }
+
+    ensure_statement_payment_plan_columns();
+    $column = statement_fixed_column($kind);
+    $stmt = db()->prepare("SELECT * FROM ak_payment_plans WHERE `{$column}` = :id ORDER BY due_date ASC");
+    $stmt->execute(['id' => $id]);
+    return $stmt->fetchAll() ?: [];
+}
+
+function fetch_statement_payments(string $kind, string $id): array
+{
+    if ($kind !== 'customer') {
+        return [];
+    }
+
+    $stmt = db()->prepare('SELECT * FROM ak_payments WHERE customer_id = :id ORDER BY payment_date DESC');
+    $stmt->execute(['id' => $id]);
+    return $stmt->fetchAll() ?: [];
+}
+
+function ensure_statement_payment_plan_columns(): void
+{
+    $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE 'employee_id'");
+    if (!$statement || !$statement->fetch()) {
+        db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN employee_id CHAR(36) NULL AFTER customer_id");
+        db()->exec("ALTER TABLE ak_payment_plans ADD INDEX idx_payment_plans_employee_id (employee_id)");
+    }
+
+    $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE 'expense_card_id'");
+    if (!$statement || !$statement->fetch()) {
+        db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN expense_card_id CHAR(36) NULL AFTER employee_id");
+        db()->exec("ALTER TABLE ak_payment_plans ADD INDEX idx_payment_plans_expense_card_id (expense_card_id)");
+    }
 }
 
 function financial_entry_payload(array $input): array

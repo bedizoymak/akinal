@@ -58,8 +58,17 @@ try {
 
 function plan_payload(array $input): array
 {
+    $customerId = nullable_string($input, 'customer_id');
+    $employeeId = nullable_string($input, 'employee_id');
+    $expenseCardId = nullable_string($input, 'expense_card_id');
+    if (!$customerId && !$employeeId && !$expenseCardId) {
+        json_error('Kart seçimi zorunludur.');
+    }
+
     return [
-        'customer_id' => require_non_empty($input, 'customer_id', 'Müşteri zorunludur.'),
+        'customer_id' => $customerId,
+        'employee_id' => $employeeId,
+        'expense_card_id' => $expenseCardId,
         'project_id' => nullable_string($input, 'project_id'),
         'title' => require_non_empty($input, 'title', 'Başlık zorunludur.'),
         'description' => nullable_string($input, 'description'),
@@ -86,12 +95,22 @@ function payment_plan_status(array $input): string
 function ensure_account_type_column(): void
 {
     $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE 'account_type'");
-    if ($statement && $statement->fetch()) {
-        return;
+    if (!$statement || !$statement->fetch()) {
+        db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN account_type VARCHAR(20) NOT NULL DEFAULT 'resmi' AFTER amount");
+        db()->exec("ALTER TABLE ak_payment_plans ADD INDEX idx_payment_plans_account_type (account_type)");
     }
 
-    db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN account_type VARCHAR(20) NOT NULL DEFAULT 'resmi' AFTER amount");
-    db()->exec("ALTER TABLE ak_payment_plans ADD INDEX idx_payment_plans_account_type (account_type)");
+    $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE 'employee_id'");
+    if (!$statement || !$statement->fetch()) {
+        db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN employee_id CHAR(36) NULL AFTER customer_id");
+        db()->exec("ALTER TABLE ak_payment_plans ADD INDEX idx_payment_plans_employee_id (employee_id)");
+    }
+
+    $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE 'expense_card_id'");
+    if (!$statement || !$statement->fetch()) {
+        db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN expense_card_id CHAR(36) NULL AFTER employee_id");
+        db()->exec("ALTER TABLE ak_payment_plans ADD INDEX idx_payment_plans_expense_card_id (expense_card_id)");
+    }
 }
 
 function fetch_all(string $sql, array $params = []): array { $stmt = db()->prepare($sql); $stmt->execute($params); return $stmt->fetchAll() ?: []; }
