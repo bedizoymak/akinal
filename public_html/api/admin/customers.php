@@ -89,6 +89,17 @@ function ensure_account_type_columns(): void
 {
     ensure_account_type_column('ak_payment_plans', 'amount');
     ensure_account_type_column('ak_payments', 'amount');
+    ensure_paid_amount_column();
+}
+
+function ensure_paid_amount_column(): void
+{
+    $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE 'paid_amount'");
+    if ($statement && $statement->fetch()) {
+        return;
+    }
+
+    db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN paid_amount DECIMAL(15,2) NOT NULL DEFAULT 0 AFTER amount");
 }
 
 function ensure_account_type_column(string $table, string $afterColumn): void

@@ -116,6 +116,7 @@ type PlanFormState = {
   title: string;
   description: string;
   amount: string;
+  paid_amount: string;
   due_date: string;
   status: string;
   notes: string;
@@ -757,7 +758,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
   const [form, setForm] = useState<EntryFormState>(() => emptyForm(kind, entityId));
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
-  const [planForm, setPlanForm] = useState<PlanFormState>({ account_type: "resmi", project_id: "", title: "", description: "", amount: "", due_date: "", status: "Bekliyor", notes: "" });
+  const [planForm, setPlanForm] = useState<PlanFormState>({ account_type: "resmi", project_id: "", title: "", description: "", amount: "", paid_amount: "", due_date: "", status: "Bekliyor", notes: "" });
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
@@ -831,7 +832,8 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
     const enrichedPlans = scopedPlans.map((plan) => {
       const amount = Number(plan.amount || 0);
       const allocatedAmount = allocatedPaid.get(plan.id) || 0;
-      const paid = plan.status === "Ödendi" ? amount : Math.min(amount, allocatedAmount);
+      const partialAmount = Number(plan.paid_amount || 0);
+      const paid = plan.status === "Ödendi" ? amount : plan.status === "Kısmi Ödendi" ? Math.min(amount, partialAmount) : Math.min(amount, allocatedAmount);
       const remain = Math.max(0, amount - paid);
       const computed = derivePlanStatus({ amount, due_date: plan.due_date || "", status: plan.status || "Bekliyor" }, paid);
       return { ...plan, paid, remain, computed };
@@ -899,7 +901,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
 
   function openNewPayment(account: "resmi" | "gayri_resmi") {
     setEditingPlanId(null);
-    setPlanForm({ account_type: account, project_id: "", title: "", description: "", amount: "", due_date: "", status: "Bekliyor", notes: "" });
+    setPlanForm({ account_type: account, project_id: "", title: "", description: "", amount: "", paid_amount: "", due_date: "", status: "Bekliyor", notes: "" });
     setFormError("");
     setPlanDialogOpen(true);
   }
@@ -912,6 +914,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
       title: plan.title || "",
       description: plan.description || "",
       amount: String(plan.amount || ""),
+      paid_amount: String(plan.paid_amount || ""),
       due_date: plan.due_date || "",
       status: plan.status || "Bekliyor",
       notes: plan.notes || "",
@@ -988,6 +991,12 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
       setFormError("Başlık, tutar ve vade tarihi zorunludur.");
       return;
     }
+    const amount = Number(planForm.amount);
+    const paidAmount = Number(planForm.paid_amount || 0);
+    if (planForm.status === "Kısmi Ödendi" && (!(paidAmount > 0) || !(paidAmount < amount))) {
+      setFormError("Ödenen Tutar, 0'dan büyük ve toplam tutardan küçük olmalıdır.");
+      return;
+    }
 
     setSaving(true);
     setFormError("");
@@ -996,7 +1005,8 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
         ...planOwnerPayload(kind, entityId),
         ...planForm,
         project_id: planForm.project_id || null,
-        amount: Number(planForm.amount),
+        amount,
+        paid_amount: planForm.status === "Kısmi Ödendi" ? paidAmount : 0,
       };
       if (editingPlanId) {
         await updateAdminPaymentPlan({ ...payload, id: editingPlanId });
@@ -1478,6 +1488,12 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
               <Label>Tutar *</Label>
               <Input type="number" value={planForm.amount} onChange={(event) => setPlanForm((current) => ({ ...current, amount: event.target.value }))} />
             </div>
+            {planForm.status === "Kısmi Ödendi" && (
+              <div>
+                <Label>Ödenen Tutar *</Label>
+                <Input type="number" value={planForm.paid_amount} onChange={(event) => setPlanForm((current) => ({ ...current, paid_amount: event.target.value }))} />
+              </div>
+            )}
             <div>
               <Label>Vade Tarihi *</Label>
               <Input type="date" value={planForm.due_date} onChange={(event) => setPlanForm((current) => ({ ...current, due_date: event.target.value }))} />
@@ -1486,7 +1502,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
               <Label>Durum</Label>
               <Select value={planForm.status || "Bekliyor"} onValueChange={(value) => setPlanForm((current) => ({ ...current, status: value }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{["Bekliyor", "Kısmi Ödendi", "Ödendi", "Vadesi Geçti", "İptal"].map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
+                <SelectContent>{["Bekliyor", "Kısmi Ödendi", "Ödendi", "Vadesi Geçti"].map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="md:col-span-2">

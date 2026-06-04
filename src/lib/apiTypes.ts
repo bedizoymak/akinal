@@ -198,6 +198,7 @@ export interface AdminPaymentPlan {
   title: string | null;
   description: string | null;
   amount: number | string;
+  paid_amount?: number | string | null;
   account_type?: "resmi" | "gayri_resmi" | string | null;
   due_date: string | null;
   status: string | null;

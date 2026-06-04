@@ -76,7 +76,7 @@ export default function AdminCustomerDetail() {
   const [newNote, setNewNote] = useState("");
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
-  const [planForm, setPlanForm] = useState<any>({ account_type: "resmi", project_id: "", title: "", description: "", amount: "", due_date: "", status: "Bekliyor", notes: "" });
+  const [planForm, setPlanForm] = useState<any>({ account_type: "resmi", project_id: "", title: "", description: "", amount: "", paid_amount: "", due_date: "", status: "Bekliyor", notes: "" });
   const { toast } = useToast();
   const today = new Date().toISOString().slice(0, 10);
   const refreshCustomerDetail = async () => {
@@ -115,7 +115,8 @@ export default function AdminCustomerDetail() {
       const enrichedPlans = accountPlans.map((plan) => {
         const amount = safeNumber(plan.amount);
         const allocatedAmount = allocatedPaid.get(plan.id) || 0;
-        const paid = plan.status === "Ödendi" ? amount : Math.min(amount, allocatedAmount);
+        const partialAmount = safeNumber(plan.paid_amount);
+        const paid = plan.status === "Ödendi" ? amount : plan.status === "Kısmi Ödendi" ? Math.min(amount, partialAmount) : Math.min(amount, allocatedAmount);
         const remain = Math.max(0, amount - paid);
         const computed = derivePlanStatus(plan, paid);
         return { ...plan, paid, remain, computed };
@@ -193,7 +194,7 @@ export default function AdminCustomerDetail() {
   }
   function openNewPayment(account: "resmi" | "gayri_resmi") {
     setEditingPlanId(null);
-    setPlanForm({ account_type: account, project_id: "", title: "", description: "", amount: "", due_date: "", status: "Bekliyor", notes: "" });
+    setPlanForm({ account_type: account, project_id: "", title: "", description: "", amount: "", paid_amount: "", due_date: "", status: "Bekliyor", notes: "" });
     setPlanDialogOpen(true);
   }
   function openEditPayment(plan: any) {
@@ -204,6 +205,7 @@ export default function AdminCustomerDetail() {
       title: plan.title || "",
       description: plan.description || "",
       amount: String(plan.amount || ""),
+      paid_amount: String(plan.paid_amount || ""),
       due_date: plan.due_date || "",
       status: plan.status || "Bekliyor",
       notes: plan.notes || "",
@@ -215,11 +217,18 @@ export default function AdminCustomerDetail() {
       toast({ title: "Başlık, tutar ve vade tarihi zorunludur", variant: "destructive" });
       return;
     }
+    const amount = Number(planForm.amount);
+    const paidAmount = Number(planForm.paid_amount || 0);
+    if (planForm.status === "Kısmi Ödendi" && (!(paidAmount > 0) || !(paidAmount < amount))) {
+      toast({ title: "Ödenen Tutar, 0'dan büyük ve toplam tutardan küçük olmalıdır", variant: "destructive" });
+      return;
+    }
     const payload = {
       ...planForm,
       customer_id: id,
       project_id: planForm.project_id || null,
-      amount: Number(planForm.amount),
+      amount,
+      paid_amount: planForm.status === "Kısmi Ödendi" ? paidAmount : 0,
     };
     if (editingPlanId) {
       await updateAdminPaymentPlan({ ...payload, id: editingPlanId });
@@ -457,11 +466,12 @@ export default function AdminCustomerDetail() {
             </div>
             <div><Label>Başlık *</Label><Input value={planForm.title} onChange={(event) => setPlanForm((form: any) => ({ ...form, title: event.target.value }))} /></div>
             <div><Label>Tutar *</Label><Input type="number" step="0.01" value={planForm.amount} onChange={(event) => setPlanForm((form: any) => ({ ...form, amount: event.target.value }))} /></div>
+            {planForm.status === "Kısmi Ödendi" && <div><Label>Ödenen Tutar *</Label><Input type="number" step="0.01" value={planForm.paid_amount} onChange={(event) => setPlanForm((form: any) => ({ ...form, paid_amount: event.target.value }))} /></div>}
             <div><Label>Vade Tarihi *</Label><Input type="date" value={planForm.due_date} onChange={(event) => setPlanForm((form: any) => ({ ...form, due_date: event.target.value }))} /></div>
             <div><Label>Durum</Label>
               <Select value={planForm.status || "Bekliyor"} onValueChange={(value) => setPlanForm((form: any) => ({ ...form, status: value }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{["Bekliyor", "Kısmi Ödendi", "Ödendi", "Vadesi Geçti", "İptal"].map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
+                <SelectContent>{["Bekliyor", "Kısmi Ödendi", "Ödendi", "Vadesi Geçti"].map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="md:col-span-2"><Label>Açıklama</Label><Textarea value={planForm.description} onChange={(event) => setPlanForm((form: any) => ({ ...form, description: event.target.value }))} rows={2} /></div>

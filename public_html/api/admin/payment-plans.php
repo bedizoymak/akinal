@@ -73,6 +73,7 @@ function plan_payload(array $input): array
         'title' => require_non_empty($input, 'title', 'Başlık zorunludur.'),
         'description' => nullable_string($input, 'description'),
         'amount' => (float) ($input['amount'] ?? 0),
+        'paid_amount' => normalized_paid_amount($input),
         'account_type' => account_type($input),
         'due_date' => require_non_empty($input, 'due_date', 'Vade tarihi zorunludur.'),
         'status' => payment_plan_status($input),
@@ -89,7 +90,21 @@ function account_type(array $input): string
 function payment_plan_status(array $input): string
 {
     $value = nullable_string($input, 'status') ?? 'Bekliyor';
-    return in_array($value, ['Ödendi', 'Bekliyor', 'Vadesi Geçti', 'Kısmi Ödendi', 'İptal'], true) ? $value : 'Bekliyor';
+    return in_array($value, ['Ödendi', 'Bekliyor', 'Vadesi Geçti', 'Kısmi Ödendi'], true) ? $value : 'Bekliyor';
+}
+
+function normalized_paid_amount(array $input): float
+{
+    $status = payment_plan_status($input);
+    $amount = (float) ($input['amount'] ?? 0);
+    $paidAmount = (float) ($input['paid_amount'] ?? 0);
+    if ($status === 'Ödendi') {
+        return $amount;
+    }
+    if ($status === 'Kısmi Ödendi') {
+        return max(0, min($amount, $paidAmount));
+    }
+    return 0;
 }
 
 function ensure_account_type_column(): void
@@ -98,6 +113,11 @@ function ensure_account_type_column(): void
     if (!$statement || !$statement->fetch()) {
         db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN account_type VARCHAR(20) NOT NULL DEFAULT 'resmi' AFTER amount");
         db()->exec("ALTER TABLE ak_payment_plans ADD INDEX idx_payment_plans_account_type (account_type)");
+    }
+
+    $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE 'paid_amount'");
+    if (!$statement || !$statement->fetch()) {
+        db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN paid_amount DECIMAL(15,2) NOT NULL DEFAULT 0 AFTER amount");
     }
 
     $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE 'employee_id'");

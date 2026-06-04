@@ -190,6 +190,11 @@ function fetch_statement_payments(string $kind, string $id): array
 
 function ensure_statement_payment_plan_columns(): void
 {
+    $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE 'paid_amount'");
+    if (!$statement || !$statement->fetch()) {
+        db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN paid_amount DECIMAL(15,2) NOT NULL DEFAULT 0 AFTER amount");
+    }
+
     $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE 'employee_id'");
     if (!$statement || !$statement->fetch()) {
         db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN employee_id CHAR(36) NULL AFTER customer_id");
