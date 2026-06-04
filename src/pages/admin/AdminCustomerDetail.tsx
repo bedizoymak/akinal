@@ -113,13 +113,15 @@ export default function AdminCustomerDetail() {
       const accountPays = pays.filter((payment) => accountType(payment.account_type) === account.value && accountPlanIds.has(String(payment.payment_plan_id || "")));
       const allocatedPaid = allocateCollectionsToPlans(accountPlans, accountPays);
       const enrichedPlans = accountPlans.map((plan) => {
-        const paid = allocatedPaid.get(plan.id) || 0;
-        const remain = Math.max(0, safeNumber(plan.amount) - paid);
+        const amount = safeNumber(plan.amount);
+        const allocatedAmount = allocatedPaid.get(plan.id) || 0;
+        const paid = plan.status === "Ödendi" ? amount : Math.min(amount, allocatedAmount);
+        const remain = Math.max(0, amount - paid);
         const computed = derivePlanStatus(plan, paid);
         return { ...plan, paid, remain, computed };
       });
       const totalDue = accountPlans.reduce((s, p) => s + safeNumber(p.amount), 0);
-      const totalPaid = accountPays.reduce((s, p) => s + safeNumber(p.amount), 0);
+      const totalPaid = enrichedPlans.reduce((s, p) => s + safeNumber(p.paid), 0);
       const balance = totalDue - totalPaid;
       const overdue = enrichedPlans
         .filter((plan) => daysUntil(plan.due_date) < 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal")
