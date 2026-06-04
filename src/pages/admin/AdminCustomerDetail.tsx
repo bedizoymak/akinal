@@ -160,22 +160,24 @@ export default function AdminCustomerDetail() {
       const overdue = accountSummaryRows
         .filter((plan: any) => String(plan.due_date || "") < today && plan.computed !== "Ödendi" && plan.computed !== "İptal")
         .reduce((sum: number, plan: any) => sum + Math.max(0, safeNumber(plan.remain)), 0);
-      const currentRemaining = accountSummaryRows
-        .filter((plan: any) => String(plan.due_date || "") >= today && plan.computed !== "Ödendi" && plan.computed !== "İptal")
+      const currentDueRemaining = accountSummaryRows
+        .filter((plan: any) => String(plan.due_date || "") === today && plan.computed !== "Ödendi" && plan.computed !== "İptal")
         .reduce((sum: number, plan: any) => sum + Math.max(0, safeNumber(plan.remain)), 0);
       const futureRemaining = futureRows.reduce((sum: number, plan: any) => sum + Math.max(0, safeNumber(plan.remain)), 0);
-      return { paid, overdue, remaining: currentRemaining + futureRemaining };
+      return { paid, overdue, futureRemaining, currentDueRemaining };
     };
     const official = accountChartValues(accountSummaries.resmi);
     const unofficial = accountChartValues(accountSummaries.gayri_resmi);
     const overdue = official.overdue + unofficial.overdue;
-    const total = official.paid + unofficial.paid + official.remaining + unofficial.remaining + overdue;
+    const currentDue = official.currentDueRemaining + unofficial.currentDueRemaining;
+    const total = official.paid + unofficial.paid + official.futureRemaining + unofficial.futureRemaining + overdue + currentDue;
 
     return [
       { name: "Resmi ödenen", value: official.paid, color: "#15803d" },
       { name: "Gayri resmi ödenen", value: unofficial.paid, color: "#22c55e" },
-      { name: "Resmi kalan", value: official.remaining, color: "#2563eb" },
-      { name: "Gayri resmi kalan", value: unofficial.remaining, color: "#60a5fa" },
+      { name: "Resmi kalan", value: official.futureRemaining, color: "#2563eb" },
+      { name: "Gayri resmi kalan", value: unofficial.futureRemaining, color: "#60a5fa" },
+      { name: "Bugün vadesi gelen", value: currentDue, color: "#f59e0b" },
       { name: "Geciken ödeme", value: overdue, color: "#dc2626" },
     ]
       .filter((item) => item.value > 0)

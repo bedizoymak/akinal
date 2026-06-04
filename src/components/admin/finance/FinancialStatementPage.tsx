@@ -391,6 +391,7 @@ function DetailList({ details }: { details: StatementEntity["details"] }) {
 
 function PlanChartCard({ title, data }: { title: string; data: ChartDatum[] }) {
   const visibleData = data.filter((item) => item.value > 0);
+  const total = visibleData.reduce((sum, item) => sum + item.value, 0);
 
   return (
     <div className="rounded-lg border border-border bg-card p-5 shadow-card-soft">
@@ -401,7 +402,11 @@ function PlanChartCard({ title, data }: { title: string; data: ChartDatum[] }) {
             <Pie data={visibleData} dataKey="value" nameKey="name" innerRadius={48} outerRadius={92} paddingAngle={2}>
               {visibleData.map((item) => <Cell key={item.name} fill={item.color} />)}
             </Pie>
-            <Tooltip formatter={(value: unknown) => formatMoney(Number(value), "TRY")} />
+            <Tooltip formatter={(value: unknown) => {
+              const amount = Number(value);
+              const percent = total > 0 ? `${((amount / total) * 100).toFixed(1).replace(".", ",")}%` : "0%";
+              return `${formatMoney(amount, "TRY")} (${percent})`;
+            }} />
             <Legend />
           </PieChart>
         </ResponsiveContainer>
@@ -849,14 +854,18 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
     const paid = enrichedPlans.reduce((sum, plan) => sum + Number(plan.paid || 0), 0);
     const overdue = enrichedPlans.filter((plan) => daysUntil(plan.due_date || "") < 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal").reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
     const futureRemaining = futureUnpaidPlans.reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
+    const currentDueRemaining = enrichedPlans
+      .filter((plan) => String(plan.due_date || "") === today && plan.computed !== "Ödendi" && plan.computed !== "İptal")
+      .reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
     const balance = unpaidPlans.reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
     const upcoming = [...futureUnpaidPlans].sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")))[0]?.remain || 0;
     const chart = [
       { name: "Ödenen", value: paid, color: chartColors.income },
-      { name: "Kalan", value: Math.max(0, balance - overdue), color: chartColors.planned },
+      { name: "Gelecek Kalan", value: futureRemaining, color: chartColors.planned },
+      { name: "Bugün Vadesi Gelen", value: currentDueRemaining, color: chartColors.neutral },
       { name: "Vadesi Geçen", value: overdue, color: chartColors.expense },
     ];
-    return { ...account, account_type: accountValue, accountSummaryPlans, futurePlans, paid, overdue, futureRemaining, balance, upcoming, chart };
+    return { ...account, account_type: accountValue, accountSummaryPlans, futurePlans, paid, overdue, futureRemaining, currentDueRemaining, balance, upcoming, chart };
   }), [entityId, kind, paymentPlans, payments]);
 
   const filteredEntries = useMemo(() => entries.filter((entry) => {
