@@ -333,13 +333,6 @@ export interface AdminCustomerDetailResponse {
   documents: Record<string, unknown>[];
 }
 
-export interface AdminPaymentPlansResponse {
-  payment_plans: AdminPaymentPlan[];
-  customers: AdminCustomer[];
-  projects: Pick<PublicProject, "id" | "title">[];
-  payments: Pick<AdminPayment, "customer_id" | "payment_plan_id" | "amount" | "account_type" | "payment_date">[];
-}
-
 export interface AdminPaymentsResponse {
   payments: AdminPayment[];
   customers: AdminCustomer[];

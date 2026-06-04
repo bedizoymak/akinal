@@ -7,7 +7,6 @@ import type {
   AdminDashboardResponse,
   AdminPayment,
   AdminPaymentPlan,
-  AdminPaymentPlansResponse,
   AdminPaymentsResponse,
   AdminCustomerNote,
   AdminExpense,
@@ -466,13 +465,6 @@ export async function createAdminCustomerNote(customerId: string, note: string):
 export async function deleteAdminCustomerNote(noteId: string): Promise<void> {
   await apiRequest<{ deleted: boolean }>(`/api/admin/customers.php?note_id=${encodeURIComponent(noteId)}`, {
     method: "DELETE",
-    credentials: "include",
-  });
-}
-
-export async function getAdminPaymentPlansData(): Promise<AdminPaymentPlansResponse> {
-  return apiRequest<AdminPaymentPlansResponse>("/api/admin/payment-plans.php", {
-    method: "GET",
     credentials: "include",
   });
 }

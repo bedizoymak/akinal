@@ -267,9 +267,9 @@ export default function AdminDashboard() {
             <AdminMetricCard to="/admin/projeler" label="Aktif Projeler" value={data.summary.active_projects} description={`${data.summary.total_projects} toplam proje`} icon={FolderKanban} tone="accent" />
             <AdminMetricCard to="/admin/tahsilatlar" label="Toplam Tahsilat" value={formatDashboardTRY(dashboard.totalIncome)} description="Gerçekleşen gelen ödemeler" icon={Wallet} tone="success" />
             <AdminMetricCard to="/admin/giderler" label="Toplam Gider" value={formatDashboardTRY(dashboard.totalExpenses)} description="Yapılan masraflar" icon={Receipt} tone="danger" />
-            <AdminMetricCard to="/admin/finans-ozeti" label="Net Durum" value={formatDashboardTRY(dashboard.netStatus)} description="Gerçekleşen gelir eksi gider" icon={dashboard.netStatus >= 0 ? TrendingUp : TrendingDown} tone={dashboard.netStatus >= 0 ? "success" : "danger"} />
-            <AdminMetricCard to="/admin/odeme-planlari" label="Beklenen Tahsilat" value={formatDashboardTRY(dashboard.pendingCollections)} description="Planlanan gelir kayıtları" icon={CalendarClock} tone="warning" />
-            <AdminMetricCard to="/admin/odeme-planlari" label="Vadesi Geçen Alacak" value={formatDashboardTRY(dashboard.overdueCollections)} description={`${dashboard.overduePlans.length} ödeme planı takip bekliyor`} icon={Receipt} tone={dashboard.overdueCollections > 0 ? "danger" : "success"} />
+            <AdminMetricCard to="/admin/finans-dashboard" label="Net Durum" value={formatDashboardTRY(dashboard.netStatus)} description="Gerçekleşen gelir eksi gider" icon={dashboard.netStatus >= 0 ? TrendingUp : TrendingDown} tone={dashboard.netStatus >= 0 ? "success" : "danger"} />
+            <AdminMetricCard to="/admin/musteriler" label="Beklenen Tahsilat" value={formatDashboardTRY(dashboard.pendingCollections)} description="Müşteri kartlarındaki planlanan gelir kayıtları" icon={CalendarClock} tone="warning" />
+            <AdminMetricCard to="/admin/musteriler" label="Vadesi Geçen Alacak" value={formatDashboardTRY(dashboard.overdueCollections)} description={`${dashboard.overduePlans.length} ödeme kaydı takip bekliyor`} icon={Receipt} tone={dashboard.overdueCollections > 0 ? "danger" : "success"} />
           </div>
 
           <AdminSection title="Bu Ayın Özeti" description="İçinde bulunduğumuz ayın gerçekleşen gelir, gider ve net durumu.">
@@ -282,12 +282,12 @@ export default function AdminDashboard() {
 
           <div className="grid w-full max-w-full grid-cols-1 gap-6 xl:grid-cols-3">
             <AdminSection title="Takip Gerektirenler" description="Bugün bakılması faydalı olan kısa liste." className="xl:col-span-1" contentClassName="space-y-3">
-              <Link to="/admin/odeme-planlari" className="block rounded-md border border-border p-3 hover:border-accent/50 hover:bg-accent/5">
+              <Link to="/admin/musteriler" className="block rounded-md border border-border p-3 hover:border-accent/50 hover:bg-accent/5">
                 <div className="text-sm font-semibold">Vadesi Geçen Alacak</div>
                 <div className={cn("mt-1 text-lg font-bold", dashboard.overdueCollections > 0 ? "text-red-700" : "text-emerald-700")}>{formatDashboardTRY(dashboard.overdueCollections)}</div>
-                <div className="mt-1 text-xs text-muted-foreground">{dashboard.overduePlans.length} ödeme planı takip bekliyor.</div>
+                <div className="mt-1 text-xs text-muted-foreground">{dashboard.overduePlans.length} ödeme kaydı takip bekliyor.</div>
               </Link>
-              <Link to="/admin/odeme-planlari" className="block rounded-md border border-border p-3 hover:border-accent/50 hover:bg-accent/5">
+              <Link to="/admin/musteriler" className="block rounded-md border border-border p-3 hover:border-accent/50 hover:bg-accent/5">
                 <div className="text-sm font-semibold">Yaklaşan Tahsilatlar</div>
                 <div className="mt-1 text-lg font-bold text-amber-700">{dashboard.upcomingPlans.length}</div>
                 <div className="mt-1 text-xs text-muted-foreground">Önümüzdeki 30 gün içinde.</div>

@@ -1,15 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, Edit, Mail, MapPin, MessageCircle, Phone, Plus, Trash2 } from "lucide-react";
 import { accountType, allocateCollectionsToPlans, customerDisplayName, derivePlanStatus, displayLabel, formatTRY, formatDate, statusBadgeClass, daysUntil, safeNumber, whatsappLink } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { AdminPageHeader } from "@/components/admin/AdminPage";
-import { createAdminCustomerNote, deleteAdminCustomerNote, getAdminCustomerDetail } from "@/lib/apiClient";
+import { createAdminCustomerNote, createAdminPaymentPlan, deleteAdminCustomerNote, getAdminCustomerDetail, updateAdminPaymentPlan } from "@/lib/apiClient";
 
 function Stat({ label, value, color }: any) {
   return (
@@ -70,9 +74,11 @@ export default function AdminCustomerDetail() {
   const [notes, setNotes] = useState<any[]>([]);
   const [docs, setDocs] = useState<any[]>([]);
   const [newNote, setNewNote] = useState("");
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [planForm, setPlanForm] = useState<any>({ account_type: "resmi", project_id: "", title: "", description: "", amount: "", due_date: "", status: "Bekliyor", notes: "" });
   const { toast } = useToast();
   const today = new Date().toISOString().slice(0, 10);
-  const navigate = useNavigate();
 
   async function load() {
     if (!id) return;
@@ -174,6 +180,46 @@ export default function AdminCustomerDetail() {
     await deleteAdminCustomerNote(nid);
     load();
   }
+  function openNewPayment(account: "resmi" | "gayri_resmi") {
+    setEditingPlanId(null);
+    setPlanForm({ account_type: account, project_id: "", title: "", description: "", amount: "", due_date: "", status: "Bekliyor", notes: "" });
+    setPlanDialogOpen(true);
+  }
+  function openEditPayment(plan: any) {
+    setEditingPlanId(plan.id);
+    setPlanForm({
+      account_type: accountType(plan.account_type),
+      project_id: plan.project_id || "",
+      title: plan.title || "",
+      description: plan.description || "",
+      amount: String(plan.amount || ""),
+      due_date: plan.due_date || "",
+      status: plan.status || "Bekliyor",
+      notes: plan.notes || "",
+    });
+    setPlanDialogOpen(true);
+  }
+  async function savePaymentPlan() {
+    if (!id || !planForm.title || !planForm.amount || !planForm.due_date) {
+      toast({ title: "Başlık, tutar ve vade tarihi zorunludur", variant: "destructive" });
+      return;
+    }
+    const payload = {
+      ...planForm,
+      customer_id: id,
+      project_id: planForm.project_id || null,
+      amount: Number(planForm.amount),
+    };
+    if (editingPlanId) {
+      await updateAdminPaymentPlan({ ...payload, id: editingPlanId });
+      toast({ title: "Ödeme güncellendi" });
+    } else {
+      await createAdminPaymentPlan(payload);
+      toast({ title: "Ödeme eklendi" });
+    }
+    setPlanDialogOpen(false);
+    load();
+  }
 
   if (!customer) return <div className="rounded-md border border-border bg-card py-12 text-center text-sm text-muted-foreground shadow-card-soft">Müşteri bilgileri hazırlanıyor...</div>;
 
@@ -237,9 +283,6 @@ export default function AdminCustomerDetail() {
 
         {ACCOUNT_TABS.map((account) => {
           const summary = accountSummaries[account.value] || { totalDue: 0, totalPaid: 0, balance: 0, overdue: 0, upcoming: 0, plans: [], accountSummaryPlans: [], futurePlans: [], pays: [] };
-          const openPaymentPlanEdit = (planId: string) => {
-            navigate(`/admin/odeme-planlari?musteri=${id}&hesap=${account.value}&duzenle=${planId}`);
-          };
           const renderPlanRows = (rows: any[], emptyMessage: string) => (
             <div className="bg-card border border-border rounded-md overflow-x-auto">
               <table className="min-w-[760px] w-full text-sm">
@@ -252,7 +295,7 @@ export default function AdminCustomerDetail() {
                       <tr
                         key={p.id}
                         className="cursor-pointer border-t border-border transition-colors hover:bg-accent/5"
-                        onClick={() => openPaymentPlanEdit(p.id)}
+                        onClick={() => openEditPayment(p)}
                         title="Ödemeyi düzenle"
                       >
                         <td className="p-3"><div className="font-medium">{p.title}</div>{p.description && <div className="text-xs text-muted-foreground">{p.description}</div>}</td>
@@ -283,7 +326,7 @@ export default function AdminCustomerDetail() {
                 <div className="lg:col-span-2 space-y-4">
                   <div>
                     <div className="flex justify-end mb-3">
-                      <Button asChild className="bg-accent hover:bg-accent-glow text-accent-foreground"><Link to={`/admin/odeme-planlari?musteri=${id}&hesap=${account.value}`}><Plus className="h-4 w-4 mr-1" /> Ödeme Ekle</Link></Button>
+                      <Button onClick={() => openNewPayment(account.value)} className="bg-accent hover:bg-accent-glow text-accent-foreground"><Plus className="h-4 w-4 mr-1" /> Ödeme Ekle</Button>
                     </div>
                   </div>
 
@@ -358,6 +401,40 @@ export default function AdminCustomerDetail() {
           );
         })}
       </Tabs>
+      <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>{editingPlanId ? "Ödemeyi Düzenle" : "Ödeme Ekle"}</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div><Label>Hesap Türü</Label>
+              <Select value={planForm.account_type || "resmi"} onValueChange={(value) => setPlanForm((form: any) => ({ ...form, account_type: value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="resmi">Resmi Hesap</SelectItem><SelectItem value="gayri_resmi">Gayri Resmi Hesap</SelectItem></SelectContent>
+              </Select>
+            </div>
+            <div><Label>Proje</Label>
+              <Select value={planForm.project_id || "none"} onValueChange={(value) => setPlanForm((form: any) => ({ ...form, project_id: value === "none" ? "" : value }))}>
+                <SelectTrigger><SelectValue placeholder="Proje seçin" /></SelectTrigger>
+                <SelectContent><SelectItem value="none">Seçilmedi</SelectItem>{allProjects.map((project) => <SelectItem key={project.id} value={project.id}>{project.title}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Başlık *</Label><Input value={planForm.title} onChange={(event) => setPlanForm((form: any) => ({ ...form, title: event.target.value }))} /></div>
+            <div><Label>Tutar *</Label><Input type="number" step="0.01" value={planForm.amount} onChange={(event) => setPlanForm((form: any) => ({ ...form, amount: event.target.value }))} /></div>
+            <div><Label>Vade Tarihi *</Label><Input type="date" value={planForm.due_date} onChange={(event) => setPlanForm((form: any) => ({ ...form, due_date: event.target.value }))} /></div>
+            <div><Label>Durum</Label>
+              <Select value={planForm.status || "Bekliyor"} onValueChange={(value) => setPlanForm((form: any) => ({ ...form, status: value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{["Bekliyor", "Kısmi Ödendi", "Ödendi", "Vadesi Geçti", "İptal"].map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2"><Label>Açıklama</Label><Textarea value={planForm.description} onChange={(event) => setPlanForm((form: any) => ({ ...form, description: event.target.value }))} rows={2} /></div>
+            <div className="md:col-span-2"><Label>Not</Label><Textarea value={planForm.notes} onChange={(event) => setPlanForm((form: any) => ({ ...form, notes: event.target.value }))} rows={2} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPlanDialogOpen(false)}>İptal</Button>
+            <Button onClick={savePaymentPlan} className="bg-accent hover:bg-accent-glow text-accent-foreground">Kaydet</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

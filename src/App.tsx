@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -32,7 +32,6 @@ const AdminCustomerDetail = lazy(() => import("./pages/admin/AdminCustomerDetail
 const AdminCustomerFinance = lazy(() => import("./pages/admin/AdminCustomerFinance"));
 const AdminEmployees = lazy(() => import("./pages/admin/AdminEmployees"));
 const AdminEmployeeFinance = lazy(() => import("./pages/admin/AdminEmployeeFinance"));
-const AdminPaymentPlans = lazy(() => import("./pages/admin/AdminPaymentPlans"));
 const AdminCollections = lazy(() => import("./pages/admin/AdminCollections"));
 const AdminExpenses = lazy(() => import("./pages/admin/AdminExpenses"));
 const AdminExpenseCards = lazy(() => import("./pages/admin/AdminExpenseCards"));
@@ -68,7 +67,7 @@ const App = () => (
                 <Route path="musteriler/:id/finans" element={<AdminCustomerFinance />} />
                 <Route path="personeller" element={<AdminEmployees />} />
                 <Route path="personeller/:id/finans" element={<AdminEmployeeFinance />} />
-                <Route path="odeme-planlari" element={<AdminPaymentPlans />} />
+                <Route path="odeme-planlari" element={<Navigate to="/admin/musteriler" replace />} />
                 <Route path="tahsilatlar" element={<AdminCollections />} />
                 <Route path="giderler" element={<AdminExpenses />} />
                 <Route path="gider-kartlari" element={<AdminExpenseCards />} />

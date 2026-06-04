@@ -402,7 +402,7 @@ export default function AdminFinance() {
 
       <div className="grid gap-3 rounded-md border border-border bg-card p-4 text-sm text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">
         <div><span className="font-semibold text-foreground">Tahsilatlar:</span> gerçekleşen gelen ödemeler.</div>
-        <div><span className="font-semibold text-foreground">Ödeme Planları:</span> beklenen veya vadeli alacaklar.</div>
+        <div><span className="font-semibold text-foreground">Planlanan Ödemeler:</span> müşteri, personel ve tedarikçi kartlarındaki beklenen veya vadeli kayıtlar.</div>
         <div><span className="font-semibold text-foreground">Giderler:</span> yapılan masraflar.</div>
         <div><span className="font-semibold text-foreground">Finans Hareketleri:</span> gelir/gider detayları.</div>
       </div>

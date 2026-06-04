@@ -3,7 +3,6 @@ import { NavLink, Outlet, Navigate, useLocation, useNavigate, Link } from "react
 import {
   BarChart3,
   Bell,
-  CalendarClock,
   ChevronRight,
   FileBarChart,
   FolderKanban,
@@ -47,7 +46,6 @@ const NAV_GROUPS = [
     items: [
       { to: "/admin/musteriler", label: "Müşteriler", description: "Cari kayıtlar", icon: Users },
       { to: "/admin/tahsilatlar", label: "Tahsilatlar", description: "Gelen ödemeler", icon: Wallet },
-      { to: "/admin/odeme-planlari", label: "Ödeme Planları", description: "Vadeli alacaklar", icon: CalendarClock },
     ],
   },
   {
@@ -102,7 +100,6 @@ const PAGE_META: PageMeta[] = [
   { path: "/admin/personeller", title: "Personeller", group: "Personel" },
   { path: "/admin/finans-dashboard", title: "Finans Özeti", group: "Finans" },
   { path: "/admin/tahsilatlar", title: "Tahsilatlar", group: "Cari ve Tahsilat" },
-  { path: "/admin/odeme-planlari", title: "Ödeme Planları", group: "Cari ve Tahsilat" },
   { path: "/admin/giderler", title: "Giderler", group: "Finans" },
   { path: "/admin/gider-kartlari", title: "Gider Kartları", group: "Finans" },
   { path: "/admin/raporlar", title: "Raporlar", group: "Finans" },
