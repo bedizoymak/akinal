@@ -82,7 +82,6 @@ export default function AdminCustomerDetail() {
   const [allProjects, setAllProjects] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [pays, setPays] = useState<any[]>([]);
-  const [expenses, setExpenses] = useState<any[]>([]);
   const [notes, setNotes] = useState<any[]>([]);
   const [docs, setDocs] = useState<any[]>([]);
   const [newNote, setNewNote] = useState("");
@@ -109,7 +108,6 @@ export default function AdminCustomerDetail() {
       setProjects((data.projects || []).filter((p) => linkedIds.includes(p.id)));
       setPlans(data.payment_plans || []);
       setPays(data.payments || []);
-      setExpenses(data.expenses || []);
       setNotes(data.notes || []);
       setDocs(data.documents || []);
     } catch (error) {
@@ -305,8 +303,8 @@ export default function AdminCustomerDetail() {
         }
       />
 
-      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2 bg-card border border-border rounded-md p-5 space-y-3">
+      <div className="mb-6">
+        <div className="bg-card border border-border rounded-md p-5 space-y-3">
           <h3 className="font-semibold">İletişim Bilgileri</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /> {customer.phone || "-"}</div>
@@ -326,19 +324,6 @@ export default function AdminCustomerDetail() {
           {customer.notes && <div><h4 className="font-semibold mt-4 mb-1">Genel Notlar</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{customer.notes}</p></div>}
         </div>
 
-        <div className="bg-card border border-border rounded-md p-5">
-          <h3 className="font-semibold mb-2">Giderler</h3>
-          <div className="text-sm text-muted-foreground">Müşteriye bağlı giderler hesap türüne ayrılmadan genel bilgi olarak gösterilir.</div>
-          <div className="mt-4 space-y-2">
-            {expenses.slice(0, 4).map((e) => (
-              <div key={e.id} className="flex items-center justify-between gap-3 text-sm">
-                <span className="truncate">{e.title}</span>
-                <span className="font-semibold tabular-nums">{formatTRY(e.amount)}</span>
-              </div>
-            ))}
-            {expenses.length === 0 && <div className="text-sm text-muted-foreground">Bu müşteriye bağlı gider kaydı bulunmuyor.</div>}
-          </div>
-        </div>
       </div>
 
       <Tabs defaultValue="resmi">
