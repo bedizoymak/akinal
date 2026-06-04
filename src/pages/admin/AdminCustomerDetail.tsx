@@ -134,6 +134,7 @@ export default function AdminCustomerDetail() {
         return { ...plan, paid, remain, computed };
       });
       const totalPaid = enrichedPlans.reduce((s, p) => s + safeNumber(p.paid), 0);
+      const totalAmount = enrichedPlans.reduce((s, p) => s + safeNumber(p.amount), 0);
       const unpaidPlans = enrichedPlans.filter((plan) => plan.computed !== "Ödendi" && plan.computed !== "İptal" && plan.remain > 0);
       const futureUnpaidPlans = unpaidPlans.filter((plan) => String(plan.due_date || "") > today);
       const totalDue = futureUnpaidPlans.reduce((s, p) => s + safeNumber(p.remain), 0);
@@ -156,7 +157,7 @@ export default function AdminCustomerDetail() {
         const paid = safeNumber(plan.paid);
         return dueDate > today && paid <= 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal";
       });
-      result[account.value] = { totalDue, totalPaid, balance, overdue, upcoming, plans: enrichedPlans, accountSummaryPlans, futurePlans, pays: accountPays };
+      result[account.value] = { totalDue, totalPaid, totalAmount, balance, overdue, upcoming, plans: enrichedPlans, accountSummaryPlans, futurePlans, pays: accountPays };
       return result;
     }, {} as Record<string, any>);
   }, [plans, pays, today]);
@@ -358,7 +359,7 @@ export default function AdminCustomerDetail() {
         </TabsList>
 
         {ACCOUNT_TABS.map((account) => {
-          const summary = accountSummaries[account.value] || { totalDue: 0, totalPaid: 0, balance: 0, overdue: 0, upcoming: 0, plans: [], accountSummaryPlans: [], futurePlans: [], pays: [] };
+          const summary = accountSummaries[account.value] || { totalDue: 0, totalPaid: 0, totalAmount: 0, balance: 0, overdue: 0, upcoming: 0, plans: [], accountSummaryPlans: [], futurePlans: [], pays: [] };
           const renderPlanRows = (rows: any[], emptyMessage: string) => (
             <div className="bg-card border border-border rounded-md overflow-x-auto">
               <table className="min-w-[760px] w-full text-sm">
@@ -397,7 +398,7 @@ export default function AdminCustomerDetail() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 <Stat label="Planlanan Alacak" value={formatTRY(summary.totalDue)} />
                 <Stat label="Tahsil Edilen" value={formatTRY(summary.totalPaid)} color="text-emerald-700" />
-                <Stat label="Müşteri Bakiyesi" value={formatTRY(summary.balance)} color={summary.balance > 0 ? "text-red-600" : "text-emerald-700"} />
+                <Stat label="Müşteri Bakiyesi" value={`${formatTRY(summary.totalPaid)} / ${formatTRY(summary.totalAmount)}`} color={summary.balance > 0 ? "text-red-600" : "text-emerald-700"} />
                 <Stat label="Vadesi Geçen Tutar" value={formatTRY(summary.overdue)} color="text-red-600" />
                 <Stat label="Yaklaşan Ödeme" value={formatTRY(summary.upcoming)} color="text-amber-600" />
               </div>

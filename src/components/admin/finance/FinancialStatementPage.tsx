@@ -879,6 +879,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
       .filter((plan) => String(plan.due_date || "") === today && plan.computed !== "Ödendi" && plan.computed !== "İptal")
       .reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
     const balance = unpaidPlans.reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
+    const totalAmount = enrichedPlans.reduce((sum, plan) => sum + Number(plan.amount || 0), 0);
     const upcoming = [...futureUnpaidPlans].sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")))[0]?.remain || 0;
     const chart = [
       { name: "Ödenen", value: paid, color: chartColors.income },
@@ -886,7 +887,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
       { name: "Bugün Vadesi Gelen", value: currentDueRemaining, color: chartColors.neutral },
       { name: "Vadesi Geçen", value: overdue, color: chartColors.expense },
     ];
-    return { ...account, account_type: accountValue, accountSummaryPlans, futurePlans, paid, overdue, futureRemaining, currentDueRemaining, balance, upcoming, chart };
+    return { ...account, account_type: accountValue, accountSummaryPlans, futurePlans, paid, overdue, futureRemaining, currentDueRemaining, balance, totalAmount, upcoming, chart };
   }), [entityId, kind, paymentPlans, payments]);
 
   const filteredEntries = useMemo(() => entries.filter((entry) => {
@@ -1205,7 +1206,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                     <AdminMetricCard label={kind === "employee" ? "Planlanan Ödeme" : "Planlanan Borç"} value={formatMoney(account.futureRemaining, "TRY")} description="Gelecek unpaid kayıtlar" />
                     <AdminMetricCard label={kind === "employee" ? "Ödenen" : "Ödenen Tutar"} value={formatMoney(account.paid, "TRY")} description="Ödenmiş kayıtlar" />
-                    <AdminMetricCard label={kind === "employee" ? "Kalan Ödeme" : "Kalan Borç"} value={formatMoney(account.balance, "TRY")} description="Ödenmemiş kalan tutar" />
+                    <AdminMetricCard label={kind === "employee" ? "Kalan Ödeme" : "Kalan Borç"} value={`${formatMoney(account.paid, "TRY")} / ${formatMoney(account.totalAmount, "TRY")}`} description="Ödenen / toplam ödeme kaydı" />
                     <AdminMetricCard label="Vadesi Geçen Tutar" value={formatMoney(account.overdue, "TRY")} description="Geciken unpaid tutar" />
                     <AdminMetricCard label="Yaklaşan Ödeme" value={formatMoney(account.upcoming, "TRY")} description="En yakın gelecek ödeme" />
                   </div>
