@@ -162,8 +162,8 @@ export default function AdminCustomerDetail() {
     }, {} as Record<string, any>);
   }, [plans, pays, today]);
 
-  const combinedPaymentChart = useMemo(() => {
-    const accountChartValues = (summary: any) => {
+  const accountPaymentCharts = useMemo(() => {
+    const buildChart = (summary: any, accountLabel: string, colors: { paid: string; remaining: string }) => {
       const accountSummaryRows = summary?.accountSummaryPlans || [];
       const futureRows = summary?.futurePlans || [];
       const paid = accountSummaryRows.reduce((sum: number, plan: any) => {
@@ -173,28 +173,24 @@ export default function AdminCustomerDetail() {
       const overdue = accountSummaryRows
         .filter((plan: any) => String(plan.due_date || "") < today && plan.computed !== "Ödendi" && plan.computed !== "İptal")
         .reduce((sum: number, plan: any) => sum + Math.max(0, safeNumber(plan.remain)), 0);
-      const currentDueRemaining = accountSummaryRows
+      const currentDue = accountSummaryRows
         .filter((plan: any) => String(plan.due_date || "") === today && plan.computed !== "Ödendi" && plan.computed !== "İptal")
         .reduce((sum: number, plan: any) => sum + Math.max(0, safeNumber(plan.remain)), 0);
       const futureRemaining = futureRows.reduce((sum: number, plan: any) => sum + Math.max(0, safeNumber(plan.remain)), 0);
-      return { paid, overdue, futureRemaining, currentDueRemaining };
+      const total = paid + futureRemaining + currentDue + overdue;
+      return [
+        { name: `${accountLabel} ödenen`, value: paid, color: colors.paid },
+        { name: `${accountLabel} kalan`, value: futureRemaining, color: colors.remaining },
+        { name: "Bugün vadesi gelen", value: currentDue, color: "#f59e0b" },
+        { name: "Geciken ödeme", value: overdue, color: "#dc2626" },
+      ]
+        .filter((item) => item.value > 0)
+        .map((item) => ({ ...item, percentLabel: percentLabel(item.value, total) }));
     };
-    const official = accountChartValues(accountSummaries.resmi);
-    const unofficial = accountChartValues(accountSummaries.gayri_resmi);
-    const overdue = official.overdue + unofficial.overdue;
-    const currentDue = official.currentDueRemaining + unofficial.currentDueRemaining;
-    const total = official.paid + unofficial.paid + official.futureRemaining + unofficial.futureRemaining + overdue + currentDue;
-
-    return [
-      { name: "Resmi ödenen", value: official.paid, color: "#15803d" },
-      { name: "Gayri resmi ödenen", value: unofficial.paid, color: "#22c55e" },
-      { name: "Resmi kalan", value: official.futureRemaining, color: "#2563eb" },
-      { name: "Gayri resmi kalan", value: unofficial.futureRemaining, color: "#60a5fa" },
-      { name: "Bugün vadesi gelen", value: currentDue, color: "#f59e0b" },
-      { name: "Geciken ödeme", value: overdue, color: "#dc2626" },
-    ]
-      .filter((item) => item.value > 0)
-      .map((item) => ({ ...item, percentLabel: percentLabel(item.value, total) }));
+    return {
+      resmi: buildChart(accountSummaries.resmi, "Resmi", { paid: "#15803d", remaining: "#2563eb" }),
+      gayri_resmi: buildChart(accountSummaries.gayri_resmi, "Gayri resmi", { paid: "#22c55e", remaining: "#60a5fa" }),
+    };
   }, [accountSummaries, today]);
 
   async function addNote() {
@@ -360,6 +356,7 @@ export default function AdminCustomerDetail() {
 
         {ACCOUNT_TABS.map((account) => {
           const summary = accountSummaries[account.value] || { totalDue: 0, totalPaid: 0, totalAmount: 0, balance: 0, overdue: 0, upcoming: 0, plans: [], accountSummaryPlans: [], futurePlans: [], pays: [] };
+          const accountPaymentChart = accountPaymentCharts[account.value] || [];
           const renderPlanRows = (rows: any[], emptyMessage: string) => (
             <div className="bg-card border border-border rounded-md overflow-x-auto">
               <table className="min-w-[760px] w-full text-sm">
@@ -425,11 +422,11 @@ export default function AdminCustomerDetail() {
                 <div className="space-y-4">
                   <div className="bg-card border border-border rounded-md p-5">
                     <h3 className="font-semibold mb-2">Genel Ödeme Durumu</h3>
-                    {combinedPaymentChart.length ? (
+                    {accountPaymentChart.length ? (
                       <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                           <Pie
-                            data={combinedPaymentChart}
+                            data={accountPaymentChart}
                             dataKey="value"
                             nameKey="name"
                             cx="50%"
@@ -440,7 +437,7 @@ export default function AdminCustomerDetail() {
                             label={renderChartCallout}
                             labelLine={false}
                           >
-                            {combinedPaymentChart.map((d, i) => <Cell key={i} fill={d.color} />)}
+                            {accountPaymentChart.map((d, i) => <Cell key={i} fill={d.color} />)}
                           </Pie>
                           <Tooltip formatter={(v: any, name: any, item: any) => [`${formatTRY(v)} (${item.payload.percentLabel})`, name]} />
                         </PieChart>
