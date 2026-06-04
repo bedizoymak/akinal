@@ -138,7 +138,7 @@ export default function AdminCustomerDetail() {
       const balance = unpaidPlans.reduce((s, p) => s + safeNumber(p.remain), 0);
       const totalDue = balance;
       const overdue = enrichedPlans
-        .filter((plan) => daysUntil(plan.due_date) < 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal")
+        .filter((plan) => safeNumber(plan.paid) <= 0 && daysUntil(plan.due_date) < 0 && plan.computed !== "İptal")
         .reduce((sum, plan) => sum + plan.remain, 0);
       const upcomingPlan = futureUnpaidPlans
         .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")))[0];
@@ -169,12 +169,15 @@ export default function AdminCustomerDetail() {
         return sum + Math.max(0, paidAmount);
       }, 0);
       const overdue = accountSummaryRows
-        .filter((plan: any) => String(plan.due_date || "") < today && plan.computed !== "Ödendi" && plan.computed !== "İptal")
+        .filter((plan: any) => safeNumber(plan.paid) <= 0 && String(plan.due_date || "") < today && plan.computed !== "İptal")
         .reduce((sum: number, plan: any) => sum + Math.max(0, safeNumber(plan.remain)), 0);
       const currentDue = accountSummaryRows
-        .filter((plan: any) => String(plan.due_date || "") === today && plan.computed !== "Ödendi" && plan.computed !== "İptal")
+        .filter((plan: any) => safeNumber(plan.paid) <= 0 && String(plan.due_date || "") === today && plan.computed !== "İptal")
         .reduce((sum: number, plan: any) => sum + Math.max(0, safeNumber(plan.remain)), 0);
-      const futureRemaining = futureRows.reduce((sum: number, plan: any) => sum + Math.max(0, safeNumber(plan.remain)), 0);
+      const paidRemaining = accountSummaryRows
+        .filter((plan: any) => safeNumber(plan.paid) > 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal")
+        .reduce((sum: number, plan: any) => sum + Math.max(0, safeNumber(plan.remain)), 0);
+      const futureRemaining = futureRows.reduce((sum: number, plan: any) => sum + Math.max(0, safeNumber(plan.remain)), 0) + paidRemaining;
       const total = paid + futureRemaining + currentDue + overdue;
       return [
         { name: `${accountLabel} ödenen`, value: paid, color: colors.paid },
@@ -405,8 +408,10 @@ export default function AdminCustomerDetail() {
                 <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Başlık</th><th className="p-3 text-left">Vade</th><th className="p-3 text-left">Ödeme Yöntemi</th><th className="p-3 text-right">Tutar</th><th className="p-3 text-right">Ödenen</th><th className="p-3 text-right">Kalan</th><th className="p-3">Durum</th></tr></thead>
                 <tbody>
                   {rows.map((p: any) => {
-                    const isLate = String(p.due_date || "") < today && p.computed !== "Ödendi" && p.computed !== "İptal" && safeNumber(p.remain) > 0;
-                    const label = isLate ? "Geciken Ödeme" : displayLabel(p.computed);
+                    const hasPayment = safeNumber(p.paid) > 0;
+                    const isLate = !hasPayment && String(p.due_date || "") < today && p.computed !== "İptal" && safeNumber(p.remain) > 0;
+                    const displayStatus = hasPayment ? p.computed : isLate ? "Vadesi Geçti" : "Bekliyor";
+                    const label = hasPayment ? displayLabel(p.computed) : isLate ? "Geciken Ödeme" : "Bekliyor";
                     return (
                       <tr
                         key={p.id}
@@ -423,7 +428,7 @@ export default function AdminCustomerDetail() {
                         <td className="p-3 text-right">{formatTRY(p.amount)}</td>
                         <td className="p-3 text-right text-emerald-700">{formatTRY(p.paid)}</td>
                         <td className="p-3 text-right font-bold">{formatTRY(p.remain)}</td>
-                        <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(isLate ? "Vadesi Geçti" : p.computed))}>{label}</span></td>
+                        <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(displayStatus))}>{label}</span></td>
                       </tr>
                     );
                   })}

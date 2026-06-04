@@ -873,10 +873,15 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
     });
     const futurePlans = enrichedPlans.filter((plan) => String(plan.due_date || "") > today && Number(plan.paid || 0) <= 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal");
     const paid = enrichedPlans.reduce((sum, plan) => sum + Number(plan.paid || 0), 0);
-    const overdue = enrichedPlans.filter((plan) => daysUntil(plan.due_date || "") < 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal").reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
-    const futureRemaining = futureUnpaidPlans.reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
+    const overdue = enrichedPlans
+      .filter((plan) => Number(plan.paid || 0) <= 0 && daysUntil(plan.due_date || "") < 0 && plan.computed !== "İptal")
+      .reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
+    const paidRemaining = accountSummaryPlans
+      .filter((plan) => Number(plan.paid || 0) > 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal")
+      .reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
+    const futureRemaining = futureUnpaidPlans.reduce((sum, plan) => sum + Number(plan.remain || 0), 0) + paidRemaining;
     const currentDueRemaining = enrichedPlans
-      .filter((plan) => String(plan.due_date || "") === today && plan.computed !== "Ödendi" && plan.computed !== "İptal")
+      .filter((plan) => Number(plan.paid || 0) <= 0 && String(plan.due_date || "") === today && plan.computed !== "İptal")
       .reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
     const balance = unpaidPlans.reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
     const totalAmount = enrichedPlans.reduce((sum, plan) => sum + Number(plan.amount || 0), 0);
@@ -1104,8 +1109,10 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
           </thead>
           <tbody>
             {rows.map((plan) => {
-              const isLate = String(plan.due_date || "") < today && plan.computed !== "Ödendi" && plan.computed !== "İptal" && Number(plan.remain || 0) > 0;
-              const label = isLate ? "Geciken Ödeme" : plan.computed || plan.status || "Bekliyor";
+              const hasPayment = Number(plan.paid || 0) > 0;
+              const isLate = !hasPayment && String(plan.due_date || "") < today && plan.computed !== "İptal" && Number(plan.remain || 0) > 0;
+              const displayStatus = hasPayment ? plan.computed || plan.status || "Bekliyor" : isLate ? "Vadesi Geçti" : "Bekliyor";
+              const label = hasPayment ? plan.computed || plan.status || "Bekliyor" : isLate ? "Geciken Ödeme" : "Bekliyor";
               return (
                 <tr key={plan.id} onClick={() => openEditPayment(plan)} className="cursor-pointer border-t border-border transition-colors hover:bg-emerald-50/60">
                   <td className="p-3 whitespace-nowrap">{formatDate(plan.due_date)}</td>
@@ -1120,7 +1127,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
                   <td className="p-3 text-right font-semibold">{formatMoney(plan.amount, "TRY")}</td>
                   <td className="p-3 text-right text-emerald-700">{formatMoney(plan.paid || 0, "TRY")}</td>
                   <td className="p-3 text-right text-red-600">{formatMoney(plan.remain || 0, "TRY")}</td>
-                  <td className="p-3"><span className={cn("rounded-md border px-2 py-0.5 text-xs font-semibold", statusBadgeClass(isLate ? "Vadesi Geçti" : label))}>{label}</span></td>
+                  <td className="p-3"><span className={cn("rounded-md border px-2 py-0.5 text-xs font-semibold", statusBadgeClass(displayStatus))}>{label}</span></td>
                 </tr>
               );
             })}
