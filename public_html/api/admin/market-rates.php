@@ -12,6 +12,7 @@ header('Expires: 0');
 
 const MARKET_RATES_CACHE_TTL = 5;
 const MARKET_RATES_DOVIZ_SOURCE_URL = 'https://kur.doviz.com/';
+const MARKET_RATES_GENELPARA_WEBSITE_URL = 'https://www.genelpara.com/';
 const MARKET_RATES_GENELPARA_SOURCE_URL = 'https://api.genelpara.com/json/';
 const MARKET_RATES_GENELPARA_DOVIZ_URL = MARKET_RATES_GENELPARA_SOURCE_URL . '?list=doviz&sembol=USD,EUR';
 const MARKET_RATES_GENELPARA_ALTIN_URL = MARKET_RATES_GENELPARA_SOURCE_URL . '?list=altin&sembol=GA';
@@ -42,7 +43,41 @@ json_success(fallback_market_rates());
 
 function fetch_market_rates(bool $debug = false): ?array
 {
-    return fetch_market_rates_from_doviz($debug) ?? fetch_market_rates_from_genelpara($debug);
+    return fetch_market_rates_from_genelpara_website($debug) ?? fetch_market_rates_from_doviz($debug) ?? fetch_market_rates_from_genelpara($debug);
+}
+
+function fetch_market_rates_from_genelpara_website(bool $debug = false): ?array
+{
+    $html = fetch_market_rates_body(MARKET_RATES_GENELPARA_WEBSITE_URL, 'text/html,application/xhtml+xml');
+    if ($html === null || trim($html) === '') {
+        return null;
+    }
+
+    $debugItems = [];
+    $rates = [
+        parse_genelpara_visible_rate($html, 'EUR', 'EURO', 'eur', $debugItems),
+        parse_genelpara_visible_rate($html, 'USD', 'DOLAR', 'usd', $debugItems),
+        parse_genelpara_visible_rate($html, 'GA', 'GRAM ALTIN', 'gold', $debugItems),
+    ];
+
+    foreach ($rates as $rate) {
+        if ($rate['value'] === null || $rate['change_percent'] === null) {
+            return null;
+        }
+    }
+
+    $payload = [
+        'rates' => $rates,
+        'source' => MARKET_RATES_GENELPARA_WEBSITE_URL,
+        'stale' => false,
+        'fetched_at' => gmdate('c'),
+    ];
+
+    if ($debug) {
+        $payload['debug'] = $debugItems;
+    }
+
+    return $payload;
 }
 
 function fetch_market_rates_from_doviz(bool $debug = false): ?array
@@ -195,6 +230,42 @@ function parse_doviz_rate(string $html, string $label, string $code, string $soc
     ];
 }
 
+function parse_genelpara_visible_rate(
+    string $html,
+    string $symbol,
+    string $label,
+    string $code,
+    array &$debugItems
+): array {
+    $value = null;
+    $change = null;
+    $rawPrice = '';
+    $rawPercent = '';
+
+    $pattern = '/<div class="title" data-code="' . preg_quote($symbol, '/') . '"[^>]*>.*?<\/div>.*?<span class="fiyat"[^>]*>([^<]+)<\/span>.*?<span class="degisim[^"]*"[^>]*>([^<]+)<\/span>/su';
+    if (preg_match($pattern, $html, $match)) {
+        $rawPrice = trim($match[1]);
+        $rawPercent = trim($match[2]);
+        $value = parse_market_number($rawPrice);
+        $change = parse_market_number($rawPercent);
+    }
+
+    $debugItems[$code] = [
+        'source_used' => MARKET_RATES_GENELPARA_WEBSITE_URL,
+        'raw_price' => $rawPrice,
+        'raw_percent' => $rawPercent,
+        'normalized_price' => $value,
+        'normalized_percent' => $change,
+    ];
+
+    return [
+        'code' => $code,
+        'label' => $label,
+        'value' => $value,
+        'change_percent' => $change,
+    ];
+}
+
 function parse_genelpara_rate(array $payload, string $symbol, string $label, string $code, array &$percentDebug = []): array
 {
     $item = $payload['data'][$symbol] ?? null;
@@ -255,7 +326,9 @@ function apply_genelpara_percent_changes(array $rates, array &$percentDebug): ar
 function parse_market_number(string $value): ?float
 {
     $value = trim(str_replace(['+', '%'], '', $value));
-    $normalized = str_replace(',', '.', $value);
+    $normalized = str_contains($value, ',')
+        ? str_replace(',', '.', str_replace('.', '', $value))
+        : str_replace(',', '', $value);
     return is_numeric($normalized) ? (float) $normalized : null;
 }
 
