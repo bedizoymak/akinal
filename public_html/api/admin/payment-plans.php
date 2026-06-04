@@ -25,20 +25,14 @@ try {
         $payload = plan_payload($input);
         $payload['id'] = $id;
         insert_row('ak_payment_plans', $payload);
-        sync_customer_account_plan_statuses($payload['customer_id'], $payload['account_type']);
         json_success(['payment_plan' => fetch_one('SELECT * FROM ak_payment_plans WHERE id = :id', ['id' => $id])], 201);
     }
 
     if ($method === 'PATCH') {
         $input = read_admin_json_body();
         $id = require_non_empty($input, 'id', 'Ödeme planı bulunamadı.');
-        $previous = fetch_one('SELECT customer_id, account_type FROM ak_payment_plans WHERE id = :id', ['id' => $id]);
         $payload = plan_payload($input);
         update_row('ak_payment_plans', $payload, $id);
-        sync_customer_account_plan_statuses($payload['customer_id'], $payload['account_type']);
-        if ($previous && ((string) $previous['customer_id'] !== $payload['customer_id'] || account_type($previous) !== $payload['account_type'])) {
-            sync_customer_account_plan_statuses((string) $previous['customer_id'], account_type($previous));
-        }
         json_success(['payment_plan' => fetch_one('SELECT * FROM ak_payment_plans WHERE id = :id', ['id' => $id])]);
     }
 
