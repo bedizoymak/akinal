@@ -120,14 +120,15 @@ export default function AdminCustomerDetail() {
         const computed = derivePlanStatus(plan, paid);
         return { ...plan, paid, remain, computed };
       });
-      const totalDue = accountPlans.reduce((s, p) => s + safeNumber(p.amount), 0);
       const totalPaid = enrichedPlans.reduce((s, p) => s + safeNumber(p.paid), 0);
-      const balance = totalDue - totalPaid;
+      const unpaidPlans = enrichedPlans.filter((plan) => plan.computed !== "Ödendi" && plan.computed !== "İptal" && plan.remain > 0);
+      const futureUnpaidPlans = unpaidPlans.filter((plan) => String(plan.due_date || "") > today);
+      const totalDue = futureUnpaidPlans.reduce((s, p) => s + safeNumber(p.remain), 0);
+      const balance = unpaidPlans.reduce((s, p) => s + safeNumber(p.remain), 0);
       const overdue = enrichedPlans
         .filter((plan) => daysUntil(plan.due_date) < 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal")
         .reduce((sum, plan) => sum + plan.remain, 0);
-      const upcomingPlan = enrichedPlans
-        .filter((plan) => daysUntil(plan.due_date) >= 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal" && plan.remain > 0)
+      const upcomingPlan = futureUnpaidPlans
         .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")))[0];
       const upcoming = upcomingPlan?.remain || 0;
       const accountSummaryPlans = enrichedPlans.filter((plan) => {
