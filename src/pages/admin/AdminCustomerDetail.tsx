@@ -137,8 +137,8 @@ export default function AdminCustomerDetail() {
       const totalAmount = enrichedPlans.reduce((s, p) => s + safeNumber(p.amount), 0);
       const unpaidPlans = enrichedPlans.filter((plan) => plan.computed !== "Ödendi" && plan.computed !== "İptal" && plan.remain > 0);
       const futureUnpaidPlans = unpaidPlans.filter((plan) => String(plan.due_date || "") > today);
-      const totalDue = futureUnpaidPlans.reduce((s, p) => s + safeNumber(p.remain), 0);
       const balance = unpaidPlans.reduce((s, p) => s + safeNumber(p.remain), 0);
+      const totalDue = balance;
       const overdue = enrichedPlans
         .filter((plan) => daysUntil(plan.due_date) < 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal")
         .reduce((sum, plan) => sum + plan.remain, 0);
@@ -396,7 +396,7 @@ export default function AdminCustomerDetail() {
           return (
             <TabsContent key={account.value} value={account.value} className="mt-4 space-y-5">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                <Stat label="Planlanan Alacak" value={formatTRY(summary.totalDue)} />
+                <Stat label="Toplam Alacak" value={formatTRY(summary.totalDue)} />
                 <Stat label="Tahsil Edilen" value={formatTRY(summary.totalPaid)} color="text-emerald-700" />
                 <Stat label="Müşteri Bakiyesi" value={`${formatTRY(summary.totalPaid)} / ${formatTRY(summary.totalAmount)}`} color={summary.balance > 0 ? "text-red-600" : "text-emerald-700"} />
                 <Stat label="Vadesi Geçen Tutar" value={formatTRY(summary.overdue)} color="text-red-600" />

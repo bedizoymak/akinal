@@ -1204,7 +1204,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
               {planAccountData.map((account) => (
                 <TabsContent key={account.tab} value={account.tab} className="mt-0 space-y-5">
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                    <AdminMetricCard label={kind === "employee" ? "Planlanan Ödeme" : "Planlanan Borç"} value={formatMoney(account.futureRemaining, "TRY")} description="Gelecek unpaid kayıtlar" />
+                    <AdminMetricCard label="Toplam Alacak" value={formatMoney(account.balance, "TRY")} description="Bekleyen, kısmi ödenen ve vadesi geçen kalan tutar" />
                     <AdminMetricCard label={kind === "employee" ? "Ödenen" : "Ödenen Tutar"} value={formatMoney(account.paid, "TRY")} description="Ödenmiş kayıtlar" />
                     <AdminMetricCard label={kind === "employee" ? "Kalan Ödeme" : "Kalan Borç"} value={`${formatMoney(account.paid, "TRY")} / ${formatMoney(account.totalAmount, "TRY")}`} description="Ödenen / toplam ödeme kaydı" />
                     <AdminMetricCard label="Vadesi Geçen Tutar" value={formatMoney(account.overdue, "TRY")} description="Geciken unpaid tutar" />
