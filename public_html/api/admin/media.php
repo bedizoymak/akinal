@@ -94,7 +94,7 @@ function collect_media_images(): array
             'project_title' => $project['project_title'],
             'project_slug' => $project['project_slug'],
             'source_type' => 'project_cover',
-            'source_label' => 'Project cover',
+            'source_label' => 'Kapak Resmi',
             'can_delete' => false,
             'is_protected' => true,
             'protected_reason' => 'Bu görsel önce ilgili ayardan/projeden kaldırılmalı',

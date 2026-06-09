@@ -30,6 +30,28 @@ def ensure_dir(remote_dir: str):
         ftp.cwd(part)
 
 
+def clear_remote_dir(remote_dir: str):
+    print(f"Temizleniyor: {remote_dir}")
+    ensure_dir(remote_dir)
+    ftp.cwd(remote_dir)
+
+    for name in ftp.nlst():
+        if name in [".", ".."]:
+            continue
+
+        try:
+            ftp.delete(name)
+            print("deleted", f"{remote_dir}/{name}")
+        except Exception:
+            try:
+                clear_remote_dir(f"{remote_dir}/{name}")
+                ftp.cwd(remote_dir)
+                ftp.rmd(name)
+                print("deleted dir", f"{remote_dir}/{name}")
+            except Exception as e:
+                print("delete failed", f"{remote_dir}/{name}", e)
+
+
 def upload_dir(local_dir: Path, remote_dir: str):
     local_dir = Path(local_dir)
 
@@ -57,10 +79,14 @@ def upload_dir(local_dir: Path, remote_dir: str):
 
 
 print("Deploy başladı...")
-print("dist:", ROOT / "dist")
-print("api:", ROOT / "public_html" / "api")
 
+# Eski Vite hash dosyalarını temizle
+clear_remote_dir("/public_html/assets")
+
+# Build çıktısını yükle
 upload_dir(ROOT / "dist", "/public_html")
+
+# API dosyalarını yükle
 upload_dir(ROOT / "public_html" / "api", "/public_html/api")
 
 ftp.quit()
