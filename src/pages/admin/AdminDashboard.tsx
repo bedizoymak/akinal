@@ -220,9 +220,9 @@ export default function AdminDashboard() {
       monthExpenses: Number(data.summary.month_expenses || 0),
       monthNet: Number(data.summary.month_net || 0),
       activeProjects: data.activeProjects,
-      pendingCollections: Number(data.summary.planned_income || 0),
       expectedPayments: Number(data.summary.expected_payments || 0),
       overdueCollections: Number(data.summary.overdue_collections || 0),
+      overduePlanCount: Number(data.summary.overdue_plan_count || data.overduePlans.length),
       overduePlans: data.overduePlans,
       upcomingPlans: data.upcomingPlans,
       recentMovements,
@@ -268,8 +268,8 @@ export default function AdminDashboard() {
             <AdminMetricCard to="/admin/tahsilatlar" label="Toplam Tahsilat" value={formatDashboardTRY(dashboard.totalIncome)} description="Gerçekleşen gelen ödemeler" icon={Wallet} tone="success" />
             <AdminMetricCard to="/admin/giderler" label="Toplam Gider" value={formatDashboardTRY(dashboard.totalExpenses)} description="Yapılan masraflar" icon={Receipt} tone="danger" />
             <AdminMetricCard to="/admin/finans-dashboard" label="Net Durum" value={formatDashboardTRY(dashboard.netStatus)} description="Gerçekleşen gelir eksi gider" icon={dashboard.netStatus >= 0 ? TrendingUp : TrendingDown} tone={dashboard.netStatus >= 0 ? "success" : "danger"} />
-            <AdminMetricCard to="/admin/musteriler" label="Beklenen Tahsilat" value={formatDashboardTRY(dashboard.pendingCollections)} description="Müşteri kartlarındaki planlanan gelir kayıtları" icon={CalendarClock} tone="warning" />
-            <AdminMetricCard to="/admin/musteriler" label="Vadesi Geçen Alacak" value={formatDashboardTRY(dashboard.overdueCollections)} description={`${dashboard.overduePlans.length} ödeme kaydı takip bekliyor`} icon={Receipt} tone={dashboard.overdueCollections > 0 ? "danger" : "success"} />
+            <AdminMetricCard to="/admin/musteriler" label="Beklenen Tahsilat" value={formatDashboardTRY(dashboard.expectedPayments)} description="Önümüzdeki 30 gündeki kalan müşteri alacakları" icon={CalendarClock} tone="warning" />
+            <AdminMetricCard to="/admin/musteriler" label="Vadesi Geçen Alacak" value={formatDashboardTRY(dashboard.overdueCollections)} description={`${dashboard.overduePlanCount} ödeme kaydı takip bekliyor`} icon={Receipt} tone={dashboard.overdueCollections > 0 ? "danger" : "success"} />
           </div>
 
           <AdminSection title="Bu Ayın Özeti" description="İçinde bulunduğumuz ayın gerçekleşen gelir, gider ve net durumu.">
@@ -285,7 +285,7 @@ export default function AdminDashboard() {
               <Link to="/admin/musteriler" className="block rounded-md border border-border p-3 hover:border-accent/50 hover:bg-accent/5">
                 <div className="text-sm font-semibold">Vadesi Geçen Alacak</div>
                 <div className={cn("mt-1 text-lg font-bold", dashboard.overdueCollections > 0 ? "text-red-700" : "text-emerald-700")}>{formatDashboardTRY(dashboard.overdueCollections)}</div>
-                <div className="mt-1 text-xs text-muted-foreground">{dashboard.overduePlans.length} ödeme kaydı takip bekliyor.</div>
+                <div className="mt-1 text-xs text-muted-foreground">{dashboard.overduePlanCount} ödeme kaydı takip bekliyor.</div>
               </Link>
               <Link to="/admin/musteriler" className="block rounded-md border border-border p-3 hover:border-accent/50 hover:bg-accent/5">
                 <div className="text-sm font-semibold">Yaklaşan Tahsilatlar</div>

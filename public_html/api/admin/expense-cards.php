@@ -26,6 +26,9 @@ try {
     if ($method === 'PATCH') {
         $input = read_admin_json_body();
         $id = require_non_empty($input, 'id', 'Gider kartı bulunamadı.');
+        if (!fetch_one_expense_card('SELECT id FROM ak_expense_cards WHERE id = :id', ['id' => $id])) {
+            json_error('Gider kartı bulunamadı.', 404);
+        }
         update_expense_card_row('ak_expense_cards', expense_card_payload($input), $id);
         json_success(['expense_card' => fetch_one_expense_card('SELECT * FROM ak_expense_cards WHERE id = :id', ['id' => $id])]);
     }
@@ -36,23 +39,35 @@ try {
             $input = read_admin_json_body();
             $id = require_non_empty($input, 'id', 'Gider kartı bulunamadı.');
         }
+        if (!fetch_one_expense_card('SELECT id FROM ak_expense_cards WHERE id = :id', ['id' => $id])) {
+            json_error('Gider kartı bulunamadı.', 404);
+        }
+        $linkedPlan = fetch_one_expense_card('SELECT id FROM ak_payment_plans WHERE expense_card_id = :id', ['id' => $id]);
+        if ($linkedPlan) {
+            json_error('Finans kaydı bulunan gider kartı silinemez. Önce bağlı ödeme planlarını kontrol edin.', 409);
+        }
         db()->prepare('DELETE FROM ak_expense_cards WHERE id = :id')->execute(['id' => $id]);
         json_success(['deleted' => true]);
     }
 
     header('Allow: GET, POST, PATCH, DELETE');
-    json_error('Method not allowed.', 405);
+    json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
     json_error('Gider kartı işlemi tamamlanamadı.', 500);
 }
 
 function expense_card_payload(array $input): array
 {
+    $status = nullable_string($input, 'status') ?? 'Aktif';
+    if (!in_array($status, ['Aktif', 'Pasif'], true)) {
+        json_error('Geçerli bir gider kartı durumu seçilmelidir.');
+    }
+
     return [
         'name' => require_non_empty($input, 'name', 'Gider kartı adı zorunludur.'),
         'category' => nullable_string($input, 'category'),
         'description' => nullable_string($input, 'description'),
-        'status' => nullable_string($input, 'status') ?? 'Aktif',
+        'status' => $status,
     ];
 }
 

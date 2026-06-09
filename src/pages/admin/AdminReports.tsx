@@ -56,9 +56,9 @@ function ReportHeader({ title, dateRange }: { title: string; dateRange: string }
     <div className="hidden print:block mb-6 pb-4 border-b">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <img src={logoImg} alt="Akinal İnşaat" className="h-12" />
+          <img src={logoImg} alt="Akınal İnşaat" className="h-12" />
           <div>
-            <div className="font-display font-bold text-xl">Akinal İnşaat</div>
+            <div className="font-display font-bold text-xl">Akınal İnşaat</div>
             <div className="text-xs text-muted-foreground">Yönetim Paneli</div>
           </div>
         </div>
@@ -75,7 +75,7 @@ function ReportHeader({ title, dateRange }: { title: string; dateRange: string }
 function ReportFooter() {
   return (
     <div className="hidden print:block mt-8 pt-4 border-t text-xs text-center text-muted-foreground">
-      Akinal İnşaat Yönetim Paneli tarafından oluşturulmuştur.
+      Akınal İnşaat Yönetim Paneli tarafından oluşturulmuştur.
     </div>
   );
 }
@@ -93,7 +93,7 @@ function paymentAsFinanceEntry(payment: any) {
     customer_id: payment.customer_id,
     amount: payment.amount,
     currency_tag: "TRY",
-    group_tag: "Resmi",
+    group_tag: payment.account_type === "gayri_resmi" ? "Gayri Resmi" : "Resmi",
     direction: "Gelir",
     status: "Gerçekleşti",
   };

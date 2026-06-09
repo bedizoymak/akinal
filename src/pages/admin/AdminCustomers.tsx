@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Plus, Edit, Trash2, Eye, Download, Phone, MessageCircle, Users, Wallet, AlertTriangle, CheckCircle2, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { CUSTOMER_TYPES, CUSTOMER_STATUSES, customerDisplayName, displayLabel, formatTRY, statusBadgeClass, exportCSV, whatsappLink } from "@/lib/finance";
+import { CUSTOMER_TYPES, CUSTOMER_STATUSES, accountType, allocateCollectionsToPlans, customerDisplayName, displayLabel, formatTRY, safeNumber, statusBadgeClass, exportCSV, whatsappLink } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 import { deleteAdminCustomer, getAdminCustomersData } from "@/lib/apiClient";
@@ -44,8 +44,27 @@ export default function AdminCustomers() {
 
   const enriched = useMemo(() => {
     return customers.map((c) => {
-      const totalDue = plans.filter((x) => x.customer_id === c.id).reduce((s, x) => s + Number(x.amount), 0);
-      const totalPaid = pays.filter((x) => x.customer_id === c.id).reduce((s, x) => s + Number(x.amount), 0);
+      const customerPlans = plans.filter((plan) => plan.customer_id === c.id);
+      const totalDue = customerPlans.reduce((sum, plan) => sum + safeNumber(plan.amount), 0);
+      const totalPaid = ["resmi", "gayri_resmi"].reduce((sum, account) => {
+        const accountPlans = customerPlans.filter((plan) => accountType(plan.account_type) === account);
+        const accountPlanIds = new Set(accountPlans.map((plan) => String(plan.id)));
+        const accountPayments = pays.filter((payment) =>
+          payment.customer_id === c.id
+          && accountType(payment.account_type) === account
+          && accountPlanIds.has(String(payment.payment_plan_id || ""))
+        );
+        const allocated = allocateCollectionsToPlans(accountPlans, accountPayments);
+        return sum + accountPlans.reduce((accountSum, plan) => {
+          const amount = safeNumber(plan.amount);
+          const manualPaid = plan.status === "Ödendi"
+            ? amount
+            : plan.status === "Kısmi Ödendi"
+              ? Math.min(amount, safeNumber(plan.paid_amount))
+              : 0;
+          return accountSum + Math.min(amount, Math.max(manualPaid, allocated.get(plan.id) || 0));
+        }, 0);
+      }, 0);
       const projectIds = links.filter((x) => x.customer_id === c.id).map((x) => x.project_id);
       const projectNames = projects.filter((p) => projectIds.includes(p.id)).map((p) => p.title);
       return { ...c, totalDue, totalPaid, balance: totalDue - totalPaid, projectIds, projectNames };
@@ -72,9 +91,13 @@ export default function AdminCustomers() {
 
   async function remove(id: string, name: string) {
     if (!confirm(`"${name}" müşteri kaydını silmek istediğinize emin misiniz? Bu işlem bağlı ödeme planlarını ve tahsilatları da etkileyebilir.`)) return;
-    await deleteAdminCustomer(id);
-    toast({ title: "Müşteri silindi" });
-    load();
+    try {
+      await deleteAdminCustomer(id);
+      toast({ title: "Müşteri silindi" });
+      await load();
+    } catch (error) {
+      toast({ title: "Müşteri silinemedi", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });
+    }
   }
 
   function downloadCSV() {
@@ -186,7 +209,7 @@ export default function AdminCustomers() {
                   </td>
                   <td className="p-3">
                     <div className="flex items-center gap-1 text-xs"><Phone className="h-3 w-3" /> {c.phone || "-"}</div>
-                    {c.whatsapp && <a href={whatsappLink(c.whatsapp, "Merhaba, Akinal İnşaat")} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-emerald-700" onClick={(event) => event.stopPropagation()}><MessageCircle className="h-3 w-3" /> {c.whatsapp}</a>}
+                    {c.whatsapp && <a href={whatsappLink(c.whatsapp, "Merhaba, Akınal İnşaat")} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-emerald-700" onClick={(event) => event.stopPropagation()}><MessageCircle className="h-3 w-3" /> {c.whatsapp}</a>}
                   </td>
                   <td className="p-3 text-xs">{c.projectNames.join(", ") || <span className="text-muted-foreground">—</span>}</td>
                   <td className="p-3 text-right font-medium">{formatTRY(c.totalDue)}</td>

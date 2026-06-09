@@ -14,6 +14,7 @@ $file = $_FILES['file'];
 if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
     json_error('Dosya yüklenemedi.');
 }
+require_upload_size($file, 10 * 1024 * 1024);
 
 $tmpName = (string) ($file['tmp_name'] ?? '');
 $originalName = basename((string) ($file['name'] ?? 'image'));

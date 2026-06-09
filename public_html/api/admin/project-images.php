@@ -37,6 +37,11 @@ try {
     if ($method === 'PATCH') {
         $input = read_admin_json_body();
         $id = require_non_empty($input, 'id', 'Görsel bulunamadı.');
+        $existing = db()->prepare('SELECT id FROM ak_project_images WHERE id = :id LIMIT 1');
+        $existing->execute(['id' => $id]);
+        if (!$existing->fetch()) {
+            json_error('Görsel bulunamadı.', 404);
+        }
         $payload = [];
         foreach (['project_id', 'image_url', 'thumbnail_url', 'title', 'alt_text'] as $field) {
             if (array_key_exists($field, $input)) {
@@ -67,12 +72,17 @@ try {
             $input = read_admin_json_body();
             $id = require_non_empty($input, 'id', 'Görsel bulunamadı.');
         }
+        $existing = db()->prepare('SELECT id FROM ak_project_images WHERE id = :id LIMIT 1');
+        $existing->execute(['id' => $id]);
+        if (!$existing->fetch()) {
+            json_error('Görsel bulunamadı.', 404);
+        }
         db()->prepare('DELETE FROM ak_project_images WHERE id = :id')->execute(['id' => $id]);
         json_success(['deleted' => true]);
     }
 
     header('Allow: GET, POST, PATCH, DELETE');
-    json_error('Method not allowed.', 405);
+    json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
     json_error('Görsel işlemi tamamlanamadı.', 500);
 }

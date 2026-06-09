@@ -78,6 +78,8 @@ export default function AdminExpenses() {
       else await createAdminExpense(payload);
       toast({ title: editId ? "Gider güncellendi" : "Gider eklendi" });
       setOpen(false); load();
+    } catch (error) {
+      toast({ title: "Gider kaydedilemedi", description: error instanceof Error ? error.message : "Lütfen bilgileri kontrol edip tekrar deneyin.", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -85,8 +87,13 @@ export default function AdminExpenses() {
 
   async function remove(id: string) {
     if (!confirm("Bu gider kaydını silmek istediğinize emin misiniz?")) return;
-    await deleteAdminExpense(id);
-    toast({ title: "Silindi" }); load();
+    try {
+      await deleteAdminExpense(id);
+      toast({ title: "Silindi" });
+      await load();
+    } catch (error) {
+      toast({ title: "Gider silinemedi", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });
+    }
   }
 
   const enriched = useMemo(() => items.map((it) => ({

@@ -84,6 +84,8 @@ export default function AdminCustomerDetail() {
   const [pays, setPays] = useState<any[]>([]);
   const [notes, setNotes] = useState<any[]>([]);
   const [docs, setDocs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [newNote, setNewNote] = useState("");
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
@@ -100,8 +102,14 @@ export default function AdminCustomerDetail() {
 
   async function load() {
     if (!id) return;
+    setLoadError("");
     try {
       const data = await getAdminCustomerDetail(id);
+      if (!data.customer) {
+        setCustomer(null);
+        setLoadError("Müşteri kaydı bulunamadı.");
+        return;
+      }
       setCustomer(data.customer);
       setAllProjects(data.projects || []);
       const linkedIds = (data.links || []).map((l) => l.project_id);
@@ -111,7 +119,11 @@ export default function AdminCustomerDetail() {
       setNotes(data.notes || []);
       setDocs(data.documents || []);
     } catch (error) {
-      toast({ title: "Müşteri bilgileri alınamadı", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });
+      const message = error instanceof Error ? error.message : "Lütfen tekrar deneyin.";
+      setLoadError(message);
+      toast({ title: "Müşteri bilgileri alınamadı", description: message, variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
   }
   useEffect(() => { load(); }, [id]);
@@ -308,7 +320,8 @@ export default function AdminCustomerDetail() {
     }
   }
 
-  if (!customer) return <div className="rounded-md border border-border bg-card py-12 text-center text-sm text-muted-foreground shadow-card-soft">Müşteri bilgileri hazırlanıyor...</div>;
+  if (loading) return <div className="rounded-md border border-border bg-card py-12 text-center text-sm text-muted-foreground shadow-card-soft">Müşteri bilgileri hazırlanıyor...</div>;
+  if (loadError || !customer) return <div className="rounded-md border border-border bg-card py-12 text-center text-sm text-muted-foreground shadow-card-soft">{loadError || "Müşteri kaydı bulunamadı."}</div>;
 
   const name = customerDisplayName(customer);
 

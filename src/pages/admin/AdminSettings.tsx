@@ -343,7 +343,7 @@ export default function AdminSettings() {
       up("favicon_url", url);
       toast({ title: "Site simgesi yüklendi", description: "Kaydettiğinizde site ayarlarına uygulanacak." });
     } catch {
-      toast({ title: "Site simgesi yüklenemedi", description: "ICO, PNG, SVG veya WEBP dosyası seçtiğinizden emin olun.", variant: "destructive" });
+      toast({ title: "Site simgesi yüklenemedi", description: "ICO, PNG veya WEBP dosyası seçtiğinizden emin olun.", variant: "destructive" });
     } finally {
       setUploadingFavicon(false);
       if (faviconInputRef.current) faviconInputRef.current.value = "";
@@ -414,7 +414,7 @@ export default function AdminSettings() {
             <div>
               <div className="mb-1 flex items-center justify-between gap-3">
                 <Label>Site Simgesi</Label>
-                <span className="text-xs text-muted-foreground">ICO, PNG, SVG, WEBP</span>
+                <span className="text-xs text-muted-foreground">ICO, PNG, WEBP</span>
               </div>
               <div className="grid gap-3 sm:grid-cols-[72px_minmax(0,1fr)]">
                 <div className="flex h-[72px] w-[72px] items-center justify-center rounded-md border border-border bg-surface-light">
@@ -423,7 +423,7 @@ export default function AdminSettings() {
                 <div className="space-y-2">
                   <Input value={data.favicon_url || ""} onChange={(event) => up("favicon_url", event.target.value)} placeholder="/favicon.png veya /uploads/site/favicon.png" />
                   <div className="flex flex-wrap gap-2">
-                    <input ref={faviconInputRef} type="file" accept=".ico,image/png,image/svg+xml,image/webp" className="hidden" onChange={(event) => event.target.files?.[0] && uploadFavicon(event.target.files[0])} />
+                    <input ref={faviconInputRef} type="file" accept=".ico,image/png,image/webp" className="hidden" onChange={(event) => event.target.files?.[0] && uploadFavicon(event.target.files[0])} />
                     <Button type="button" variant="outline" onClick={() => faviconInputRef.current?.click()} disabled={uploadingFavicon}>
                       <UploadCloud className="h-4 w-4" />
                       {uploadingFavicon ? "Yükleniyor..." : "Site Simgesi Yükle"}
@@ -468,7 +468,7 @@ export default function AdminSettings() {
 
             <PreviewPanel title="Ana Sayfa Karşılama Önizlemesi" description="Ana sayfanın ilk ekranındaki mesajın kompakt önizlemesi.">
               <div className="rounded-lg bg-gradient-dark p-5 text-white">
-                <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent">Akinal İnşaat</div>
+                <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent">Akınal İnşaat</div>
                 <div className="font-display text-2xl font-bold leading-tight">{data.hero_title || "Karşılama başlığı girilmemiş"}</div>
                 <p className="mt-3 text-sm leading-relaxed text-white/75">{data.hero_subtitle || "Karşılama açıklaması girilmemiş"}</p>
               </div>
@@ -498,7 +498,7 @@ export default function AdminSettings() {
             <PreviewPanel title="Google Site Bağlantıları Hedef Önizlemesi" description="Ana marka aramasında hedeflenen bağlantı mimarisinin temsili görünümü.">
               <div className="rounded-lg border border-border bg-white p-4">
                 <div className="text-sm text-[#202124]">{domainPreview}</div>
-                <div className="mt-1 text-xl text-[#1a0dab]">{data.company_name || "Akinal İnşaat"}</div>
+                <div className="mt-1 text-xl text-[#1a0dab]">{data.company_name || "Akınal İnşaat"}</div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {["Projelerimiz", "Kentsel Dönüşüm", "Hakkımızda", "İletişim"].map((item) => (
                     <div key={item} className="rounded-md border border-[#dadce0] px-3 py-2">

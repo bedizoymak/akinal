@@ -33,6 +33,9 @@ try {
         $input = read_admin_json_body();
         $id = require_non_empty($input, 'id', 'Tahsilat bulunamadı.');
         $previous = fetch_one('SELECT customer_id, account_type FROM ak_payments WHERE id = :id', ['id' => $id]);
+        if (!$previous) {
+            json_error('Tahsilat bulunamadı.', 404);
+        }
         $payload = payment_payload($input);
         update_row('ak_payments', $payload, $id);
         sync_customer_account_plan_statuses($payload['customer_id'], $payload['account_type']);
@@ -49,29 +52,48 @@ try {
             $id = require_non_empty($input, 'id', 'Tahsilat bulunamadı.');
         }
         $previous = fetch_one('SELECT customer_id, account_type FROM ak_payments WHERE id = :id', ['id' => $id]);
-        db()->prepare('DELETE FROM ak_payments WHERE id = :id')->execute(['id' => $id]);
-        if ($previous) {
-            sync_customer_account_plan_statuses((string) $previous['customer_id'], account_type($previous));
+        if (!$previous) {
+            json_error('Tahsilat bulunamadı.', 404);
         }
+        db()->prepare('DELETE FROM ak_payments WHERE id = :id')->execute(['id' => $id]);
+        sync_customer_account_plan_statuses((string) $previous['customer_id'], account_type($previous));
         json_success(['deleted' => true]);
     }
 
     header('Allow: GET, POST, PATCH, DELETE');
-    json_error('Method not allowed.', 405);
+    json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
     json_error('Tahsilat işlemi tamamlanamadı.', 500);
 }
 
 function payment_payload(array $input): array
 {
+    $customerId = require_non_empty($input, 'customer_id', 'Müşteri zorunludur.');
+    $accountType = account_type($input);
+    $planId = nullable_string($input, 'payment_plan_id');
+    if ($planId !== null) {
+        $plan = fetch_one('SELECT customer_id, account_type FROM ak_payment_plans WHERE id = :id', ['id' => $planId]);
+        if (!$plan) {
+            json_error('Bağlı ödeme planı bulunamadı.', 404);
+        }
+        if ((string) ($plan['customer_id'] ?? '') !== $customerId || account_type($plan) !== $accountType) {
+            json_error('Tahsilat ile ödeme planının müşteri veya hesap türü eşleşmiyor.');
+        }
+    }
+
     return [
-        'customer_id' => require_non_empty($input, 'customer_id', 'Müşteri zorunludur.'),
+        'customer_id' => $customerId,
         'project_id' => nullable_string($input, 'project_id'),
-        'payment_plan_id' => nullable_string($input, 'payment_plan_id'),
-        'amount' => (float) ($input['amount'] ?? 0),
-        'account_type' => account_type($input),
-        'payment_date' => require_non_empty($input, 'payment_date', 'Tahsilat tarihi zorunludur.'),
-        'payment_method' => nullable_string($input, 'payment_method') ?? 'Nakit',
+        'payment_plan_id' => $planId,
+        'amount' => require_positive_amount($input),
+        'account_type' => $accountType,
+        'payment_date' => require_iso_date($input, 'payment_date', 'Geçerli bir tahsilat tarihi zorunludur.'),
+        'payment_method' => require_allowed_value(
+            $input,
+            'payment_method',
+            ['Nakit', 'Havale / EFT', 'Banka Havalesi / EFT', 'Kredi Kartı', 'Çek', 'Senet', 'Diğer'],
+            'Geçerli bir ödeme yöntemi seçilmelidir.'
+        ),
         'description' => nullable_string($input, 'description'),
         'document_url' => nullable_string($input, 'document_url'),
     ];
@@ -106,7 +128,7 @@ function sync_customer_account_plan_statuses(string $customerId, string $account
 {
     if ($customerId === '') return;
     $plans = fetch_all(
-        'SELECT id, amount, due_date, status FROM ak_payment_plans WHERE customer_id = :customer_id AND account_type = :account_type ORDER BY due_date ASC',
+        'SELECT id, amount, paid_amount, due_date, status FROM ak_payment_plans WHERE customer_id = :customer_id AND account_type = :account_type ORDER BY due_date ASC',
         ['customer_id' => $customerId, 'account_type' => $accountType]
     );
     $remainingCollection = (float) (fetch_one(
@@ -119,8 +141,9 @@ function sync_customer_account_plan_statuses(string $customerId, string $account
             continue;
         }
         $amount = (float) $plan['amount'];
-        $paid = min($amount, max(0, $remainingCollection));
-        $remainingCollection -= $paid;
+        $allocatedPaid = min($amount, max(0, $remainingCollection));
+        $remainingCollection -= $allocatedPaid;
+        $paid = max((float) ($plan['paid_amount'] ?? 0), $allocatedPaid);
         $status = derive_plan_status($amount, (string) $plan['due_date'], $paid);
         $statement->execute(['id' => $plan['id'], 'status' => $status]);
     }

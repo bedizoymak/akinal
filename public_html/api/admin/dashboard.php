@@ -63,8 +63,8 @@ try {
           pp.status,
           pp.customer_id,
           pp.project_id,
-          COALESCE(SUM(p.amount), 0) AS paid_amount,
-          GREATEST(pp.amount - COALESCE(SUM(p.amount), 0), 0) AS remaining_amount,
+          GREATEST(COALESCE(pp.paid_amount, 0), COALESCE(SUM(p.amount), 0)) AS paid_amount,
+          GREATEST(pp.amount - GREATEST(COALESCE(pp.paid_amount, 0), COALESCE(SUM(p.amount), 0)), 0) AS remaining_amount,
           COALESCE(c.company_name, c.full_name) AS customer_name,
           pr.title AS project_title
         FROM ak_payment_plans pp
@@ -72,11 +72,11 @@ try {
         LEFT JOIN ak_customers c ON c.id = pp.customer_id
         LEFT JOIN ak_projects pr ON pr.id = pp.project_id
         WHERE pp.due_date < CURDATE()
+          AND pp.customer_id IS NOT NULL
           AND pp.status NOT IN ('Ödendi', 'İptal')
-        GROUP BY pp.id, pp.title, pp.amount, pp.due_date, pp.status, pp.customer_id, pp.project_id, c.company_name, c.full_name, pr.title
+        GROUP BY pp.id, pp.title, pp.amount, pp.paid_amount, pp.due_date, pp.status, pp.customer_id, pp.project_id, c.company_name, c.full_name, pr.title
         HAVING remaining_amount > 0
         ORDER BY pp.due_date ASC
-        LIMIT 8
     ")->fetchAll();
 
     $upcomingPlans = $pdo->query("
@@ -88,8 +88,8 @@ try {
           pp.status,
           pp.customer_id,
           pp.project_id,
-          COALESCE(SUM(p.amount), 0) AS paid_amount,
-          GREATEST(pp.amount - COALESCE(SUM(p.amount), 0), 0) AS remaining_amount,
+          GREATEST(COALESCE(pp.paid_amount, 0), COALESCE(SUM(p.amount), 0)) AS paid_amount,
+          GREATEST(pp.amount - GREATEST(COALESCE(pp.paid_amount, 0), COALESCE(SUM(p.amount), 0)), 0) AS remaining_amount,
           COALESCE(c.company_name, c.full_name) AS customer_name,
           pr.title AS project_title
         FROM ak_payment_plans pp
@@ -98,11 +98,11 @@ try {
         LEFT JOIN ak_projects pr ON pr.id = pp.project_id
         WHERE pp.due_date >= CURDATE()
           AND pp.due_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+          AND pp.customer_id IS NOT NULL
           AND pp.status NOT IN ('Ödendi', 'İptal')
-        GROUP BY pp.id, pp.title, pp.amount, pp.due_date, pp.status, pp.customer_id, pp.project_id, c.company_name, c.full_name, pr.title
+        GROUP BY pp.id, pp.title, pp.amount, pp.paid_amount, pp.due_date, pp.status, pp.customer_id, pp.project_id, c.company_name, c.full_name, pr.title
         HAVING remaining_amount > 0
         ORDER BY pp.due_date ASC
-        LIMIT 8
     ")->fetchAll();
 
     $recentMovements = $pdo->query("
@@ -142,7 +142,7 @@ try {
             'Gelir' AS direction,
             'customer' AS card_type,
             'TRY' AS currency,
-            'Resmi' AS `group`,
+            CASE WHEN p.account_type = 'gayri_resmi' THEN 'Gayri Resmi' ELSE 'Resmi' END AS `group`,
             'Gerçekleşti' AS status,
             pr.title AS project_title,
             p.created_at
@@ -225,11 +225,13 @@ try {
             'month_net' => $monthIncome - $monthExpenses,
             'overdue_collections' => $overdueCollections,
             'expected_payments' => $expectedPayments,
+            'overdue_plan_count' => count($overduePlans ?: []),
+            'upcoming_plan_count' => count($upcomingPlans ?: []),
             'financial_entry_count' => (int) ($ledgerTotals['entry_count'] ?? 0),
         ],
         'active_projects_list' => $activeProjects ?: [],
-        'overdue_plans' => $overduePlans ?: [],
-        'upcoming_plans' => $upcomingPlans ?: [],
+        'overdue_plans' => array_slice($overduePlans ?: [], 0, 8),
+        'upcoming_plans' => array_slice($upcomingPlans ?: [], 0, 8),
         'recent_movements' => $recentMovements ?: [],
         'monthly_financials' => array_map(static function (array $row): array {
             $income = (float) ($row['income'] ?? 0);

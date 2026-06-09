@@ -27,8 +27,8 @@ try {
 
         json_success([
             'customers' => fetch_all('SELECT * FROM ak_customers ORDER BY created_at DESC'),
-            'payment_plans' => fetch_all('SELECT customer_id, amount FROM ak_payment_plans'),
-            'payments' => fetch_all('SELECT customer_id, amount FROM ak_payments'),
+            'payment_plans' => fetch_all('SELECT id, customer_id, amount, paid_amount, account_type, due_date, status FROM ak_payment_plans'),
+            'payments' => fetch_all('SELECT customer_id, payment_plan_id, amount, account_type FROM ak_payments'),
             'customer_projects' => fetch_all('SELECT customer_id, project_id FROM ak_customer_projects'),
             'projects' => fetch_all('SELECT id, title FROM ak_projects ORDER BY sort_order ASC, created_at DESC'),
         ]);
@@ -49,17 +49,24 @@ try {
         $id = uuid_v4();
         $payload = customer_payload($input);
         $payload['id'] = $id;
+        db()->beginTransaction();
         insert_row('ak_customers', $payload);
         replace_customer_projects($id, $input['project_ids'] ?? []);
+        db()->commit();
         json_success(['customer' => fetch_customer($id)], 201);
     }
 
     if ($method === 'PATCH') {
         $input = read_admin_json_body();
         $id = require_non_empty($input, 'id', 'Müşteri bulunamadı.');
+        if (!fetch_customer($id)) {
+            json_error('Müşteri bulunamadı.', 404);
+        }
         $payload = customer_payload($input);
+        db()->beginTransaction();
         update_row('ak_customers', $payload, $id);
         replace_customer_projects($id, $input['project_ids'] ?? []);
+        db()->commit();
         json_success(['customer' => fetch_customer($id)]);
     }
 
@@ -79,8 +86,11 @@ try {
     }
 
     header('Allow: GET, POST, PATCH, DELETE');
-    json_error('Method not allowed.', 405);
+    json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
+    if (db()->inTransaction()) {
+        db()->rollBack();
+    }
     json_error('Müşteri işlemi tamamlanamadı.', 500);
 }
 
@@ -152,7 +162,7 @@ function customer_payload(array $input): array
 
 function replace_customer_projects(string $customerId, $projectIds): void
 {
-    $ids = is_array($projectIds) ? array_values(array_filter(array_map('strval', $projectIds))) : [];
+    $ids = is_array($projectIds) ? array_values(array_unique(array_filter(array_map('strval', $projectIds)))) : [];
     $pdo = db();
     $pdo->prepare('DELETE FROM ak_customer_projects WHERE customer_id = :id')->execute(['id' => $customerId]);
     if ($ids === []) return;

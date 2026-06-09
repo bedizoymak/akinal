@@ -63,6 +63,11 @@ try {
     if ($method === 'PATCH') {
         $input = read_admin_json_body();
         $id = require_non_empty($input, 'id', 'Proje bulunamadı.');
+        $existing = db()->prepare('SELECT id FROM ak_projects WHERE id = :id LIMIT 1');
+        $existing->execute(['id' => $id]);
+        if (!$existing->fetch()) {
+            json_error('Proje bulunamadı.', 404);
+        }
         $payload = [];
 
         foreach ($projectFields as $field) {
@@ -100,13 +105,18 @@ try {
             $input = read_admin_json_body();
             $id = require_non_empty($input, 'id', 'Proje bulunamadı.');
         }
+        $existing = db()->prepare('SELECT id FROM ak_projects WHERE id = :id LIMIT 1');
+        $existing->execute(['id' => $id]);
+        if (!$existing->fetch()) {
+            json_error('Proje bulunamadı.', 404);
+        }
         $stmt = db()->prepare('DELETE FROM ak_projects WHERE id = :id');
         $stmt->execute(['id' => $id]);
         json_success(['deleted' => true]);
     }
 
     header('Allow: GET, POST, PATCH, DELETE');
-    json_error('Method not allowed.', 405);
+    json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
     json_error('Proje işlemi tamamlanamadı.', 500);
 }

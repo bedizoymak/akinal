@@ -9,6 +9,7 @@ require_method('POST');
 if (empty($_FILES['file']) || !is_array($_FILES['file'])) json_error('Yüklenecek dosya bulunamadı.');
 $file = $_FILES['file'];
 if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) json_error('Dosya yüklenemedi.');
+require_upload_size($file, 15 * 1024 * 1024);
 
 $tmpName = (string) ($file['tmp_name'] ?? '');
 $originalName = basename((string) ($file['name'] ?? 'document'));

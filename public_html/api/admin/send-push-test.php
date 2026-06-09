@@ -9,7 +9,7 @@ require_method('POST');
 
 try {
     $result = send_push_to_all_admins([
-        'title' => 'Akinal İnşaat Test Bildirimi',
+        'title' => 'Akınal İnşaat Test Bildirimi',
         'body' => 'Bu cihazda admin web push bildirimleri çalışıyor.',
         'url' => '/admin/bildirimler',
         'icon' => '/favicon.png',

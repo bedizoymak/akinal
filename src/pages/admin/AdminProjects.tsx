@@ -91,26 +91,46 @@ export default function AdminProjects() {
         toast({ title: "İşlem yapılamadı", description: "Yayın durumu güncellenemedi.", variant: "destructive" });
       }
     } else if (action === "duplicate") {
-      const { id, created_at, updated_at, ...rest } = p;
-      const newSlug = `${p.slug}-kopya-${Date.now().toString(36)}`;
-      await createAdminProject({ ...rest, title: `${p.title} (Kopya)`, slug: newSlug, is_published: false });
-      toast({ title: "Proje çoğaltıldı" });
+      try {
+        const { id, created_at, updated_at, ...rest } = p;
+        const newSlug = `${p.slug}-kopya-${Date.now().toString(36)}`;
+        await createAdminProject({ ...rest, title: `${p.title} (Kopya)`, slug: newSlug, is_published: false });
+        toast({ title: "Proje çoğaltıldı" });
+      } catch (error) {
+        toast({ title: "Proje çoğaltılamadı", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });
+        return;
+      }
     } else if (action === "delete") {
       if (!confirm(`"${p.title}" projesini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
-      await deleteAdminProject(p.id);
-      toast({ title: "Proje silindi" });
+      try {
+        await deleteAdminProject(p.id);
+        toast({ title: "Proje silindi" });
+      } catch (error) {
+        toast({ title: "Proje silinemedi", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });
+        return;
+      }
     }
     load();
   }
 
   async function onDragEnd(e: DragEndEvent) {
     if (!e.over || e.active.id === e.over.id) return;
-    const oldI = items.findIndex((i) => i.id === e.active.id);
-    const newI = items.findIndex((i) => i.id === e.over!.id);
-    const reordered = arrayMove(items, oldI, newI);
+    const oldI = filtered.findIndex((item) => item.id === e.active.id);
+    const newI = filtered.findIndex((item) => item.id === e.over!.id);
+    if (oldI < 0 || newI < 0) return;
+    const previous = items;
+    const reorderedFiltered = arrayMove(filtered, oldI, newI);
+    const filteredIds = new Set(filtered.map((item) => item.id));
+    let filteredIndex = 0;
+    const reordered = items.map((item) => filteredIds.has(item.id) ? reorderedFiltered[filteredIndex++] : item);
     setItems(reordered);
-    await Promise.all(reordered.map((it, idx) => updateAdminProject({ id: it.id, sort_order: idx + 1 })));
-    toast({ title: "Sıralama kaydedildi" });
+    try {
+      await Promise.all(reordered.map((it, idx) => updateAdminProject({ id: it.id, sort_order: idx + 1 })));
+      toast({ title: "Sıralama kaydedildi" });
+    } catch (error) {
+      setItems(previous);
+      toast({ title: "Sıralama kaydedilemedi", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });
+    }
   }
 
   async function handleExport() {

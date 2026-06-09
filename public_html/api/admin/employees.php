@@ -24,6 +24,9 @@ try {
     if ($method === 'PATCH') {
         $input = read_admin_json_body();
         $id = require_non_empty($input, 'id', 'Personel bulunamadı.');
+        if (!fetch_one_employee('SELECT id FROM ak_employees WHERE id = :id', ['id' => $id])) {
+            json_error('Personel bulunamadı.', 404);
+        }
         update_employee_row('ak_employees', employee_payload($input), $id);
         json_success(['employee' => fetch_one_employee('SELECT * FROM ak_employees WHERE id = :id', ['id' => $id])]);
     }
@@ -34,24 +37,36 @@ try {
             $input = read_admin_json_body();
             $id = require_non_empty($input, 'id', 'Personel bulunamadı.');
         }
+        if (!fetch_one_employee('SELECT id FROM ak_employees WHERE id = :id', ['id' => $id])) {
+            json_error('Personel bulunamadı.', 404);
+        }
+        $linkedPlan = fetch_one_employee('SELECT id FROM ak_payment_plans WHERE employee_id = :id', ['id' => $id]);
+        if ($linkedPlan) {
+            json_error('Finans kaydı bulunan personel silinemez. Önce bağlı ödeme planlarını kontrol edin.', 409);
+        }
         db()->prepare('DELETE FROM ak_employees WHERE id = :id')->execute(['id' => $id]);
         json_success(['deleted' => true]);
     }
 
     header('Allow: GET, POST, PATCH, DELETE');
-    json_error('Method not allowed.', 405);
+    json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
     json_error('Personel işlemi tamamlanamadı.', 500);
 }
 
 function employee_payload(array $input): array
 {
+    $status = nullable_string($input, 'status') ?? 'Aktif';
+    if (!in_array($status, ['Aktif', 'Pasif'], true)) {
+        json_error('Geçerli bir personel durumu seçilmelidir.');
+    }
+
     return [
         'full_name' => require_non_empty($input, 'full_name', 'Ad Soyad zorunludur.'),
         'phone' => nullable_string($input, 'phone'),
         'role' => nullable_string($input, 'role'),
         'notes' => nullable_string($input, 'notes'),
-        'status' => nullable_string($input, 'status') ?? 'Aktif',
+        'status' => $status,
     ];
 }
 

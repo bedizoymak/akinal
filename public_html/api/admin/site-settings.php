@@ -17,7 +17,7 @@ try {
 
     if ($method !== 'PATCH' && $method !== 'POST') {
         header('Allow: GET, PATCH, POST');
-        json_error('Method not allowed.', 405);
+        json_error('İstek yöntemi desteklenmiyor.', 405);
     }
 
     $input = read_admin_json_body();

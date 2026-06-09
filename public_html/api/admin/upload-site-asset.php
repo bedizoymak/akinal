@@ -14,6 +14,7 @@ $file = $_FILES['file'];
 if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
     json_error('Dosya yüklenemedi.');
 }
+require_upload_size($file, 2 * 1024 * 1024);
 
 $tmpName = (string) ($file['tmp_name'] ?? '');
 $originalName = basename((string) ($file['name'] ?? 'site-asset'));
@@ -22,12 +23,11 @@ $mime = mime_content_type($tmpName) ?: '';
 $allowed = [
     'ico' => ['image/x-icon', 'image/vnd.microsoft.icon', 'application/octet-stream'],
     'png' => ['image/png'],
-    'svg' => ['image/svg+xml', 'text/plain'],
     'webp' => ['image/webp'],
 ];
 
 if (!isset($allowed[$extension]) || !in_array($mime, $allowed[$extension], true)) {
-    json_error('Sadece ICO, PNG, SVG veya WEBP dosyaları yüklenebilir.');
+    json_error('Sadece ICO, PNG veya WEBP dosyaları yüklenebilir.');
 }
 
 $baseDir = dirname(__DIR__, 2) . '/uploads/site';

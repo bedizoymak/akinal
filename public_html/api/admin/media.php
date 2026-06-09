@@ -49,7 +49,7 @@ try {
     }
 
     header('Allow: GET, DELETE');
-    json_error('Method not allowed.', 405);
+    json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
     json_error('Medya işlemi tamamlanamadı.', 500);
 }
@@ -68,7 +68,7 @@ function collect_media_images(): array
 
     foreach ($statement->fetchAll() ?: [] as $row) {
         $row['source_type'] = 'project_gallery';
-        $row['source_label'] = 'Project gallery';
+        $row['source_label'] = 'Proje Galerisi';
         $row['can_delete'] = true;
         $row['is_protected'] = false;
         add_media_image($images, $seen, $row);
@@ -195,7 +195,7 @@ function site_setting_image_rows(): array
             'project_title' => 'Site Ayarları',
             'project_slug' => null,
             'source_type' => 'site_setting',
-            'source_label' => 'Site setting',
+            'source_label' => 'Site Ayarı',
             'can_delete' => false,
             'is_protected' => true,
             'protected_reason' => 'Bu görsel önce ilgili ayardan/projeden kaldırılmalı',
@@ -239,7 +239,7 @@ function filesystem_project_images(): array
             'project_title' => 'Yüklenen Dosyalar',
             'project_slug' => null,
             'source_type' => 'filesystem',
-            'source_label' => 'Uploaded file',
+            'source_label' => 'Yüklenen Dosya',
             'can_delete' => true,
             'is_protected' => false,
         ];
@@ -353,18 +353,18 @@ function is_safe_project_upload_url(string $url): bool
 function media_source_label(string $sourceType): string
 {
     if ($sourceType === 'project_cover') {
-        return 'Project cover';
+        return 'Proje Kapak Görseli';
     }
     if ($sourceType === 'project_gallery') {
-        return 'Project gallery';
+        return 'Proje Galerisi';
     }
     if ($sourceType === 'site_setting') {
-        return 'Site setting';
+        return 'Site Ayarı';
     }
     if ($sourceType === 'filesystem') {
-        return 'Uploaded file';
+        return 'Yüklenen Dosya';
     }
-    return 'Project gallery';
+    return 'Proje Galerisi';
 }
 
 function looks_like_image_reference(string $value): bool

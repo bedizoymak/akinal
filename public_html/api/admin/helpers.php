@@ -41,3 +41,42 @@ function require_non_empty(array $input, string $key, string $message): string
     }
     return $value;
 }
+
+function require_positive_amount(array $input, string $key = 'amount'): float
+{
+    $amount = (float) ($input[$key] ?? 0);
+    if ($amount <= 0) {
+        json_error('Tutar 0 değerinden büyük olmalıdır.');
+    }
+    return $amount;
+}
+
+function require_allowed_value(array $input, string $key, array $allowed, string $message): string
+{
+    $value = require_non_empty($input, $key, $message);
+    if (!in_array($value, $allowed, true)) {
+        json_error($message);
+    }
+    return $value;
+}
+
+function require_iso_date(array $input, string $key, string $message): string
+{
+    $value = require_non_empty($input, $key, $message);
+    $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+    if (!$date || $date->format('Y-m-d') !== $value) {
+        json_error($message);
+    }
+    return $value;
+}
+
+function require_upload_size(array $file, int $maxBytes): void
+{
+    $size = (int) ($file['size'] ?? 0);
+    if ($size <= 0) {
+        json_error('Yüklenen dosya boş.');
+    }
+    if ($size > $maxBytes) {
+        json_error('Dosya boyutu izin verilen sınırı aşıyor.');
+    }
+}

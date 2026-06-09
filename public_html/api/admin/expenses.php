@@ -28,6 +28,9 @@ try {
     if ($method === 'PATCH') {
         $input = read_admin_json_body();
         $id = require_non_empty($input, 'id', 'Gider kaydı bulunamadı.');
+        if (!fetch_one_expense('SELECT id FROM ak_expenses WHERE id = :id', ['id' => $id])) {
+            json_error('Gider kaydı bulunamadı.', 404);
+        }
         update_expense_row('ak_expenses', expense_payload($input), $id);
         json_success(['expense' => fetch_one_expense('SELECT * FROM ak_expenses WHERE id = :id', ['id' => $id])]);
     }
@@ -38,12 +41,15 @@ try {
             $input = read_admin_json_body();
             $id = require_non_empty($input, 'id', 'Gider kaydı bulunamadı.');
         }
+        if (!fetch_one_expense('SELECT id FROM ak_expenses WHERE id = :id', ['id' => $id])) {
+            json_error('Gider kaydı bulunamadı.', 404);
+        }
         db()->prepare('DELETE FROM ak_expenses WHERE id = :id')->execute(['id' => $id]);
         json_success(['deleted' => true]);
     }
 
     header('Allow: GET, POST, PATCH, DELETE');
-    json_error('Method not allowed.', 405);
+    json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
     json_error('Gider işlemi tamamlanamadı.', 500);
 }
@@ -55,8 +61,8 @@ function expense_payload(array $input): array
         'customer_id' => nullable_string($input, 'customer_id'),
         'title' => require_non_empty($input, 'title', 'Gider başlığı zorunludur.'),
         'category' => nullable_string($input, 'category') ?? 'Diğer',
-        'amount' => (float) ($input['amount'] ?? 0),
-        'expense_date' => require_non_empty($input, 'expense_date', 'Gider tarihi zorunludur.'),
+        'amount' => require_positive_amount($input),
+        'expense_date' => require_iso_date($input, 'expense_date', 'Geçerli bir gider tarihi zorunludur.'),
         'description' => nullable_string($input, 'description'),
         'document_url' => nullable_string($input, 'document_url'),
     ];

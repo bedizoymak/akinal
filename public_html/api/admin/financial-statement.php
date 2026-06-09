@@ -60,7 +60,7 @@ try {
     }
 
     header('Allow: GET, POST, PATCH, DELETE');
-    json_error('Method not allowed.', 405);
+    json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
     json_error('Ekstre işlemi tamamlanamadı.', 500);
 }
@@ -115,7 +115,7 @@ function fetch_statement_entries(string $kind, string $id): array
               description,
               amount,
               'TRY' AS currency_tag,
-              'Resmi' AS group_tag,
+              CASE WHEN account_type = 'gayri_resmi' THEN 'Gayri Resmi' ELSE 'Resmi' END AS group_tag,
               'Gelir' AS direction,
               'Gerçekleşti' AS status,
               document_url,
@@ -231,25 +231,38 @@ function financial_entry_payload(array $input): array
         json_error('Geçersiz hareket türü.');
     }
 
-    $amount = (float) ($input['amount'] ?? 0);
-    if ($amount <= 0) {
-        json_error('Tutar 0dan buyuk olmalidir.');
+    $ownerKey = [
+        'customer' => 'customer_id',
+        'employee' => 'employee_id',
+        'expense' => 'expense_card_id',
+    ][$cardType];
+    $ownerId = require_non_empty($input, $ownerKey, 'İlgili kart seçimi zorunludur.');
+
+    $amount = require_positive_amount($input);
+    $currency = require_allowed_value($input, 'currency_tag', ['TRY', 'USD', 'EUR'], 'Geçerli bir para birimi seçilmelidir.');
+    $group = require_allowed_value($input, 'group_tag', ['Resmi', 'Gayri Resmi'], 'Geçerli bir kayıt grubu seçilmelidir.');
+    $direction = require_allowed_value($input, 'direction', ['Gelir', 'Gider'], 'Geçerli bir hareket tipi seçilmelidir.');
+    $status = require_allowed_value($input, 'status', ['Planlandı', 'Gerçekleşti', 'İptal'], 'Geçerli bir durum seçilmelidir.');
+
+    $ownerTable = ['customer' => 'ak_customers', 'employee' => 'ak_employees', 'expense' => 'ak_expense_cards'][$cardType];
+    if (!fetch_one_statement_row("SELECT id FROM {$ownerTable} WHERE id = :id", ['id' => $ownerId])) {
+        json_error('İlgili kart bulunamadı.', 404);
     }
 
     return [
         'project_id' => nullable_string($input, 'project_id'),
-        'entry_date' => require_non_empty($input, 'entry_date', 'Tarih zorunludur.'),
+        'entry_date' => require_iso_date($input, 'entry_date', 'Geçerli bir tarih zorunludur.'),
         'card_type' => $cardType,
-        'customer_id' => $cardType === 'customer' ? nullable_string($input, 'customer_id') : null,
-        'employee_id' => $cardType === 'employee' ? nullable_string($input, 'employee_id') : null,
-        'expense_card_id' => $cardType === 'expense' ? nullable_string($input, 'expense_card_id') : null,
+        'customer_id' => $cardType === 'customer' ? $ownerId : null,
+        'employee_id' => $cardType === 'employee' ? $ownerId : null,
+        'expense_card_id' => $cardType === 'expense' ? $ownerId : null,
         'title' => require_non_empty($input, 'title', 'Başlık zorunludur.'),
         'description' => nullable_string($input, 'description'),
         'amount' => $amount,
-        'currency_tag' => require_non_empty($input, 'currency_tag', 'Para birimi zorunludur.'),
-        'group_tag' => require_non_empty($input, 'group_tag', 'Kayıt grubu zorunludur.'),
-        'direction' => require_non_empty($input, 'direction', 'Hareket tipi zorunludur.'),
-        'status' => require_non_empty($input, 'status', 'Durum zorunludur.'),
+        'currency_tag' => $currency,
+        'group_tag' => $group,
+        'direction' => $direction,
+        'status' => $status,
         'document_url' => nullable_string($input, 'document_url'),
     ];
 }

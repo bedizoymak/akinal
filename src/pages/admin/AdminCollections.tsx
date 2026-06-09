@@ -91,6 +91,8 @@ export default function AdminCollections() {
       else await createAdminPayment(payload);
       toast({ title: editId ? "Tahsilat güncellendi" : "Tahsilat eklendi" });
       setOpen(false); load();
+    } catch (error) {
+      toast({ title: "Tahsilat kaydedilemedi", description: error instanceof Error ? error.message : "Lütfen bilgileri kontrol edip tekrar deneyin.", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -98,8 +100,13 @@ export default function AdminCollections() {
 
   async function remove(id: string) {
     if (!confirm("Bu tahsilat kaydını silmek istediğinize emin misiniz? İlgili ödeme planı durumu yeniden hesaplanacak.")) return;
-    await deleteAdminPayment(id);
-    toast({ title: "Silindi" }); load();
+    try {
+      await deleteAdminPayment(id);
+      toast({ title: "Silindi" });
+      await load();
+    } catch (error) {
+      toast({ title: "Tahsilat silinemedi", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });
+    }
   }
 
   const enriched = useMemo(() => items.map((it) => ({

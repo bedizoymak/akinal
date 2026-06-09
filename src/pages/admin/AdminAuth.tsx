@@ -59,7 +59,7 @@ export default function AdminAuth() {
         <div className="text-center mb-8 text-white">
           <div className="inline-flex flex-col items-center gap-3 mb-4">
             <div className="bg-white rounded-md p-3 shadow-card-soft">
-              <img src={logoImg} alt="Akinal İnşaat" className="h-14 w-auto object-contain" />
+              <img src={logoImg} alt="Akınal İnşaat" className="h-14 w-auto object-contain" />
             </div>
             <div className="text-[11px] uppercase tracking-[0.18em] text-white/70">Yönetim Paneli</div>
           </div>

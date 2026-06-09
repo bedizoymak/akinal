@@ -53,7 +53,7 @@ try {
     }
 
     header('Allow: GET, PATCH, DELETE');
-    json_error('Method not allowed.', 405);
+    json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
     json_error('Bildirim işlemi tamamlanamadı.', 500);
 }

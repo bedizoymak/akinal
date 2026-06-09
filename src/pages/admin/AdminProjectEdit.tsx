@@ -122,6 +122,7 @@ export default function AdminProjectEdit() {
   const [data, setData] = useState<any>(empty);
   const [images, setImages] = useState<any[]>([]);
   const [loading, setLoading] = useState(!isNew);
+  const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
   const [slugTouched, setSlugTouched] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
@@ -133,11 +134,20 @@ export default function AdminProjectEdit() {
   useEffect(() => {
     if (isNew) return;
     (async () => {
-      const p = await getAdminProject(id);
-      if (p) setData(p);
-      const imgs = await getAdminProjectImages(id);
-      setImages(imgs || []);
-      setLoading(false);
+      try {
+        const p = await getAdminProject(id);
+        if (!p) {
+          setLoadError("Proje kaydı bulunamadı.");
+          return;
+        }
+        setData(p);
+        const imgs = await getAdminProjectImages(id);
+        setImages(imgs || []);
+      } catch (error) {
+        setLoadError(error instanceof Error ? error.message : "Proje bilgileri alınamadı.");
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [id, isNew]);
 
@@ -311,6 +321,7 @@ export default function AdminProjectEdit() {
   }
 
   if (loading) return <div className="text-center text-muted-foreground py-12">Yükleniyor...</div>;
+  if (loadError) return <div className="rounded-md border border-border bg-card py-12 text-center text-sm text-muted-foreground">{loadError}</div>;
 
   const projectStatusOptions = data.project_status && !PROJECT_STATUSES.includes(data.project_status)
     ? [data.project_status, ...PROJECT_STATUSES]

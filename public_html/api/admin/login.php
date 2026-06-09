@@ -12,11 +12,11 @@ $password = (string) ($input['password'] ?? '');
 $rateLimitKey = login_rate_limit_key($email);
 
 if ($email === '' || $password === '') {
-    json_error('Invalid email or password.', 401);
+    json_error('E-posta veya şifre hatalı.', 401);
 }
 
 if (is_login_rate_limited($rateLimitKey)) {
-    json_error('Too many login attempts. Please try again later.', 429);
+    json_error('Çok fazla giriş denemesi yapıldı. Lütfen daha sonra tekrar deneyin.', 429);
 }
 
 try {
@@ -31,9 +31,15 @@ try {
     $stmt->execute(['email_lower' => $email]);
     $admin = $stmt->fetch();
 
-    if (!$admin || (int) ($admin['is_active'] ?? 0) !== 1 || empty($admin['password_hash']) || !password_verify($password, (string) $admin['password_hash'])) {
+    if (
+        !$admin
+        || (int) ($admin['is_active'] ?? 0) !== 1
+        || ($admin['role'] ?? '') !== 'admin'
+        || empty($admin['password_hash'])
+        || !password_verify($password, (string) $admin['password_hash'])
+    ) {
         record_failed_login($rateLimitKey);
-        json_error('Invalid email or password.', 401);
+        json_error('E-posta veya şifre hatalı.', 401);
     }
 
     clear_failed_login($rateLimitKey);
@@ -43,7 +49,7 @@ try {
         'admin' => current_admin(),
     ]);
 } catch (Throwable $exception) {
-    json_error('Login failed.', 500);
+    json_error('Giriş işlemi tamamlanamadı.', 500);
 }
 
 function read_json_body(): array

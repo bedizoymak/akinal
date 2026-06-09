@@ -110,6 +110,8 @@ export interface AdminDashboardSummary {
   month_net?: number;
   overdue_collections?: number;
   expected_payments?: number;
+  overdue_plan_count?: number;
+  upcoming_plan_count?: number;
   financial_entry_count?: number;
 }
 

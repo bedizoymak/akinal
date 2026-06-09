@@ -11,7 +11,7 @@ if (!defined('ENABLE_DEMO_IMPORT') || ENABLE_DEMO_IMPORT !== true) {
 }
 
 if (!defined('DEMO_IMPORT_TOKEN') || DEMO_IMPORT_TOKEN === '' || DEMO_IMPORT_TOKEN === 'LONG_RANDOM_DEMO_IMPORT_TOKEN_HERE') {
-    json_error('Demo import token is not configured.', 500);
+    json_error('Demo içe aktarma anahtarı yapılandırılmamış.', 500);
 }
 
 $providedToken = trim((string) ($_GET['token'] ?? ''));
@@ -20,12 +20,12 @@ if ($providedToken === '') {
 }
 
 if ($providedToken === '' || !hash_equals((string) DEMO_IMPORT_TOKEN, $providedToken)) {
-    json_error('Invalid demo import token.', 403);
+    json_error('Demo içe aktarma anahtarı geçersiz.', 403);
 }
 
 $sqlPath = __DIR__ . '/../../migration-tools/output/import-demo-data.sql';
 if (!is_file($sqlPath) || !is_readable($sqlPath)) {
-    json_error('Demo import SQL file was not found on the server.', 500, [
+    json_error('Demo içe aktarma SQL dosyası sunucuda bulunamadı.', 500, [
         'expected_path' => $sqlPath,
         'file_exists' => file_exists($sqlPath),
         'is_readable' => is_readable($sqlPath),
@@ -34,7 +34,7 @@ if (!is_file($sqlPath) || !is_readable($sqlPath)) {
 
 $sql = file_get_contents($sqlPath);
 if ($sql === false || trim($sql) === '') {
-    json_error('Demo import SQL file is empty or unreadable.', 500);
+    json_error('Demo içe aktarma SQL dosyası boş veya okunamıyor.', 500);
 }
 
 $statements = split_sql_statements($sql);
@@ -75,14 +75,14 @@ try {
         'statements_run' => $statementsRun,
         'errors' => $errors,
         'delete_this_file_immediately' => true,
-        'message' => 'Demo import completed. Delete /api/admin/run-demo-import.php from production immediately.',
+        'message' => 'Demo içe aktarma tamamlandı. /api/admin/run-demo-import.php dosyasını üretim ortamından hemen kaldırın.',
     ]);
 } catch (Throwable $exception) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
 
-    json_error('Demo import failed.', 500, [
+    json_error('Demo içe aktarma başarısız oldu.', 500, [
         'success' => false,
         'statements_run' => $statementsRun,
         'errors' => $errors ?: [['message' => $exception->getMessage()]],

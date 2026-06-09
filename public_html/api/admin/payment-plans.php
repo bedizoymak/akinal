@@ -31,6 +31,9 @@ try {
     if ($method === 'PATCH') {
         $input = read_admin_json_body();
         $id = require_non_empty($input, 'id', 'Ödeme planı bulunamadı.');
+        if (!fetch_one('SELECT id FROM ak_payment_plans WHERE id = :id', ['id' => $id])) {
+            json_error('Ödeme planı bulunamadı.', 404);
+        }
         $payload = plan_payload($input);
         update_row('ak_payment_plans', $payload, $id);
         json_success(['payment_plan' => fetch_one('SELECT * FROM ak_payment_plans WHERE id = :id', ['id' => $id])]);
@@ -43,15 +46,16 @@ try {
             $id = require_non_empty($input, 'id', 'Ödeme planı bulunamadı.');
         }
         $previous = fetch_one('SELECT customer_id, account_type FROM ak_payment_plans WHERE id = :id', ['id' => $id]);
-        db()->prepare('DELETE FROM ak_payment_plans WHERE id = :id')->execute(['id' => $id]);
-        if ($previous) {
-            sync_customer_account_plan_statuses((string) $previous['customer_id'], account_type($previous));
+        if (!$previous) {
+            json_error('Ödeme planı bulunamadı.', 404);
         }
+        db()->prepare('DELETE FROM ak_payment_plans WHERE id = :id')->execute(['id' => $id]);
+        sync_customer_account_plan_statuses((string) $previous['customer_id'], account_type($previous));
         json_success(['deleted' => true]);
     }
 
     header('Allow: GET, POST, PATCH, DELETE');
-    json_error('Method not allowed.', 405);
+    json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
     json_error('Ödeme planı işlemi tamamlanamadı.', 500);
 }
@@ -61,9 +65,14 @@ function plan_payload(array $input): array
     $customerId = nullable_string($input, 'customer_id');
     $employeeId = nullable_string($input, 'employee_id');
     $expenseCardId = nullable_string($input, 'expense_card_id');
-    if (!$customerId && !$employeeId && !$expenseCardId) {
-        json_error('Kart seçimi zorunludur.');
+    $ownerIds = array_filter([$customerId, $employeeId, $expenseCardId], static fn($value) => $value !== null);
+    if (count($ownerIds) !== 1) {
+        json_error('Tek bir müşteri, personel veya tedarikçi kartı seçilmelidir.');
     }
+
+    $amount = require_positive_amount($input);
+    $method = payment_method($input);
+    $dueDate = require_iso_date($input, 'due_date', 'Geçerli bir vade tarihi zorunludur.');
 
     return [
         'customer_id' => $customerId,
@@ -72,17 +81,17 @@ function plan_payload(array $input): array
         'project_id' => nullable_string($input, 'project_id'),
         'title' => require_non_empty($input, 'title', 'Başlık zorunludur.'),
         'description' => nullable_string($input, 'description'),
-        'amount' => (float) ($input['amount'] ?? 0),
-        'paid_amount' => normalized_paid_amount($input),
-        'payment_method' => payment_method($input),
+        'amount' => $amount,
+        'paid_amount' => normalized_paid_amount($input, $amount),
+        'payment_method' => $method,
         'transaction_reference' => nullable_string($input, 'transaction_reference'),
         'card_note' => nullable_string($input, 'card_note'),
-        'cheque_maturity_date' => payment_method($input) === 'Çek' ? require_non_empty($input, 'cheque_maturity_date', 'Çek vade tarihi zorunludur.') : null,
-        'cheque_no' => payment_method($input) === 'Çek' ? nullable_string($input, 'cheque_no') : null,
-        'bank_name' => payment_method($input) === 'Çek' ? nullable_string($input, 'bank_name') : null,
-        'promissory_maturity_date' => payment_method($input) === 'Senet' ? require_non_empty($input, 'promissory_maturity_date', 'Senet vade tarihi zorunludur.') : null,
+        'cheque_maturity_date' => $method === 'Çek' ? require_iso_date($input, 'cheque_maturity_date', 'Geçerli bir çek vade tarihi zorunludur.') : null,
+        'cheque_no' => $method === 'Çek' ? nullable_string($input, 'cheque_no') : null,
+        'bank_name' => $method === 'Çek' ? nullable_string($input, 'bank_name') : null,
+        'promissory_maturity_date' => $method === 'Senet' ? require_iso_date($input, 'promissory_maturity_date', 'Geçerli bir senet vade tarihi zorunludur.') : null,
         'account_type' => account_type($input),
-        'due_date' => require_non_empty($input, 'due_date', 'Vade tarihi zorunludur.'),
+        'due_date' => $dueDate,
         'status' => payment_plan_status($input),
         'notes' => nullable_string($input, 'notes'),
     ];
@@ -106,16 +115,18 @@ function payment_method(array $input): string
     return in_array($value, ['Nakit', 'Banka Havalesi / EFT', 'Kredi Kartı', 'Çek', 'Senet'], true) ? $value : 'Nakit';
 }
 
-function normalized_paid_amount(array $input): float
+function normalized_paid_amount(array $input, float $amount): float
 {
     $status = payment_plan_status($input);
-    $amount = (float) ($input['amount'] ?? 0);
     $paidAmount = (float) ($input['paid_amount'] ?? 0);
     if ($status === 'Ödendi') {
         return $amount;
     }
     if ($status === 'Kısmi Ödendi') {
-        return max(0, min($amount, $paidAmount));
+        if ($paidAmount <= 0 || $paidAmount >= $amount) {
+            json_error('Kısmi ödeme tutarı 0 değerinden büyük ve toplam tutardan küçük olmalıdır.');
+        }
+        return $paidAmount;
     }
     return 0;
 }
@@ -171,7 +182,7 @@ function sync_customer_account_plan_statuses(string $customerId, string $account
 {
     if ($customerId === '') return;
     $plans = fetch_all(
-        'SELECT id, amount, due_date, status FROM ak_payment_plans WHERE customer_id = :customer_id AND account_type = :account_type ORDER BY due_date ASC',
+        'SELECT id, amount, paid_amount, due_date, status FROM ak_payment_plans WHERE customer_id = :customer_id AND account_type = :account_type ORDER BY due_date ASC',
         ['customer_id' => $customerId, 'account_type' => $accountType]
     );
     $remainingCollection = (float) (fetch_one(
@@ -184,8 +195,9 @@ function sync_customer_account_plan_statuses(string $customerId, string $account
             continue;
         }
         $amount = (float) $plan['amount'];
-        $paid = min($amount, max(0, $remainingCollection));
-        $remainingCollection -= $paid;
+        $allocatedPaid = min($amount, max(0, $remainingCollection));
+        $remainingCollection -= $allocatedPaid;
+        $paid = max((float) ($plan['paid_amount'] ?? 0), $allocatedPaid);
         $status = derive_plan_status($amount, (string) $plan['due_date'], $paid);
         $statement->execute(['id' => $plan['id'], 'status' => $status]);
     }

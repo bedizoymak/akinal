@@ -42,17 +42,38 @@ function require_admin(): array
     $admin = current_admin();
 
     if ($admin === null) {
-        json_error('Authentication required.', 401);
+        json_error('Oturum açmanız gerekiyor.', 401);
     }
 
-    return $admin;
+    if (($admin['role'] ?? '') !== 'admin') {
+        json_error('Bu işlem için yönetici yetkisi gerekiyor.', 403);
+    }
+
+    require_once __DIR__ . '/db.php';
+    $statement = db()->prepare('SELECT id, email, role, is_active FROM ak_admin_users WHERE id = :id LIMIT 1');
+    $statement->execute(['id' => (string) $admin['id']]);
+    $current = $statement->fetch();
+
+    if (!$current || (int) ($current['is_active'] ?? 0) !== 1 || ($current['role'] ?? '') !== 'admin') {
+        logout_admin_session();
+        json_error('Yönetici oturumu artık geçerli değil.', 403);
+    }
+
+    $current['full_name'] = $admin['full_name'] ?? null;
+    set_current_admin_without_regeneration($current);
+    return current_admin() ?? $admin;
 }
 
 function set_current_admin(array $admin): void
 {
     start_secure_session();
     session_regenerate_id(true);
+    set_current_admin_without_regeneration($admin);
+}
 
+function set_current_admin_without_regeneration(array $admin): void
+{
+    start_secure_session();
     $_SESSION['admin'] = [
         'id' => (string) ($admin['id'] ?? ''),
         'email' => (string) ($admin['email'] ?? ''),

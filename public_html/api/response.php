@@ -40,6 +40,6 @@ function require_method(string $method): void
 {
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== $method) {
         header('Allow: ' . $method);
-        json_error('Method not allowed.', 405);
+        json_error('İstek yöntemi desteklenmiyor.', 405);
     }
 }
