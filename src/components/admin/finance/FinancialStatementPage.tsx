@@ -852,8 +852,7 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
   const planAccountData = useMemo(() => ACCOUNT_GROUPS.map((account) => {
     const accountValue = account.value === "Gayri Resmi" ? "gayri_resmi" : "resmi";
     const scopedPlans = paymentPlans.filter((plan) => planOwnerMatches(kind, entityId, plan) && accountType(plan.account_type) === accountValue);
-    const planIds = new Set(scopedPlans.map((plan) => String(plan.id)));
-    const scopedPayments = payments.filter((payment) => paymentOwnerMatches(kind, entityId, payment) && accountType(payment.account_type) === accountValue && planIds.has(String(payment.payment_plan_id || "")));
+    const scopedPayments = payments.filter((payment) => paymentOwnerMatches(kind, entityId, payment) && accountType(payment.account_type) === accountValue);
     const allocatedPaid = allocateCollectionsToPlans(scopedPlans, scopedPayments);
     const enrichedPlans = scopedPlans.map((plan) => {
       const amount = Number(plan.amount || 0);

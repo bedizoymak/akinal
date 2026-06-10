@@ -46,6 +46,10 @@ try {
         if ($linkedPlan) {
             json_error('Finans kaydı bulunan gider kartı silinemez. Önce bağlı ödeme planlarını kontrol edin.', 409);
         }
+        $linkedEntry = fetch_one_expense_card('SELECT id FROM ak_financial_entries WHERE expense_card_id = :id', ['id' => $id]);
+        if ($linkedEntry) {
+            json_error('Finansal hareketi bulunan gider kartı silinemez. Önce bağlı finans kayıtlarını kontrol edin.', 409);
+        }
         db()->prepare('DELETE FROM ak_expense_cards WHERE id = :id')->execute(['id' => $id]);
         json_success(['deleted' => true]);
     }

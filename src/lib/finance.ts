@@ -42,6 +42,7 @@ export type LegacyPaymentLike = {
 export type PaymentPlanLike = {
   id?: string | null;
   amount?: number | string | null;
+  paid_amount?: number | string | null;
   due_date?: string | null;
   status?: string | null;
   customer_id?: string | null;
@@ -302,7 +303,22 @@ export function paidForPlan(planId: string | null | undefined, payments: LegacyP
 }
 
 export function paymentPlanRemainingFromPayments(plan: PaymentPlanLike, payments: LegacyPaymentLike[]): number {
-  return Math.max(0, safeNumber(plan.amount) - paidForPlan(plan.id, payments));
+  return Math.max(0, safeNumber(plan.amount) - effectivePaidForPlan(plan, payments));
+}
+
+export function effectivePaidForPlan(
+  plan: PaymentPlanLike,
+  payments: LegacyPaymentLike[],
+  allocatedPaid = paidForPlan(plan.id, payments),
+): number {
+  const amount = safeNumber(plan.amount);
+  const manualPaid = plan.status === "Ödendi"
+    ? amount
+    : plan.status === "Kısmi Ödendi"
+      ? safeNumber(plan.paid_amount)
+      : 0;
+
+  return Math.min(amount, Math.max(manualPaid, safeNumber(allocatedPaid)));
 }
 
 export function isCanceledStatus(status: string | null | undefined): boolean {
@@ -500,12 +516,31 @@ export function allocateCollectionsToPlans<TPlan extends PaymentPlanLike, TPayme
     .filter((plan) => plan.id && !isCanceledStatus(plan.status))
     .sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")));
 
-  let remainingCollection = sumBy(payments, (payment) => payment.amount);
+  const activePlanIds = new Set(activePlans.map((plan) => String(plan.id)));
+  const linkedCollections = new Map<string, number>();
+  let remainingCollection = 0;
+
+  payments.forEach((payment) => {
+    const planId = String(payment.payment_plan_id || "");
+    if (planId && activePlanIds.has(planId)) {
+      linkedCollections.set(planId, (linkedCollections.get(planId) || 0) + safeNumber(payment.amount));
+      return;
+    }
+    if (!planId) {
+      remainingCollection += safeNumber(payment.amount);
+    }
+  });
+
   for (const plan of activePlans) {
     const planId = String(plan.id);
-    const paid = Math.min(safeNumber(plan.amount), Math.max(0, remainingCollection));
+    const amount = safeNumber(plan.amount);
+    const linkedPaid = Math.min(amount, linkedCollections.get(planId) || 0);
+    const unlinkedPaid = isPaidStatus(plan.status)
+      ? 0
+      : Math.min(Math.max(0, amount - linkedPaid), Math.max(0, remainingCollection));
+    const paid = linkedPaid + unlinkedPaid;
     allocations.set(planId, paid);
-    remainingCollection -= paid;
+    remainingCollection -= unlinkedPaid;
   }
 
   return allocations;

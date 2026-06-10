@@ -131,18 +131,31 @@ function sync_customer_account_plan_statuses(string $customerId, string $account
         'SELECT id, amount, paid_amount, due_date, status FROM ak_payment_plans WHERE customer_id = :customer_id AND account_type = :account_type ORDER BY due_date ASC',
         ['customer_id' => $customerId, 'account_type' => $accountType]
     );
-    $remainingCollection = (float) (fetch_one(
-        'SELECT COALESCE(SUM(amount),0) AS paid FROM ak_payments WHERE customer_id = :customer_id AND account_type = :account_type',
+    $payments = fetch_all(
+        'SELECT payment_plan_id, amount FROM ak_payments WHERE customer_id = :customer_id AND account_type = :account_type',
         ['customer_id' => $customerId, 'account_type' => $accountType]
-    )['paid'] ?? 0);
+    );
+    $linkedCollections = [];
+    $remainingCollection = 0.0;
+    foreach ($payments as $payment) {
+        $planId = trim((string) ($payment['payment_plan_id'] ?? ''));
+        $amount = max(0.0, (float) ($payment['amount'] ?? 0));
+        if ($planId === '') {
+            $remainingCollection += $amount;
+            continue;
+        }
+        $linkedCollections[$planId] = ($linkedCollections[$planId] ?? 0.0) + $amount;
+    }
     $statement = db()->prepare('UPDATE ak_payment_plans SET status = :status WHERE id = :id');
     foreach ($plans as $plan) {
         if (($plan['status'] ?? null) === 'İptal' || ($plan['status'] ?? null) === 'Ödendi') {
             continue;
         }
         $amount = (float) $plan['amount'];
-        $allocatedPaid = min($amount, max(0, $remainingCollection));
-        $remainingCollection -= $allocatedPaid;
+        $linkedPaid = min($amount, max(0.0, (float) ($linkedCollections[$plan['id']] ?? 0)));
+        $unlinkedPaid = min(max(0.0, $amount - $linkedPaid), max(0.0, $remainingCollection));
+        $remainingCollection -= $unlinkedPaid;
+        $allocatedPaid = $linkedPaid + $unlinkedPaid;
         $paid = max((float) ($plan['paid_amount'] ?? 0), $allocatedPaid);
         $status = derive_plan_status($amount, (string) $plan['due_date'], $paid);
         $statement->execute(['id' => $plan['id'], 'status' => $status]);

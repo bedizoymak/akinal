@@ -44,6 +44,9 @@ try {
     if ($method === 'PATCH') {
         $input = read_admin_json_body();
         $id = require_non_empty($input, 'id', 'Finansal hareket bulunamadı.');
+        if (!fetch_one_statement_row('SELECT id FROM ak_financial_entries WHERE id = :id', ['id' => $id])) {
+            json_error('Finansal hareket bulunamadı.', 404);
+        }
         update_statement_row('ak_financial_entries', financial_entry_payload($input), $id);
         json_success(['entry' => fetch_one_statement_row('SELECT * FROM ak_financial_entries WHERE id = :id', ['id' => $id])]);
     }
@@ -53,6 +56,9 @@ try {
         if ($id === '') {
             $input = read_admin_json_body();
             $id = require_non_empty($input, 'id', 'Finansal hareket bulunamadı.');
+        }
+        if (!fetch_one_statement_row('SELECT id FROM ak_financial_entries WHERE id = :id', ['id' => $id])) {
+            json_error('Finansal hareket bulunamadı.', 404);
         }
 
         db()->prepare('DELETE FROM ak_financial_entries WHERE id = :id')->execute(['id' => $id]);

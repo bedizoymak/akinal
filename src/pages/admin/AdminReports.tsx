@@ -10,8 +10,12 @@ import { Download, Printer, FileText } from "lucide-react";
 import {
   formatTRY,
   formatDate,
+  accountType,
+  allocateCollectionsToPlans,
   customerDisplayName,
+  derivePlanStatus,
   displayLabel,
+  effectivePaidForPlan,
   exportCSV,
   exportPDF,
   statusBadgeClass,
@@ -19,9 +23,6 @@ import {
   EXPENSE_CATEGORIES,
   PAYMENT_METHODS,
   FINANCE_COLORS,
-  isCanceledStatus,
-  isPaidStatus,
-  paymentPlanRemainingFromPayments,
   printCurrentReport,
   safeNumber,
   summarizeLedgerFinance,
@@ -30,6 +31,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
 import logoImg from "@/assets/logo.png";
 import { AdminPageHeader } from "@/components/admin/AdminPage";
+import type { AdminPayment, AdminPaymentPlan } from "@/lib/apiTypes";
 
 function inDateRange(d: string, from: string, to: string): boolean {
   if (!d) return false;
@@ -120,6 +122,39 @@ function mysqlFinanceEntries(data: any) {
     ...data.payments.data.map(paymentAsFinanceEntry),
     ...data.expenses.data.map(expenseAsFinanceEntry),
   ];
+}
+
+type EnrichedPaymentPlan = AdminPaymentPlan & {
+  paid: number;
+  remaining: number;
+  computed: string;
+};
+
+function enrichCustomerPaymentPlans(plans: AdminPaymentPlan[], payments: AdminPayment[]): EnrichedPaymentPlan[] {
+  const allocations = new Map<string, number>();
+  const groupKeys = new Set(
+    plans
+      .filter((plan) => plan.customer_id)
+      .map((plan) => `${plan.customer_id}|${accountType(plan.account_type)}`),
+  );
+
+  groupKeys.forEach((key) => {
+    const [customerId, selectedAccount] = key.split("|");
+    const scopedPlans = plans.filter(
+      (plan) => plan.customer_id === customerId && accountType(plan.account_type) === selectedAccount,
+    );
+    const scopedPayments = payments.filter(
+      (payment) => payment.customer_id === customerId && accountType(payment.account_type) === selectedAccount,
+    );
+    allocateCollectionsToPlans(scopedPlans, scopedPayments).forEach((value, planId) => allocations.set(planId, value));
+  });
+
+  return plans.map((plan) => {
+    const paid = effectivePaidForPlan(plan, payments, allocations.get(String(plan.id)) || 0);
+    const remaining = Math.max(0, safeNumber(plan.amount) - paid);
+    const computed = derivePlanStatus(plan, paid);
+    return { ...plan, paid, remaining, computed };
+  });
 }
 
 function ExportBar({ onCSV, onPDF, title }: { onCSV: () => void; onPDF: () => void; title: string }) {
@@ -222,15 +257,17 @@ function CustomerPaymentReport({ data }: any) {
   const today = new Date().toISOString().slice(0, 10);
 
   const rows = useMemo(() => {
+    const enrichedPlans = enrichCustomerPaymentPlans(plans.data, payments.data);
     return customers.data.filter((c: any) => customerId === "all" || c.id === customerId).map((c: any) => {
-      const pl = plans.data.filter((x: any) => x.customer_id === c.id && (projectId === "all" || x.project_id === projectId) && inDateRange(x.due_date, from, to));
+      const pl = enrichedPlans.filter((x) => x.customer_id === c.id && (projectId === "all" || x.project_id === projectId) && inDateRange(x.due_date, from, to));
       const py = payments.data.filter((x: any) => x.customer_id === c.id && (projectId === "all" || x.project_id === projectId) && inDateRange(x.payment_date, from, to));
       const totalDebt = sumBy(pl, (x: any) => x.amount);
-      const collected = sumBy(py, (x: any) => x.amount);
-      const remaining = Math.max(0, totalDebt - collected);
-      const overdue = pl.filter((x: any) => x.due_date < today && !isPaidStatus(x.status) && !isCanceledStatus(x.status))
-        .reduce((s: number, x: any) => s + paymentPlanRemainingFromPayments(x, payments.data), 0);
-      const lastPay = py.sort((a: any, b: any) => b.payment_date.localeCompare(a.payment_date))[0];
+      const collected = sumBy(pl, (x) => x.paid);
+      const remaining = sumBy(pl, (x) => x.remaining);
+      const overdue = pl
+        .filter((x) => x.due_date < today && x.paid <= 0 && x.computed !== "İptal")
+        .reduce((s, x) => s + x.remaining, 0);
+      const lastPay = [...py].sort((a: any, b: any) => b.payment_date.localeCompare(a.payment_date))[0];
       const proj = pl[0] ? projects.data.find((p: any) => p.id === pl[0].project_id) : null;
       return {
         id: c.id, name: customerDisplayName(c), project: proj?.title || "-",
@@ -609,9 +646,9 @@ function OverdueReport({ data }: any) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const todayStr = today.toISOString().slice(0, 10);
 
-  const rows = useMemo(() => plans.data.filter((p: any) => {
+  const rows = useMemo(() => enrichCustomerPaymentPlans(plans.data, payments.data).filter((p) => {
     if (p.due_date >= todayStr) return false;
-    if (isPaidStatus(p.status) || isCanceledStatus(p.status)) return false;
+    if (p.paid > 0 || p.computed === "Ödendi" || p.computed === "İptal") return false;
     if (customerId !== "all" && p.customer_id !== customerId) return false;
     if (projectId !== "all" && p.project_id !== projectId) return false;
     if (!inDateRange(p.due_date, from, to)) return false;
@@ -619,11 +656,10 @@ function OverdueReport({ data }: any) {
   }).map((p: any) => {
     const c = customers.data.find((x: any) => x.id === p.customer_id);
     const pr = projects.data.find((x: any) => x.id === p.project_id);
-    const remaining = paymentPlanRemainingFromPayments(p, payments.data);
     const days = Math.abs(daysUntil(p.due_date));
     return {
       id: p.id, customer: c ? customerDisplayName(c) : "-", project: pr?.title || "-",
-      dueDate: p.due_date, days, amount: safeNumber(p.amount), remaining, status: p.status,
+      dueDate: p.due_date, days, amount: safeNumber(p.amount), remaining: p.remaining, status: p.computed,
     };
   }).filter((r: any) => {
     if (delay === "1-30" && (r.days < 1 || r.days > 30)) return false;

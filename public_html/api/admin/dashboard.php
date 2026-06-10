@@ -54,56 +54,32 @@ try {
         LIMIT 6
     ")->fetchAll();
 
-    $overduePlans = $pdo->query("
+    $customerPlans = $pdo->query("
         SELECT
           pp.id,
           pp.title,
           pp.amount,
+          pp.paid_amount,
           pp.due_date,
           pp.status,
           pp.customer_id,
           pp.project_id,
-          GREATEST(COALESCE(pp.paid_amount, 0), COALESCE(SUM(p.amount), 0)) AS paid_amount,
-          GREATEST(pp.amount - GREATEST(COALESCE(pp.paid_amount, 0), COALESCE(SUM(p.amount), 0)), 0) AS remaining_amount,
+          pp.account_type,
           COALESCE(c.company_name, c.full_name) AS customer_name,
           pr.title AS project_title
         FROM ak_payment_plans pp
-        LEFT JOIN ak_payments p ON p.payment_plan_id = pp.id
         LEFT JOIN ak_customers c ON c.id = pp.customer_id
         LEFT JOIN ak_projects pr ON pr.id = pp.project_id
-        WHERE pp.due_date < CURDATE()
-          AND pp.customer_id IS NOT NULL
-          AND pp.status NOT IN ('Ödendi', 'İptal')
-        GROUP BY pp.id, pp.title, pp.amount, pp.paid_amount, pp.due_date, pp.status, pp.customer_id, pp.project_id, c.company_name, c.full_name, pr.title
-        HAVING remaining_amount > 0
-        ORDER BY pp.due_date ASC
+        WHERE pp.customer_id IS NOT NULL
+        ORDER BY pp.customer_id ASC, pp.account_type ASC, pp.due_date ASC
     ")->fetchAll();
 
-    $upcomingPlans = $pdo->query("
-        SELECT
-          pp.id,
-          pp.title,
-          pp.amount,
-          pp.due_date,
-          pp.status,
-          pp.customer_id,
-          pp.project_id,
-          GREATEST(COALESCE(pp.paid_amount, 0), COALESCE(SUM(p.amount), 0)) AS paid_amount,
-          GREATEST(pp.amount - GREATEST(COALESCE(pp.paid_amount, 0), COALESCE(SUM(p.amount), 0)), 0) AS remaining_amount,
-          COALESCE(c.company_name, c.full_name) AS customer_name,
-          pr.title AS project_title
-        FROM ak_payment_plans pp
-        LEFT JOIN ak_payments p ON p.payment_plan_id = pp.id
-        LEFT JOIN ak_customers c ON c.id = pp.customer_id
-        LEFT JOIN ak_projects pr ON pr.id = pp.project_id
-        WHERE pp.due_date >= CURDATE()
-          AND pp.due_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
-          AND pp.customer_id IS NOT NULL
-          AND pp.status NOT IN ('Ödendi', 'İptal')
-        GROUP BY pp.id, pp.title, pp.amount, pp.paid_amount, pp.due_date, pp.status, pp.customer_id, pp.project_id, c.company_name, c.full_name, pr.title
-        HAVING remaining_amount > 0
-        ORDER BY pp.due_date ASC
+    $customerPayments = $pdo->query("
+        SELECT customer_id, payment_plan_id, amount, account_type
+        FROM ak_payments
+        WHERE customer_id IS NOT NULL
     ")->fetchAll();
+    [$overduePlans, $upcomingPlans] = classify_dashboard_customer_plans($customerPlans ?: [], $customerPayments ?: []);
 
     $recentMovements = $pdo->query("
         SELECT
@@ -253,4 +229,83 @@ function fetch_one(PDO $pdo, string $sql): array
     $statement = $pdo->query($sql);
     $row = $statement->fetch();
     return is_array($row) ? $row : [];
+}
+
+function classify_dashboard_customer_plans(array $plans, array $payments): array
+{
+    $groups = [];
+    foreach ($plans as $plan) {
+        $key = (string) ($plan['customer_id'] ?? '') . '|' . dashboard_account_type($plan['account_type'] ?? null);
+        $groups[$key]['plans'][] = $plan;
+    }
+    foreach ($payments as $payment) {
+        $key = (string) ($payment['customer_id'] ?? '') . '|' . dashboard_account_type($payment['account_type'] ?? null);
+        $groups[$key]['payments'][] = $payment;
+    }
+
+    $today = date('Y-m-d');
+    $in30 = date('Y-m-d', strtotime('+30 days'));
+    $overdue = [];
+    $upcoming = [];
+
+    foreach ($groups as $group) {
+        $groupPlans = $group['plans'] ?? [];
+        $activePlanIds = [];
+        foreach ($groupPlans as $plan) {
+            if (($plan['status'] ?? null) !== 'İptal') {
+                $activePlanIds[(string) $plan['id']] = true;
+            }
+        }
+
+        $linked = [];
+        $unlinked = 0.0;
+        foreach ($group['payments'] ?? [] as $payment) {
+            $planId = trim((string) ($payment['payment_plan_id'] ?? ''));
+            $amount = max(0.0, (float) ($payment['amount'] ?? 0));
+            if ($planId !== '' && isset($activePlanIds[$planId])) {
+                $linked[$planId] = ($linked[$planId] ?? 0.0) + $amount;
+            } elseif ($planId === '') {
+                $unlinked += $amount;
+            }
+        }
+
+        foreach ($groupPlans as $plan) {
+            if (($plan['status'] ?? null) === 'İptal') {
+                continue;
+            }
+
+            $amount = max(0.0, (float) ($plan['amount'] ?? 0));
+            $linkedPaid = min($amount, max(0.0, (float) ($linked[$plan['id']] ?? 0)));
+            $unlinkedPaid = ($plan['status'] ?? null) === 'Ödendi'
+                ? 0.0
+                : min(max(0.0, $amount - $linkedPaid), max(0.0, $unlinked));
+            $unlinked -= $unlinkedPaid;
+            $manualPaid = ($plan['status'] ?? null) === 'Ödendi'
+                ? $amount
+                : (($plan['status'] ?? null) === 'Kısmi Ödendi' ? max(0.0, (float) ($plan['paid_amount'] ?? 0)) : 0.0);
+            $paid = min($amount, max($manualPaid, $linkedPaid + $unlinkedPaid));
+            $remaining = max(0.0, $amount - $paid);
+            if ($remaining <= 0) {
+                continue;
+            }
+
+            $plan['paid_amount'] = $paid;
+            $plan['remaining_amount'] = $remaining;
+            $dueDate = (string) ($plan['due_date'] ?? '');
+            if ($dueDate < $today && $paid <= 0) {
+                $overdue[] = $plan;
+            } elseif ($dueDate >= $today && $dueDate <= $in30) {
+                $upcoming[] = $plan;
+            }
+        }
+    }
+
+    usort($overdue, static fn(array $left, array $right): int => strcmp((string) $left['due_date'], (string) $right['due_date']));
+    usort($upcoming, static fn(array $left, array $right): int => strcmp((string) $left['due_date'], (string) $right['due_date']));
+    return [$overdue, $upcoming];
+}
+
+function dashboard_account_type($value): string
+{
+    return $value === 'gayri_resmi' ? 'gayri_resmi' : 'resmi';
 }

@@ -48,11 +48,9 @@ export default function AdminCustomers() {
       const totalDue = customerPlans.reduce((sum, plan) => sum + safeNumber(plan.amount), 0);
       const totalPaid = ["resmi", "gayri_resmi"].reduce((sum, account) => {
         const accountPlans = customerPlans.filter((plan) => accountType(plan.account_type) === account);
-        const accountPlanIds = new Set(accountPlans.map((plan) => String(plan.id)));
         const accountPayments = pays.filter((payment) =>
           payment.customer_id === c.id
           && accountType(payment.account_type) === account
-          && accountPlanIds.has(String(payment.payment_plan_id || ""))
         );
         const allocated = allocateCollectionsToPlans(accountPlans, accountPayments);
         return sum + accountPlans.reduce((accountSum, plan) => {

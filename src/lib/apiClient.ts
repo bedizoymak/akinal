@@ -658,8 +658,11 @@ export async function deleteAdminExpenseCard(id: string): Promise<void> {
 }
 
 export async function getAdminNotifications(limit?: number): Promise<AdminNotificationsResponse> {
-  const suffix = limit ? `?limit=${encodeURIComponent(String(limit))}` : "";
-  const data = await apiRequest<AdminNotificationsResponse>(`/api/admin/notifications.php${suffix}`, {
+  const params = new URLSearchParams({ generate: "1" });
+  if (limit) {
+    params.set("limit", String(limit));
+  }
+  const data = await apiRequest<AdminNotificationsResponse>(`/api/admin/notifications.php?${params.toString()}`, {
     method: "GET",
     credentials: "include",
   });

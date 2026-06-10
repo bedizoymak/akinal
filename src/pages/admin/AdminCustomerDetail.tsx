@@ -131,8 +131,7 @@ export default function AdminCustomerDetail() {
   const accountSummaries = useMemo(() => {
     return ACCOUNT_TABS.reduce((result, account) => {
       const accountPlans = plans.filter((plan) => accountType(plan.account_type) === account.value);
-      const accountPlanIds = new Set(accountPlans.map((plan) => String(plan.id)));
-      const accountPays = pays.filter((payment) => accountType(payment.account_type) === account.value && accountPlanIds.has(String(payment.payment_plan_id || "")));
+      const accountPays = pays.filter((payment) => accountType(payment.account_type) === account.value);
       const allocatedPaid = allocateCollectionsToPlans(accountPlans, accountPays);
       const enrichedPlans = accountPlans.map((plan) => {
         const amount = safeNumber(plan.amount);

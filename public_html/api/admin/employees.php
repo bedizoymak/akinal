@@ -44,6 +44,10 @@ try {
         if ($linkedPlan) {
             json_error('Finans kaydı bulunan personel silinemez. Önce bağlı ödeme planlarını kontrol edin.', 409);
         }
+        $linkedEntry = fetch_one_employee('SELECT id FROM ak_financial_entries WHERE employee_id = :id', ['id' => $id]);
+        if ($linkedEntry) {
+            json_error('Finansal hareketi bulunan personel silinemez. Önce bağlı finans kayıtlarını kontrol edin.', 409);
+        }
         db()->prepare('DELETE FROM ak_employees WHERE id = :id')->execute(['id' => $id]);
         json_success(['deleted' => true]);
     }

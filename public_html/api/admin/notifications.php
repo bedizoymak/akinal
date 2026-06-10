@@ -62,9 +62,19 @@ function ensure_payment_notifications(): void
 {
     $today = date('Y-m-d');
     $in7 = date('Y-m-d', strtotime('+7 days'));
-    $plans = fetch_all_notifications(
-        "SELECT id, title, amount, due_date, status, customer_id, project_id FROM ak_payment_plans WHERE status NOT IN ('Ödendi', 'İptal')"
+    $rawPlans = fetch_all_notifications(
+        "SELECT id, title, amount, paid_amount, due_date, status, customer_id, project_id, account_type
+         FROM ak_payment_plans
+         WHERE status <> 'İptal'
+         ORDER BY customer_id ASC, account_type ASC, due_date ASC"
     );
+    $payments = fetch_all_notifications('SELECT customer_id, payment_plan_id, amount, account_type FROM ak_payments WHERE customer_id IS NOT NULL');
+    $plans = notification_plan_states($rawPlans, $payments);
+    $plans = array_values(array_filter($plans, static function (array $plan) use ($in7): bool {
+        $due = (string) ($plan['due_date'] ?? '');
+        return (float) ($plan['paid_amount'] ?? 0) <= 0 && $due !== '' && $due <= $in7;
+    }));
+    remove_obsolete_payment_notifications(array_column($plans, 'id'));
     if ($plans === []) return;
 
     $existing = fetch_all_notifications(
@@ -122,3 +132,93 @@ function ensure_payment_notifications(): void
 function fetch_all_notifications(string $sql, array $params = []): array { $stmt = db()->prepare($sql); $stmt->execute($params); return $stmt->fetchAll() ?: []; }
 function fetch_one_notification(string $sql, array $params = []): ?array { $rows = fetch_all_notifications($sql . ' LIMIT 1', $params); return $rows[0] ?? null; }
 function notification_count(string $sql): int { $stmt = db()->query($sql); return (int) ($stmt ? $stmt->fetchColumn() : 0); }
+
+function notification_plan_states(array $plans, array $payments): array
+{
+    $groups = [];
+    $standalone = [];
+    foreach ($plans as $plan) {
+        $customerId = trim((string) ($plan['customer_id'] ?? ''));
+        if ($customerId === '') {
+            $standalone[] = $plan;
+            continue;
+        }
+        $key = $customerId . '|' . notification_account_type($plan['account_type'] ?? null);
+        $groups[$key]['plans'][] = $plan;
+    }
+    foreach ($payments as $payment) {
+        $key = (string) ($payment['customer_id'] ?? '') . '|' . notification_account_type($payment['account_type'] ?? null);
+        $groups[$key]['payments'][] = $payment;
+    }
+
+    $result = [];
+    foreach ($groups as $group) {
+        $groupPlans = $group['plans'] ?? [];
+        $activePlanIds = array_fill_keys(array_map(static fn(array $plan): string => (string) $plan['id'], $groupPlans), true);
+        $linked = [];
+        $unlinked = 0.0;
+        foreach ($group['payments'] ?? [] as $payment) {
+            $planId = trim((string) ($payment['payment_plan_id'] ?? ''));
+            $amount = max(0.0, (float) ($payment['amount'] ?? 0));
+            if ($planId !== '' && isset($activePlanIds[$planId])) {
+                $linked[$planId] = ($linked[$planId] ?? 0.0) + $amount;
+            } elseif ($planId === '') {
+                $unlinked += $amount;
+            }
+        }
+
+        foreach ($groupPlans as $plan) {
+            $amount = max(0.0, (float) ($plan['amount'] ?? 0));
+            $linkedPaid = min($amount, max(0.0, (float) ($linked[$plan['id']] ?? 0)));
+            $unlinkedPaid = ($plan['status'] ?? null) === 'Ödendi'
+                ? 0.0
+                : min(max(0.0, $amount - $linkedPaid), max(0.0, $unlinked));
+            $unlinked -= $unlinkedPaid;
+            $manualPaid = ($plan['status'] ?? null) === 'Ödendi'
+                ? $amount
+                : (($plan['status'] ?? null) === 'Kısmi Ödendi' ? max(0.0, (float) ($plan['paid_amount'] ?? 0)) : 0.0);
+            $paid = min($amount, max($manualPaid, $linkedPaid + $unlinkedPaid));
+            $plan['paid_amount'] = $paid;
+            $plan['remaining_amount'] = max(0.0, $amount - $paid);
+            if ($plan['remaining_amount'] > 0) {
+                $result[] = $plan;
+            }
+        }
+    }
+
+    foreach ($standalone as $plan) {
+        $amount = max(0.0, (float) ($plan['amount'] ?? 0));
+        $paid = ($plan['status'] ?? null) === 'Ödendi'
+            ? $amount
+            : (($plan['status'] ?? null) === 'Kısmi Ödendi' ? max(0.0, (float) ($plan['paid_amount'] ?? 0)) : 0.0);
+        $plan['paid_amount'] = min($amount, $paid);
+        $plan['remaining_amount'] = max(0.0, $amount - $plan['paid_amount']);
+        if ($plan['remaining_amount'] > 0) {
+            $result[] = $plan;
+        }
+    }
+
+    return $result;
+}
+
+function notification_account_type($value): string
+{
+    return $value === 'gayri_resmi' ? 'gayri_resmi' : 'resmi';
+}
+
+function remove_obsolete_payment_notifications(array $eligiblePlanIds): void
+{
+    $eligible = array_fill_keys(array_map('strval', $eligiblePlanIds), true);
+    $rows = fetch_all_notifications(
+        "SELECT id, related_payment_plan_id
+         FROM ak_notifications
+         WHERE type IN ('Yaklaşan Ödeme', 'Bugünkü Tahsilat', 'Geciken Ödeme')"
+    );
+    $delete = db()->prepare('DELETE FROM ak_notifications WHERE id = :id');
+    foreach ($rows as $row) {
+        $planId = (string) ($row['related_payment_plan_id'] ?? '');
+        if ($planId === '' || !isset($eligible[$planId])) {
+            $delete->execute(['id' => $row['id']]);
+        }
+    }
+}

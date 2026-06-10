@@ -5,6 +5,8 @@ import { AlertTriangle, Download, MessageCircle } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import {
   FINANCE_COLORS,
+  accountType,
+  allocateCollectionsToPlans,
   formatTRY,
   formatDate,
   customerDisplayName,
@@ -12,10 +14,9 @@ import {
   whatsappLink,
   statusBadgeClass,
   derivePlanStatus,
+  effectivePaidForPlan,
   isCanceledStatus,
   isPaidStatus,
-  paymentPlanRemainingFromPayments,
-  paidForPlan,
   summarizeLedgerFinance,
 } from "@/lib/finance";
 import { cn } from "@/lib/utils";
@@ -249,7 +250,7 @@ function expenseToFinancialEntry(expense: AdminExpense): AdminFinancialEntry {
     description: expense.description,
     amount: expense.amount,
     currency_tag: "TRY",
-    group_tag: payment.account_type === "gayri_resmi" ? "Gayri Resmi" : "Resmi",
+    group_tag: "Resmi",
     direction: "Gider",
     status: "Gerçekleşti",
     document_url: expense.document_url,
@@ -272,7 +273,7 @@ function paymentToFinancialEntry(payment: AdminPayment): AdminFinancialEntry {
     description: payment.description,
     amount: payment.amount,
     currency_tag: "TRY",
-    group_tag: "Resmi",
+    group_tag: payment.account_type === "gayri_resmi" ? "Gayri Resmi" : "Resmi",
     direction: "Gelir",
     status: "Gerçekleşti",
     document_url: payment.document_url,
@@ -343,12 +344,35 @@ export default function AdminFinance() {
     { name: "Planlanan Gider", value: stats.totalPayable, color: FINANCE_COLORS.pending },
   ];
 
+  const collectionAllocations = useMemo(() => {
+    const allocations = new Map<string, number>();
+    const groupKeys = new Set(
+      plans
+        .filter((plan) => plan.customer_id)
+        .map((plan) => `${plan.customer_id}|${accountType(plan.account_type)}`),
+    );
+
+    groupKeys.forEach((key) => {
+      const [customerId, selectedAccount] = key.split("|");
+      const scopedPlans = plans.filter(
+        (plan) => plan.customer_id === customerId && accountType(plan.account_type) === selectedAccount,
+      );
+      const scopedPayments = pays.filter(
+        (payment) => payment.customer_id === customerId && accountType(payment.account_type) === selectedAccount,
+      );
+      allocateCollectionsToPlans(scopedPlans, scopedPayments).forEach((value, planId) => allocations.set(planId, value));
+    });
+
+    return allocations;
+  }, [plans, pays]);
+
   const statusPie = useMemo(() => {
     const counts = { "Ödendi": 0, "Bekliyor": 0, "Kısmi Ödendi": 0, "Vadesi Geçti": 0 } as Record<string, number>;
     plans.forEach((p) => {
-      const paid = paidForPlan(p.id, pays);
+      const paid = effectivePaidForPlan(p, pays, collectionAllocations.get(String(p.id)) || 0);
       const computed = derivePlanStatus(p, paid);
-      if (counts[computed] !== undefined) counts[computed] += paymentPlanRemainingFromPayments(p, pays) || Number(p.amount);
+      const remaining = Math.max(0, Number(p.amount || 0) - paid);
+      if (counts[computed] !== undefined) counts[computed] += computed === "Ödendi" ? paid : remaining;
     });
     return [
       { name: "Ödendi", value: counts["Ödendi"], color: FINANCE_COLORS.paid },
@@ -356,7 +380,7 @@ export default function AdminFinance() {
       { name: "Kısmi Ödendi", value: counts["Kısmi Ödendi"], color: FINANCE_COLORS.partial },
       { name: "Vadesi Geçti", value: counts["Vadesi Geçti"], color: FINANCE_COLORS.overdue },
     ];
-  }, [plans, pays]);
+  }, [collectionAllocations, plans, pays]);
 
   const projectStats = useMemo(() => projects.map((pr) => {
     const projEntries = financeEntries.filter((entry) => entry.project_id === pr.id);
@@ -370,18 +394,18 @@ export default function AdminFinance() {
 
   const upcoming = useMemo(() => {
     return plans.map((p) => {
-      const paid = paidForPlan(p.id, pays);
-      const remain = paymentPlanRemainingFromPayments(p, pays);
+      const paid = effectivePaidForPlan(p, pays, collectionAllocations.get(String(p.id)) || 0);
+      const remain = Math.max(0, Number(p.amount || 0) - paid);
       const computed = derivePlanStatus(p, paid);
       const customer = customers.find((c) => c.id === p.customer_id);
       const project = projects.find((pr) => pr.id === p.project_id);
       const days = daysUntil(p.due_date);
       return { ...p, remain, computed, customer, project, days };
     }).filter((p) => p.computed !== "Ödendi" && p.computed !== "İptal" && p.remain > 0);
-  }, [plans, pays, customers, projects]);
+  }, [collectionAllocations, plans, pays, customers, projects]);
 
   const upcoming30 = upcoming.filter((p) => p.days >= 0 && p.days <= 30).sort((a, b) => a.days - b.days);
-  const overdueList = upcoming.filter((p) => p.days < 0).sort((a, b) => a.days - b.days);
+  const overdueList = upcoming.filter((p) => p.days < 0 && p.paid <= 0).sort((a, b) => a.days - b.days);
 
   function downloadSummary() {
     const overdueReceivables = overdueList.reduce((sum, plan) => sum + Number(plan.remain || 0), 0);
