@@ -5,6 +5,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/hooks/useAuth";
 
 const PublicLayout = lazy(() => import("./components/site/PublicLayout"));
 const Home = lazy(() => import("./pages/site/Home"));
@@ -51,53 +52,55 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Yükleniyor...</div>}>
-            <Routes>
-              <Route path="/admin/giris" element={<AdminAuth />} />
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
-                <Route path="projeler" element={<AdminProjects />} />
-                <Route path="projeler/yeni" element={<AdminProjectEdit />} />
-                <Route path="projeler/:id" element={<AdminProjectEdit />} />
-                <Route path="projeler/:id/finans" element={<AdminProjectFinance />} />
-                <Route path="musteriler" element={<AdminCustomers />} />
-                <Route path="musteriler/yeni" element={<AdminCustomerEdit />} />
-                <Route path="musteriler/:id" element={<AdminCustomerDetail />} />
-                <Route path="musteriler/:id/duzenle" element={<AdminCustomerEdit />} />
-                <Route path="musteriler/:id/finans" element={<AdminCustomerFinance />} />
-                <Route path="personeller" element={<AdminEmployees />} />
-                <Route path="personeller/:id/finans" element={<AdminEmployeeFinance />} />
-                <Route path="odeme-planlari" element={<Navigate to="/admin/musteriler" replace />} />
-                <Route path="tahsilatlar" element={<AdminCollections />} />
-                <Route path="giderler" element={<AdminExpenses />} />
-                <Route path="gider-kartlari" element={<AdminExpenseCards />} />
-                <Route path="gider-kartlari/:id/finans" element={<AdminExpenseCardFinance />} />
-                <Route path="finans-dashboard" element={<AdminFinance />} />
-                <Route path="medya" element={<AdminMedia />} />
-                <Route path="talepler" element={<AdminContacts />} />
-                <Route path="bildirimler" element={<AdminNotifications />} />
-                <Route path="raporlar" element={<AdminReports />} />
-                <Route path="ayarlar" element={<AdminSettings />} />
-                <Route path="sql-editor" element={<AdminSqlEditor />} />
-              </Route>
+          <AuthProvider>
+            <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Sayfa yükleniyor...</div>}>
+              <Routes>
+                <Route path="/admin/giris" element={<AdminAuth />} />
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="projeler" element={<AdminProjects />} />
+                  <Route path="projeler/yeni" element={<AdminProjectEdit />} />
+                  <Route path="projeler/:id" element={<AdminProjectEdit />} />
+                  <Route path="projeler/:id/finans" element={<AdminProjectFinance />} />
+                  <Route path="musteriler" element={<AdminCustomers />} />
+                  <Route path="musteriler/yeni" element={<AdminCustomerEdit />} />
+                  <Route path="musteriler/:id" element={<AdminCustomerDetail />} />
+                  <Route path="musteriler/:id/duzenle" element={<AdminCustomerEdit />} />
+                  <Route path="musteriler/:id/finans" element={<AdminCustomerFinance />} />
+                  <Route path="personeller" element={<AdminEmployees />} />
+                  <Route path="personeller/:id/finans" element={<AdminEmployeeFinance />} />
+                  <Route path="odeme-planlari" element={<Navigate to="/admin/musteriler" replace />} />
+                  <Route path="tahsilatlar" element={<AdminCollections />} />
+                  <Route path="giderler" element={<AdminExpenses />} />
+                  <Route path="gider-kartlari" element={<AdminExpenseCards />} />
+                  <Route path="gider-kartlari/:id/finans" element={<AdminExpenseCardFinance />} />
+                  <Route path="finans-dashboard" element={<AdminFinance />} />
+                  <Route path="medya" element={<AdminMedia />} />
+                  <Route path="talepler" element={<AdminContacts />} />
+                  <Route path="bildirimler" element={<AdminNotifications />} />
+                  <Route path="raporlar" element={<AdminReports />} />
+                  <Route path="ayarlar" element={<AdminSettings />} />
+                  <Route path="sql-editor" element={<AdminSqlEditor />} />
+                </Route>
 
-              <Route element={<PublicLayout />}>
-                <Route path="/" element={<Home />} />
-                <Route path="/hakkimizda" element={<About />} />
-                <Route path="/hizmetlerimiz" element={<Services />} />
-                <Route path="/hizmetlerimiz/:slug" element={<ServiceDetail />} />
-                <Route path="/projelerimiz" element={<Projects />} />
-                <Route path="/projeler" element={<Projects />} />
-                <Route path="/projelerimiz/:slug" element={<ProjectDetail />} />
-                <Route path="/kentsel-donusum" element={<UrbanTransformation />} />
-                <Route path="/iletisim" element={<Contact />} />
-                <Route path="/gizlilik-politikasi" element={<LegalPage />} />
-                <Route path="/cerez-politikasi" element={<LegalPage />} />
-                <Route path="/kullanim-sartlari" element={<LegalPage />} />
-                <Route path="*" element={<NotFound />} />
-              </Route>
-            </Routes>
-          </Suspense>
+                <Route element={<PublicLayout />}>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/hakkimizda" element={<About />} />
+                  <Route path="/hizmetlerimiz" element={<Services />} />
+                  <Route path="/hizmetlerimiz/:slug" element={<ServiceDetail />} />
+                  <Route path="/projelerimiz" element={<Projects />} />
+                  <Route path="/projeler" element={<Projects />} />
+                  <Route path="/projelerimiz/:slug" element={<ProjectDetail />} />
+                  <Route path="/kentsel-donusum" element={<UrbanTransformation />} />
+                  <Route path="/iletisim" element={<Contact />} />
+                  <Route path="/gizlilik-politikasi" element={<LegalPage />} />
+                  <Route path="/cerez-politikasi" element={<LegalPage />} />
+                  <Route path="/kullanim-sartlari" element={<LegalPage />} />
+                  <Route path="*" element={<NotFound />} />
+                </Route>
+              </Routes>
+            </Suspense>
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </HelmetProvider>

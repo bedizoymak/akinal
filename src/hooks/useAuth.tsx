@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { getCurrentAdmin, loginAdmin, logoutAdmin } from "@/lib/apiClient";
 import type { AdminUser } from "@/lib/apiTypes";
 
@@ -6,7 +6,20 @@ type AdminSession = {
   user: AdminUser;
 };
 
-export function useAuth() {
+type AuthContextValue = {
+  session: AdminSession | null;
+  user: AdminUser | null;
+  isAdmin: boolean;
+  loading: boolean;
+  authError: string | null;
+  signIn: (email: string, password: string) => Promise<AdminUser>;
+  signOut: () => Promise<void>;
+  refreshAdmin: () => Promise<void>;
+};
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AdminSession | null>(null);
   const [user, setUser] = useState<AdminUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -35,21 +48,34 @@ export function useAuth() {
     }
   }, [applyAdmin]);
 
-  async function signIn(email: string, password: string) {
+  const signIn = useCallback(async (email: string, password: string) => {
     const admin = await loginAdmin(email, password);
     applyAdmin(admin);
     setAuthError(null);
     return admin;
-  }
+  }, [applyAdmin]);
 
-  async function signOut() {
+  const signOut = useCallback(async () => {
     await logoutAdmin();
     applyAdmin(null);
-  }
+  }, [applyAdmin]);
 
   useEffect(() => {
     void refreshAdmin();
   }, [refreshAdmin]);
 
-  return { session, user, isAdmin, loading, authError, signIn, signOut, refreshAdmin };
+  const value = useMemo(
+    () => ({ session, user, isAdmin, loading, authError, signIn, signOut, refreshAdmin }),
+    [session, user, isAdmin, loading, authError, signIn, signOut, refreshAdmin],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth, AuthProvider içinde kullanılmalıdır.");
+  }
+  return context;
 }

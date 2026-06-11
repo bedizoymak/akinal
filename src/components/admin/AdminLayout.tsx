@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { NavLink, Outlet, Navigate, useLocation, useNavigate, Link } from "react-router-dom";
 import {
   BarChart3,
@@ -246,7 +246,9 @@ export default function AdminLayout() {
           </div>
         </header>
         <main className="min-w-0 w-full max-w-full flex-1 overflow-x-hidden p-4 md:p-6 xl:p-8">
-          <Outlet />
+          <Suspense fallback={<div className="py-10 text-center text-sm text-muted-foreground">Sayfa yükleniyor...</div>}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>
