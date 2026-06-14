@@ -217,6 +217,22 @@ CREATE TABLE IF NOT EXISTS ak_payment_plans (
   employee_id CHAR(36) NULL,
   expense_card_id CHAR(36) NULL,
   project_id CHAR(36) NULL,
+  business_transaction_id CHAR(36) NULL,
+  counterparty_type VARCHAR(30) NULL,
+  counterparty_id CHAR(36) NULL,
+  direction VARCHAR(20) NULL,
+  currency VARCHAR(10) NULL,
+  allocation_scope VARCHAR(30) NULL,
+  allocation_note TEXT NULL,
+  category_code VARCHAR(80) NULL,
+  subcategory_code VARCHAR(80) NULL,
+  migration_confidence VARCHAR(30) NULL,
+  reconciliation_status VARCHAR(30) NULL,
+  archived_at DATETIME NULL,
+  archived_by CHAR(36) NULL,
+  canceled_at DATETIME NULL,
+  canceled_by CHAR(36) NULL,
+  cancellation_reason TEXT NULL,
   title VARCHAR(255) NOT NULL,
   description TEXT NULL,
   amount DECIMAL(14,2) NOT NULL DEFAULT 0.00,
@@ -240,6 +256,9 @@ CREATE TABLE IF NOT EXISTS ak_payment_plans (
   KEY idx_payment_plans_account_type (account_type),
   KEY idx_payment_plans_project (project_id),
   KEY idx_payment_plans_due_date (due_date),
+  KEY idx_payment_plans_counterparty (counterparty_type, counterparty_id),
+  KEY idx_payment_plans_business_transaction (business_transaction_id),
+  KEY idx_payment_plans_reconciliation (reconciliation_status),
   CONSTRAINT fk_payment_plans_customer FOREIGN KEY (customer_id) REFERENCES ak_customers(id) ON DELETE SET NULL,
   CONSTRAINT fk_payment_plans_project FOREIGN KEY (project_id) REFERENCES ak_projects(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -371,6 +390,33 @@ CREATE TABLE IF NOT EXISTS ak_financial_entries (
   id CHAR(36) NOT NULL PRIMARY KEY,
   project_id CHAR(36) NULL,
   entry_date DATE NOT NULL,
+  business_transaction_id CHAR(36) NULL,
+  event_type VARCHAR(50) NULL,
+  source_type VARCHAR(50) NULL,
+  source_id CHAR(36) NULL,
+  source_version VARCHAR(30) NULL,
+  payment_plan_id CHAR(36) NULL,
+  parent_entry_id CHAR(36) NULL,
+  counterparty_type VARCHAR(30) NULL,
+  counterparty_id CHAR(36) NULL,
+  account_type VARCHAR(20) NULL,
+  allocation_scope VARCHAR(30) NULL,
+  allocation_note TEXT NULL,
+  transaction_date DATE NULL,
+  due_date DATE NULL,
+  exchange_rate DECIMAL(18,8) NULL,
+  base_amount DECIMAL(18,2) NULL,
+  category_code VARCHAR(80) NULL,
+  subcategory_code VARCHAR(80) NULL,
+  document_id CHAR(36) NULL,
+  migration_confidence VARCHAR(30) NULL,
+  reconciliation_status VARCHAR(30) NULL,
+  archived_at DATETIME NULL,
+  archived_by CHAR(36) NULL,
+  canceled_at DATETIME NULL,
+  canceled_by CHAR(36) NULL,
+  cancellation_reason TEXT NULL,
+  reversal_entry_id CHAR(36) NULL,
   card_type VARCHAR(50) NOT NULL,
   customer_id CHAR(36) NULL,
   employee_id CHAR(36) NULL,
@@ -394,10 +440,58 @@ CREATE TABLE IF NOT EXISTS ak_financial_entries (
   KEY idx_financial_entries_status (status),
   KEY idx_financial_entries_group_tag (group_tag),
   KEY idx_financial_entries_currency_tag (currency_tag),
+  KEY idx_financial_entries_source (source_type, source_id),
+  KEY idx_financial_entries_business_transaction (business_transaction_id),
+  KEY idx_financial_entries_event_type (event_type),
+  KEY idx_financial_entries_payment_plan (payment_plan_id),
+  KEY idx_financial_entries_counterparty (counterparty_type, counterparty_id),
+  KEY idx_financial_entries_project_transaction (project_id, transaction_date),
+  KEY idx_financial_entries_account_type (account_type),
+  KEY idx_financial_entries_reconciliation (reconciliation_status),
   CONSTRAINT fk_financial_entries_project FOREIGN KEY (project_id) REFERENCES ak_projects(id) ON DELETE SET NULL,
   CONSTRAINT fk_financial_entries_customer FOREIGN KEY (customer_id) REFERENCES ak_customers(id) ON DELETE SET NULL,
   CONSTRAINT fk_financial_entries_employee FOREIGN KEY (employee_id) REFERENCES ak_employees(id) ON DELETE SET NULL,
   CONSTRAINT fk_financial_entries_expense_card FOREIGN KEY (expense_card_id) REFERENCES ak_expense_cards(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+
+    'ak_payment_plan_settlements' => <<<'SQL'
+CREATE TABLE IF NOT EXISTS ak_payment_plan_settlements (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  payment_plan_id CHAR(36) NOT NULL,
+  financial_entry_id CHAR(36) NOT NULL,
+  allocated_amount DECIMAL(18,2) NOT NULL,
+  currency VARCHAR(10) NOT NULL,
+  account_type VARCHAR(20) NOT NULL,
+  created_by CHAR(36) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  reversed_at DATETIME NULL,
+  reversed_by CHAR(36) NULL,
+  reversal_reason TEXT NULL,
+  active_pair_guard TINYINT
+    GENERATED ALWAYS AS (CASE WHEN reversed_at IS NULL THEN 1 ELSE NULL END) STORED,
+  KEY idx_plan_settlements_plan (payment_plan_id),
+  KEY idx_plan_settlements_entry (financial_entry_id),
+  KEY idx_plan_settlements_currency (currency),
+  KEY idx_plan_settlements_account_type (account_type),
+  UNIQUE KEY uq_plan_settlements_active_pair (
+    payment_plan_id,
+    financial_entry_id,
+    active_pair_guard
+  ),
+  CONSTRAINT chk_plan_settlements_positive CHECK (allocated_amount > 0),
+  CONSTRAINT fk_plan_settlements_plan
+    FOREIGN KEY (payment_plan_id) REFERENCES ak_payment_plans(id)
+    ON UPDATE RESTRICT ON DELETE RESTRICT,
+  CONSTRAINT fk_plan_settlements_entry
+    FOREIGN KEY (financial_entry_id) REFERENCES ak_financial_entries(id)
+    ON UPDATE RESTRICT ON DELETE RESTRICT,
+  CONSTRAINT fk_plan_settlements_created_by
+    FOREIGN KEY (created_by) REFERENCES ak_admin_users(id)
+    ON UPDATE RESTRICT ON DELETE RESTRICT,
+  CONSTRAINT fk_plan_settlements_reversed_by
+    FOREIGN KEY (reversed_by) REFERENCES ak_admin_users(id)
+    ON UPDATE RESTRICT ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
 

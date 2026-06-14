@@ -14,6 +14,8 @@
     "cleanup:smoke": "node scripts/cleanup-smoke-test.mjs",
     "seed:demo": "node scripts/seed-demo-bulk.mjs",
     "cleanup:demo": "node scripts/cleanup-demo-bulk.mjs",
+    "finance:parity": "php tools/canonical-finance-parity-harness.php",
+    "finance:classify": "php tools/canonical-cashflow-classifier.php",
     "test:watch": "vitest"
   },
   "dependencies": {

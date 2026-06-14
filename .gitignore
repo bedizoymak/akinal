@@ -20,6 +20,9 @@ migration-tools/exports/*
 migration-tools/output/*
 !migration-tools/exports/.gitkeep
 !migration-tools/output/.gitkeep
+tools/output/
+docs/exports/
+*.classification.json
 
 # Editor directories and files
 .vscode/*
