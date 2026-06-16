@@ -237,7 +237,7 @@ export default function AdminDashboard() {
       <AdminPageHeader
         eyebrow="Yönetim Özeti"
         title="Genel Bakış"
-        description="Projeler, tahsilatlar, giderler ve net durumu tek ekrandan takip edin."
+        description="Test-Projeler, tahsilatlar, giderler ve net durumu tek ekrandan takip edin."
         actions={
           <>
             <Button asChild className="bg-accent text-accent-foreground hover:bg-accent-glow">
