@@ -132,6 +132,137 @@ export interface AdminDashboardResponse {
   upcoming_plans?: AdminDashboardPaymentPlan[];
   recent_movements?: AdminDashboardMovement[];
   monthly_financials?: AdminDashboardMonthlyFinancial[];
+  unified_financial_cards?: AdminUnifiedFinancialCards;
+  cashflow_command_center?: AdminCashflowCommandCenter;
+  cashflow_action_center?: AdminCashflowActionCenter;
+  financial_drilldowns?: AdminFinancialDrilldowns;
+}
+
+export interface AdminCashflowActionItem {
+  id: string;
+  name: string;
+  label: string;
+  amount: number | string;
+  score: number;
+  reason: string;
+  due_date: string | null;
+}
+
+export interface AdminCashflowActionCenter {
+  critical_collections: {
+    highest_overdue_customers: AdminCashflowActionItem[];
+    highest_outstanding_balances: AdminCashflowActionItem[];
+    collection_risk_scores: AdminCashflowActionItem[];
+  };
+  critical_payments: {
+    upcoming_supplier_payments: AdminCashflowActionItem[];
+    upcoming_personnel_payments: AdminCashflowActionItem[];
+    highest_payable_balances: AdminCashflowActionItem[];
+  };
+  project_risk_list: {
+    lowest_profitability_projects: AdminCashflowActionItem[];
+    highest_expense_projects: AdminCashflowActionItem[];
+    negative_cashflow_projects: AdminCashflowActionItem[];
+  };
+  daily_action_queue: {
+    customers_to_contact_today: AdminCashflowActionItem[];
+    suppliers_requiring_payment_review: AdminCashflowActionItem[];
+    projects_requiring_financial_review: AdminCashflowActionItem[];
+  };
+}
+
+export interface AdminFinancialDrilldownRow {
+  id: string;
+  owner_name: string;
+  label: string;
+  amount: number | string;
+  row_date: string | null;
+  row_type: string;
+}
+
+export interface AdminFinancialDrilldowns {
+  customer: {
+    collections: AdminFinancialDrilldownRow[];
+    pending_payments: AdminFinancialDrilldownRow[];
+    overdue_payments: AdminFinancialDrilldownRow[];
+  };
+  project: {
+    revenue_rows: AdminFinancialDrilldownRow[];
+    expense_rows: AdminFinancialDrilldownRow[];
+    profit_components: AdminFinancialDrilldownRow[];
+  };
+  supplier: {
+    purchases: AdminFinancialDrilldownRow[];
+    payments: AdminFinancialDrilldownRow[];
+    remaining_payable_rows: AdminFinancialDrilldownRow[];
+  };
+  personnel: {
+    salary: AdminFinancialDrilldownRow[];
+    advances: AdminFinancialDrilldownRow[];
+    reimbursements: AdminFinancialDrilldownRow[];
+    total_cost_rows: AdminFinancialDrilldownRow[];
+  };
+}
+
+export interface AdminCashflowCommandCenter {
+  current_receivables: number | string;
+  current_payables: number | string;
+  net_cash_position: number | string;
+  overdue_collections: number | string;
+  upcoming_collections: number | string;
+  upcoming_payments: number | string;
+  personnel_cost_total: number | string;
+  most_risky_customers: AdminCustomerFinancialCard[];
+  most_expensive_projects: AdminProjectFinancialCard[];
+  highest_supplier_debt: AdminSupplierFinancialCard[];
+}
+
+export interface AdminUnifiedFinancialCards {
+  customers: AdminCustomerFinancialCard[];
+  projects: AdminProjectFinancialCard[];
+  suppliers: AdminSupplierFinancialCard[];
+  personnel: AdminPersonnelFinancialCard[];
+}
+
+export interface AdminCustomerFinancialCard {
+  id: string;
+  name: string;
+  total_contract_value: number | string;
+  total_collected: number | string;
+  remaining_receivable: number | string;
+  overdue_amount: number | string;
+  upcoming_amount: number | string;
+  payment_performance_summary: string;
+}
+
+export interface AdminProjectFinancialCard {
+  id: string;
+  name: string;
+  total_revenue: number | string;
+  total_expenses: number | string;
+  net_profit: number | string;
+  outstanding_receivables: number | string;
+  outstanding_payables: number | string;
+  current_cash_position: number | string;
+}
+
+export interface AdminSupplierFinancialCard {
+  id: string;
+  name: string;
+  total_purchases: number | string;
+  total_paid: number | string;
+  remaining_payable: number | string;
+  overdue_payable: number | string;
+  last_payment_date: string | null;
+}
+
+export interface AdminPersonnelFinancialCard {
+  id: string;
+  name: string;
+  salary_paid: number | string;
+  advances_paid: number | string;
+  expense_reimbursements: number | string;
+  total_personnel_cost: number | string;
 }
 
 export interface AdminDashboardPaymentPlan {

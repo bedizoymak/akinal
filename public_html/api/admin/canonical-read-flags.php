@@ -26,6 +26,11 @@ const CANONICAL_READ_REQUIRED_REPORTS_AGGREGATES = [
     'total_contact_requests',
 ];
 
+const CANONICAL_READ_COMPARATOR_IGNORED_KEYS = [
+    'canonical_is_overdue',
+    'canonical_status',
+];
+
 function canonical_read_flags(): array
 {
     return [
@@ -232,7 +237,7 @@ function canonical_read_legacy_customer_plan_buckets(array $plans, array $paymen
             $plan['paid_amount'] = canonical_read_money($paid);
             $plan['remaining_amount'] = canonical_read_money($remaining);
             $dueDate = (string) ($plan['due_date'] ?? '');
-            if ($dueDate < $today && $paid <= 0) {
+            if ($dueDate < $today && $remaining > 0) {
                 $overdue[] = $plan;
             } elseif ($dueDate >= $today && $dueDate <= $in30) {
                 $upcoming[] = $plan;
@@ -240,8 +245,8 @@ function canonical_read_legacy_customer_plan_buckets(array $plans, array $paymen
         }
     }
 
-    usort($overdue, static fn(array $left, array $right): int => strcmp((string) $left['due_date'], (string) $right['due_date']));
-    usort($upcoming, static fn(array $left, array $right): int => strcmp((string) $left['due_date'], (string) $right['due_date']));
+    canonical_read_sort_plan_list($overdue);
+    canonical_read_sort_plan_list($upcoming);
 
     return ['overdue' => $overdue, 'upcoming' => $upcoming];
 }
@@ -267,13 +272,26 @@ function canonical_read_missing_fields(array $data, array $requiredFields): arra
 function canonical_read_compare(array $legacy, array $canonical, string $path = ''): array
 {
     $mismatches = [];
-    $keys = array_keys($legacy);
+    if (canonical_read_is_id_list($legacy) && canonical_read_is_id_list($canonical)) {
+        $legacy = canonical_read_index_list_by_id($legacy);
+        $canonical = canonical_read_index_list_by_id($canonical);
+    }
+
+    $keys = array_values(array_unique(array_merge(array_keys($legacy), array_keys($canonical))));
     sort($keys);
 
     foreach ($keys as $key) {
+        if (in_array((string) $key, CANONICAL_READ_COMPARATOR_IGNORED_KEYS, true)) {
+            continue;
+        }
+
         $nextPath = $path === '' ? (string) $key : $path . '.' . (string) $key;
-        if (!array_key_exists($key, $legacy) || !array_key_exists($key, $canonical)) {
-            $mismatches[] = ['path' => $nextPath, 'type' => 'missing_field'];
+        if (!array_key_exists($key, $legacy)) {
+            $mismatches[] = ['path' => $nextPath, 'type' => 'missing_legacy_field'];
+            continue;
+        }
+        if (!array_key_exists($key, $canonical)) {
+            $mismatches[] = ['path' => $nextPath, 'type' => 'missing_canonical_field'];
             continue;
         }
 
@@ -295,6 +313,57 @@ function canonical_read_compare(array $legacy, array $canonical, string $path = 
     }
 
     return $mismatches;
+}
+
+function canonical_read_is_id_list(array $rows): bool
+{
+    if ($rows === []) {
+        return false;
+    }
+
+    $index = 0;
+    foreach ($rows as $key => $row) {
+        if ($key !== $index || !is_array($row) || !array_key_exists('id', $row)) {
+            return false;
+        }
+        $index++;
+    }
+
+    return true;
+}
+
+function canonical_read_index_list_by_id(array $rows): array
+{
+    $indexed = [];
+    foreach ($rows as $row) {
+        $id = (string) ($row['id'] ?? '');
+        if ($id === '') {
+            continue;
+        }
+        $indexed[$id] = $row;
+    }
+    ksort($indexed);
+
+    return $indexed;
+}
+
+if (!function_exists('canonical_read_sort_plan_list')) {
+    function canonical_read_sort_plan_list(array &$plans): void
+    {
+        usort($plans, static function (array $left, array $right): int {
+            return [
+                (string) ($left['due_date'] ?? ''),
+                (string) ($left['customer_id'] ?? ''),
+                canonical_read_account_type($left['account_type'] ?? null),
+                (string) ($left['id'] ?? ''),
+            ] <=> [
+                (string) ($right['due_date'] ?? ''),
+                (string) ($right['customer_id'] ?? ''),
+                canonical_read_account_type($right['account_type'] ?? null),
+                (string) ($right['id'] ?? ''),
+            ];
+        });
+    }
 }
 
 function canonical_read_log_mismatch(string $surface, array $missingFields, array $mismatches): void

@@ -150,8 +150,8 @@ function canonical_read_customer_plan_buckets(array $plans, array $payments, ?Da
         }
     }
 
-    usort($overdue, static fn(array $left, array $right): int => strcmp((string) $left['due_date'], (string) $right['due_date']));
-    usort($upcoming, static fn(array $left, array $right): int => strcmp((string) $left['due_date'], (string) $right['due_date']));
+    canonical_read_sort_plan_list($overdue);
+    canonical_read_sort_plan_list($upcoming);
 
     return ['overdue' => $overdue, 'upcoming' => $upcoming, 'states' => $states];
 }
@@ -371,4 +371,21 @@ function canonical_read_manual_paid(array $plan, float $amount): float
         'Kısmi Ödendi' => min($amount, canonical_read_money($plan['paid_amount'] ?? 0)),
         default => 0.0,
     };
+}
+
+function canonical_read_sort_plan_list(array &$plans): void
+{
+    usort($plans, static function (array $left, array $right): int {
+        return [
+            (string) ($left['due_date'] ?? ''),
+            (string) ($left['customer_id'] ?? ''),
+            canonical_read_account_type($left['account_type'] ?? null),
+            (string) ($left['id'] ?? ''),
+        ] <=> [
+            (string) ($right['due_date'] ?? ''),
+            (string) ($right['customer_id'] ?? ''),
+            canonical_read_account_type($right['account_type'] ?? null),
+            (string) ($right['id'] ?? ''),
+        ];
+    });
 }
