@@ -2,20 +2,28 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/canonical-read-flags.php';
 
 require_admin();
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 try {
-    ensure_account_type_column();
-
     if ($method === 'GET') {
+        $plans = fetch_all('SELECT * FROM ak_payment_plans ORDER BY due_date ASC');
+        $payments = fetch_all('SELECT customer_id, payment_plan_id, amount, account_type, payment_date FROM ak_payments');
         json_success([
-            'payment_plans' => fetch_all('SELECT * FROM ak_payment_plans ORDER BY due_date ASC'),
+            'payment_plans' => canonical_read_select('payment_plans.payment_plans', $plans, array_map(static function (array $plan): array {
+                $plan['status'] = canonical_read_legacy_status_from_paid(
+                    canonical_read_money($plan['amount'] ?? 0),
+                    (string) ($plan['due_date'] ?? ''),
+                    canonical_read_money($plan['paid_amount'] ?? 0)
+                );
+                return $plan;
+            }, canonical_read_plan_states($plans, $payments))),
             'customers' => fetch_all('SELECT * FROM ak_customers ORDER BY created_at DESC'),
             'projects' => fetch_all('SELECT id, title FROM ak_projects ORDER BY sort_order ASC, created_at DESC'),
-            'payments' => fetch_all('SELECT customer_id, payment_plan_id, amount, account_type, payment_date FROM ak_payments'),
+            'payments' => $payments,
         ]);
     }
 
@@ -135,48 +143,6 @@ function normalized_paid_amount(array $input, float $amount): float
     return 0;
 }
 
-function ensure_account_type_column(): void
-{
-    $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE 'account_type'");
-    if (!$statement || !$statement->fetch()) {
-        db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN account_type VARCHAR(20) NOT NULL DEFAULT 'resmi' AFTER amount");
-        db()->exec("ALTER TABLE ak_payment_plans ADD INDEX idx_payment_plans_account_type (account_type)");
-    }
-
-    $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE 'paid_amount'");
-    if (!$statement || !$statement->fetch()) {
-        db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN paid_amount DECIMAL(15,2) NOT NULL DEFAULT 0 AFTER amount");
-    }
-
-    $columns = [
-        'payment_method' => "ALTER TABLE ak_payment_plans ADD COLUMN payment_method VARCHAR(40) NOT NULL DEFAULT 'Nakit' AFTER paid_amount",
-        'transaction_reference' => "ALTER TABLE ak_payment_plans ADD COLUMN transaction_reference VARCHAR(120) NULL AFTER payment_method",
-        'card_note' => "ALTER TABLE ak_payment_plans ADD COLUMN card_note VARCHAR(255) NULL AFTER transaction_reference",
-        'cheque_maturity_date' => "ALTER TABLE ak_payment_plans ADD COLUMN cheque_maturity_date DATE NULL AFTER card_note",
-        'cheque_no' => "ALTER TABLE ak_payment_plans ADD COLUMN cheque_no VARCHAR(80) NULL AFTER cheque_maturity_date",
-        'bank_name' => "ALTER TABLE ak_payment_plans ADD COLUMN bank_name VARCHAR(120) NULL AFTER cheque_no",
-        'promissory_maturity_date' => "ALTER TABLE ak_payment_plans ADD COLUMN promissory_maturity_date DATE NULL AFTER bank_name",
-    ];
-    foreach ($columns as $column => $sql) {
-        $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE '{$column}'");
-        if (!$statement || !$statement->fetch()) {
-            db()->exec($sql);
-        }
-    }
-
-    $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE 'employee_id'");
-    if (!$statement || !$statement->fetch()) {
-        db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN employee_id CHAR(36) NULL AFTER customer_id");
-        db()->exec("ALTER TABLE ak_payment_plans ADD INDEX idx_payment_plans_employee_id (employee_id)");
-    }
-
-    $statement = db()->query("SHOW COLUMNS FROM ak_payment_plans LIKE 'expense_card_id'");
-    if (!$statement || !$statement->fetch()) {
-        db()->exec("ALTER TABLE ak_payment_plans ADD COLUMN expense_card_id CHAR(36) NULL AFTER employee_id");
-        db()->exec("ALTER TABLE ak_payment_plans ADD INDEX idx_payment_plans_expense_card_id (expense_card_id)");
-    }
-}
-
 function fetch_all(string $sql, array $params = []): array { $stmt = db()->prepare($sql); $stmt->execute($params); return $stmt->fetchAll() ?: []; }
 function fetch_one(string $sql, array $params = []): ?array { $rows = fetch_all($sql . ' LIMIT 1', $params); return $rows[0] ?? null; }
 function insert_row(string $table, array $payload): void { $columns = array_keys($payload); db()->prepare('INSERT INTO ' . $table . ' (`' . implode('`, `', $columns) . '`) VALUES (:' . implode(', :', $columns) . ')')->execute($payload); }
@@ -215,15 +181,7 @@ function sync_customer_account_plan_statuses(string $customerId, string $account
         $remainingCollection -= $unlinkedPaid;
         $allocatedPaid = $linkedPaid + $unlinkedPaid;
         $paid = max((float) ($plan['paid_amount'] ?? 0), $allocatedPaid);
-        $status = derive_plan_status($amount, (string) $plan['due_date'], $paid);
+        $status = canonical_read_legacy_status_from_paid($amount, (string) $plan['due_date'], $paid);
         $statement->execute(['id' => $plan['id'], 'status' => $status]);
     }
-}
-
-function derive_plan_status(float $amount, string $dueDate, float $paid): string
-{
-    if ($paid <= 0) {
-        return $dueDate < date('Y-m-d') ? 'Vadesi Geçti' : 'Bekliyor';
-    }
-    return $paid >= $amount ? 'Ödendi' : 'Kısmi Ödendi';
 }

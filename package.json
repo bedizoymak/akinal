@@ -16,6 +16,8 @@
     "cleanup:demo": "node scripts/cleanup-demo-bulk.mjs",
     "finance:parity": "php tools/canonical-finance-parity-harness.php",
     "finance:classify": "php tools/canonical-cashflow-classifier.php",
+    "finance:transaction-test": "php tools/canonical-transaction-foundation-test.php",
+    "finance:shadow-test": "php tools/canonical-shadow-write-harness-test.php",
     "test:watch": "vitest"
   },
   "dependencies": {

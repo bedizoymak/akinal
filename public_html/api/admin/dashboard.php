@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/canonical-read-flags.php';
 
 require_admin();
 require_method('GET');
@@ -32,19 +33,18 @@ try {
     ");
 
     $customerStats = fetch_one($pdo, 'SELECT COUNT(*) AS total_customers FROM ak_customers');
-    $paymentStats = fetch_one($pdo, 'SELECT COALESCE(SUM(amount), 0) AS total_payments FROM ak_payments');
-    $expenseStats = fetch_one($pdo, 'SELECT COALESCE(SUM(amount), 0) AS total_expenses FROM ak_expenses');
-    $ledgerTotals = fetch_one($pdo, "
-        SELECT
-          COUNT(*) AS entry_count,
-          COALESCE(SUM(CASE WHEN currency_tag = 'TRY' AND status = 'Gerçekleşti' AND direction = 'Gelir' THEN amount ELSE 0 END), 0) AS realized_income_try,
-          COALESCE(SUM(CASE WHEN currency_tag = 'TRY' AND status = 'Gerçekleşti' AND direction = 'Gider' THEN amount ELSE 0 END), 0) AS realized_expense_try,
-          COALESCE(SUM(CASE WHEN currency_tag = 'TRY' AND status = 'Planlandı' AND direction = 'Gelir' THEN amount ELSE 0 END), 0) AS planned_income_try,
-          COALESCE(SUM(CASE WHEN currency_tag = 'TRY' AND status = 'Gerçekleşti' AND direction = 'Gelir' AND entry_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01') THEN amount ELSE 0 END), 0) AS month_income_try,
-          COALESCE(SUM(CASE WHEN currency_tag = 'TRY' AND status = 'Gerçekleşti' AND direction = 'Gider' AND entry_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01') THEN amount ELSE 0 END), 0) AS month_expense_try
-        FROM ak_financial_entries
-        WHERE status <> 'İptal'
-    ");
+    $legacyFinancials = canonical_read_legacy_dashboard_summary($pdo);
+    $canonicalFinancials = canonical_read_dashboard_summary($pdo);
+    $selectedFinancials = [
+        'summary' => canonical_read_select(
+            'dashboard.summary',
+            $legacyFinancials['summary'],
+            $canonicalFinancials['summary'],
+            CANONICAL_READ_REQUIRED_DASHBOARD_SUMMARY
+        ),
+        'overdue_plans' => canonical_read_select('dashboard.overdue_plans', $legacyFinancials['overdue_plans'], $canonicalFinancials['overdue_plans']),
+        'upcoming_plans' => canonical_read_select('dashboard.upcoming_plans', $legacyFinancials['upcoming_plans'], $canonicalFinancials['upcoming_plans']),
+    ];
 
     $activeProjects = $pdo->query("
         SELECT id, title, project_status, location, is_published, slug, sort_order
@@ -79,7 +79,13 @@ try {
         FROM ak_payments
         WHERE customer_id IS NOT NULL
     ")->fetchAll();
-    [$overduePlans, $upcomingPlans] = classify_dashboard_customer_plans($customerPlans ?: [], $customerPayments ?: []);
+    $legacyCustomerPlanBuckets = canonical_read_legacy_customer_plan_buckets($customerPlans ?: [], $customerPayments ?: []);
+    $canonicalCustomerPlanBuckets = canonical_read_customer_plan_buckets($customerPlans ?: [], $customerPayments ?: []);
+    $customerPlanBuckets = [
+        'overdue' => canonical_read_select('dashboard.customer_plan_buckets.overdue', $legacyCustomerPlanBuckets['overdue'], $canonicalCustomerPlanBuckets['overdue']),
+        'upcoming' => canonical_read_select('dashboard.customer_plan_buckets.upcoming', $legacyCustomerPlanBuckets['upcoming'], $canonicalCustomerPlanBuckets['upcoming']),
+    ];
+    [$overduePlans, $upcomingPlans] = [$customerPlanBuckets['overdue'], $customerPlanBuckets['upcoming']];
 
     $recentMovements = $pdo->query("
         SELECT
@@ -144,43 +150,13 @@ try {
         LIMIT 8
     ")->fetchAll();
 
-    $monthlyFinancials = $pdo->query("
-        SELECT
-          DATE_FORMAT(finance_date, '%Y-%m') AS month_key,
-          COALESCE(SUM(CASE WHEN direction = 'Gelir' THEN amount ELSE 0 END), 0) AS income,
-          COALESCE(SUM(CASE WHEN direction = 'Gider' THEN amount ELSE 0 END), 0) AS expenses
-        FROM (
-          SELECT entry_date AS finance_date, direction, amount
-          FROM ak_financial_entries
-          WHERE status = 'Gerçekleşti'
-            AND currency_tag = 'TRY'
-            AND entry_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 5 MONTH), '%Y-%m-01')
-          UNION ALL
-          SELECT payment_date AS finance_date, 'Gelir' AS direction, amount
-          FROM ak_payments
-          WHERE payment_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 5 MONTH), '%Y-%m-01')
-          UNION ALL
-          SELECT expense_date AS finance_date, 'Gider' AS direction, amount
-          FROM ak_expenses
-          WHERE expense_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 5 MONTH), '%Y-%m-01')
-        ) finance_rows
-        GROUP BY DATE_FORMAT(finance_date, '%Y-%m')
-        ORDER BY month_key ASC
-    ")->fetchAll();
+    $monthlyFinancials = canonical_read_select(
+        'dashboard.monthly_financials',
+        canonical_read_legacy_monthly_financials($pdo),
+        canonical_read_monthly_financials($pdo)
+    );
 
-    $hasLedgerEntries = (int) ($ledgerTotals['entry_count'] ?? 0) > 0;
-    $totalPayments = ($hasLedgerEntries ? (float) ($ledgerTotals['realized_income_try'] ?? 0) : 0.0) + (float) ($paymentStats['total_payments'] ?? 0);
-    $totalExpenses = ($hasLedgerEntries ? (float) ($ledgerTotals['realized_expense_try'] ?? 0) : 0.0) + (float) ($expenseStats['total_expenses'] ?? 0);
-    $monthPaymentStats = fetch_one($pdo, "SELECT COALESCE(SUM(amount), 0) AS month_income FROM ak_payments WHERE payment_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')");
-    $monthIncome = (float) ($ledgerTotals['month_income_try'] ?? 0) + (float) ($monthPaymentStats['month_income'] ?? 0);
-    $monthExpenseStats = fetch_one($pdo, "SELECT COALESCE(SUM(amount), 0) AS month_expenses FROM ak_expenses WHERE expense_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')");
-    $monthExpenses = (float) ($ledgerTotals['month_expense_try'] ?? 0) + (float) ($monthExpenseStats['month_expenses'] ?? 0);
-    $overdueCollections = array_reduce($overduePlans ?: [], static function (float $sum, array $plan): float {
-        return $sum + (float) ($plan['remaining_amount'] ?? 0);
-    }, 0.0);
-    $expectedPayments = array_reduce($upcomingPlans ?: [], static function (float $sum, array $plan): float {
-        return $sum + (float) ($plan['remaining_amount'] ?? 0);
-    }, 0.0);
+    $financialSummary = $selectedFinancials['summary'];
 
     json_success([
         'summary' => [
@@ -192,33 +168,24 @@ try {
             'new_contact_requests' => (int) ($contactStats['new_contact_requests'] ?? 0),
             'unread_notifications' => (int) ($notificationStats['unread_notifications'] ?? 0),
             'total_customers' => (int) ($customerStats['total_customers'] ?? 0),
-            'total_payments' => $totalPayments,
-            'total_expenses' => $totalExpenses,
-            'basic_net_balance' => $totalPayments - $totalExpenses,
-            'planned_income' => (float) ($ledgerTotals['planned_income_try'] ?? 0),
-            'month_income' => $monthIncome,
-            'month_expenses' => $monthExpenses,
-            'month_net' => $monthIncome - $monthExpenses,
-            'overdue_collections' => $overdueCollections,
-            'expected_payments' => $expectedPayments,
-            'overdue_plan_count' => count($overduePlans ?: []),
-            'upcoming_plan_count' => count($upcomingPlans ?: []),
-            'financial_entry_count' => (int) ($ledgerTotals['entry_count'] ?? 0),
+            'total_payments' => $financialSummary['total_payments'],
+            'total_expenses' => $financialSummary['total_expenses'],
+            'basic_net_balance' => $financialSummary['basic_net_balance'],
+            'planned_income' => $financialSummary['planned_income'],
+            'month_income' => $financialSummary['month_income'],
+            'month_expenses' => $financialSummary['month_expenses'],
+            'month_net' => $financialSummary['month_net'],
+            'overdue_collections' => $financialSummary['overdue_collections'],
+            'expected_payments' => $financialSummary['expected_payments'],
+            'overdue_plan_count' => $financialSummary['overdue_plan_count'],
+            'upcoming_plan_count' => $financialSummary['upcoming_plan_count'],
+            'financial_entry_count' => $financialSummary['financial_entry_count'],
         ],
         'active_projects_list' => $activeProjects ?: [],
         'overdue_plans' => array_slice($overduePlans ?: [], 0, 8),
         'upcoming_plans' => array_slice($upcomingPlans ?: [], 0, 8),
         'recent_movements' => $recentMovements ?: [],
-        'monthly_financials' => array_map(static function (array $row): array {
-            $income = (float) ($row['income'] ?? 0);
-            $expenses = (float) ($row['expenses'] ?? 0);
-            return [
-                'month_key' => (string) ($row['month_key'] ?? ''),
-                'income' => $income,
-                'expenses' => $expenses,
-                'net' => $income - $expenses,
-            ];
-        }, $monthlyFinancials ?: []),
+        'monthly_financials' => $monthlyFinancials ?: [],
     ]);
 } catch (Throwable $exception) {
     json_error('Dashboard verileri alınamadı.', 500);
@@ -229,83 +196,4 @@ function fetch_one(PDO $pdo, string $sql): array
     $statement = $pdo->query($sql);
     $row = $statement->fetch();
     return is_array($row) ? $row : [];
-}
-
-function classify_dashboard_customer_plans(array $plans, array $payments): array
-{
-    $groups = [];
-    foreach ($plans as $plan) {
-        $key = (string) ($plan['customer_id'] ?? '') . '|' . dashboard_account_type($plan['account_type'] ?? null);
-        $groups[$key]['plans'][] = $plan;
-    }
-    foreach ($payments as $payment) {
-        $key = (string) ($payment['customer_id'] ?? '') . '|' . dashboard_account_type($payment['account_type'] ?? null);
-        $groups[$key]['payments'][] = $payment;
-    }
-
-    $today = date('Y-m-d');
-    $in30 = date('Y-m-d', strtotime('+30 days'));
-    $overdue = [];
-    $upcoming = [];
-
-    foreach ($groups as $group) {
-        $groupPlans = $group['plans'] ?? [];
-        $activePlanIds = [];
-        foreach ($groupPlans as $plan) {
-            if (($plan['status'] ?? null) !== 'İptal') {
-                $activePlanIds[(string) $plan['id']] = true;
-            }
-        }
-
-        $linked = [];
-        $unlinked = 0.0;
-        foreach ($group['payments'] ?? [] as $payment) {
-            $planId = trim((string) ($payment['payment_plan_id'] ?? ''));
-            $amount = max(0.0, (float) ($payment['amount'] ?? 0));
-            if ($planId !== '' && isset($activePlanIds[$planId])) {
-                $linked[$planId] = ($linked[$planId] ?? 0.0) + $amount;
-            } elseif ($planId === '') {
-                $unlinked += $amount;
-            }
-        }
-
-        foreach ($groupPlans as $plan) {
-            if (($plan['status'] ?? null) === 'İptal') {
-                continue;
-            }
-
-            $amount = max(0.0, (float) ($plan['amount'] ?? 0));
-            $linkedPaid = min($amount, max(0.0, (float) ($linked[$plan['id']] ?? 0)));
-            $unlinkedPaid = ($plan['status'] ?? null) === 'Ödendi'
-                ? 0.0
-                : min(max(0.0, $amount - $linkedPaid), max(0.0, $unlinked));
-            $unlinked -= $unlinkedPaid;
-            $manualPaid = ($plan['status'] ?? null) === 'Ödendi'
-                ? $amount
-                : (($plan['status'] ?? null) === 'Kısmi Ödendi' ? max(0.0, (float) ($plan['paid_amount'] ?? 0)) : 0.0);
-            $paid = min($amount, max($manualPaid, $linkedPaid + $unlinkedPaid));
-            $remaining = max(0.0, $amount - $paid);
-            if ($remaining <= 0) {
-                continue;
-            }
-
-            $plan['paid_amount'] = $paid;
-            $plan['remaining_amount'] = $remaining;
-            $dueDate = (string) ($plan['due_date'] ?? '');
-            if ($dueDate < $today && $paid <= 0) {
-                $overdue[] = $plan;
-            } elseif ($dueDate >= $today && $dueDate <= $in30) {
-                $upcoming[] = $plan;
-            }
-        }
-    }
-
-    usort($overdue, static fn(array $left, array $right): int => strcmp((string) $left['due_date'], (string) $right['due_date']));
-    usort($upcoming, static fn(array $left, array $right): int => strcmp((string) $left['due_date'], (string) $right['due_date']));
-    return [$overdue, $upcoming];
-}
-
-function dashboard_account_type($value): string
-{
-    return $value === 'gayri_resmi' ? 'gayri_resmi' : 'resmi';
 }

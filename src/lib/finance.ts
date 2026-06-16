@@ -1,3 +1,10 @@
+import {
+  calculateCanonicalCardMetrics,
+  deriveCanonicalReadPlanState,
+  type CanonicalReadEntry,
+  type CanonicalReadSettlement,
+} from "@/lib/canonicalReadModel";
+
 export const CUSTOMER_TYPES = ["Bireysel", "Firma", "Arsa Sahibi", "Daire Sahibi", "Yatırımcı", "Diğer"] as const;
 export const CUSTOMER_STATUSES = ["Aktif", "Beklemede", "Tamamlandı", "Pasif"] as const;
 export const PAYMENT_PLAN_STATUSES = ["Bekliyor", "Kısmi Ödendi", "Ödendi", "Vadesi Geçti", "İptal"] as const;
@@ -63,6 +70,22 @@ export type LegacyExpenseLike = {
   amount?: number | string | null;
   expense_date?: string | null;
   project_id?: string | null;
+  category?: string | null;
+};
+
+export type CanonicalPlanSummary = {
+  planned: number;
+  paid: number;
+  remaining: number;
+  overdue: number;
+  activeCount: number;
+};
+
+export type CanonicalAmountSummary = {
+  total: number;
+  monthTotal: number;
+  projectCount: number;
+  categoryCount: number;
 };
 
 export type FinanceSummaryInput = {
@@ -317,8 +340,31 @@ export function effectivePaidForPlan(
     : plan.status === "Kısmi Ödendi"
       ? safeNumber(plan.paid_amount)
       : 0;
+  const settlementAmount = Math.min(amount, Math.max(manualPaid, safeNumber(allocatedPaid)));
+  const syntheticState = deriveCanonicalReadPlanState(
+    {
+      id: String(plan.id ?? "legacy-plan"),
+      amount,
+      direction: "income",
+      owner_type: "customer",
+      owner_id: plan.customer_id,
+      account_type: accountType(plan.account_type),
+      currency: "TRY",
+      due_date: plan.due_date,
+      status: plan.status,
+    },
+    settlementAmount > 0 ? [{
+      id: `legacy-settlement-${plan.id ?? "plan"}`,
+      payment_plan_id: String(plan.id ?? "legacy-plan"),
+      financial_entry_id: "legacy-payment-evidence",
+      allocated_amount: settlementAmount,
+      account_type: accountType(plan.account_type),
+      currency: "TRY",
+    }] : [],
+    new Date().toISOString().slice(0, 10),
+  );
 
-  return Math.min(amount, Math.max(manualPaid, safeNumber(allocatedPaid)));
+  return Math.min(amount, syntheticState.settledAmount);
 }
 
 export function isCanceledStatus(status: string | null | undefined): boolean {
@@ -337,32 +383,42 @@ export function isPlannedStatus(status: string | null | undefined): boolean {
   return status === "Planlandı";
 }
 
+function ledgerEntriesForReadModel(entries: FinancialEntryLike[]): CanonicalReadEntry[] {
+  return entries.map((entry, index) => ({
+    id: `ledger-${index}`,
+    amount: entry.amount ?? 0,
+    direction: entry.direction === "Gider" ? "expense" : "income",
+    status: entry.status,
+    event_type: entry.direction === "Gider" ? "general_expense" : "customer_receipt",
+    owner_type: "other",
+    project_id: entry.project_id,
+    account_type: entry.group_tag === "Gayri Resmi" ? "gayri_resmi" : "resmi",
+    currency: entry.currency_tag,
+    transaction_date: entry.entry_date,
+  }));
+}
+
+function ledgerMetric(entries: FinancialEntryLike[], currency: CurrencyTag, metric: "realizedIncome" | "realizedExpense" | "totalPlannedReceivable" | "plannedCategoryCost"): number {
+  return calculateCanonicalCardMetrics({
+    entries: ledgerEntriesForReadModel(entries),
+    asOfDate: new Date().toISOString().slice(0, 10),
+  }, { currency })[metric];
+}
+
 export function realizedIncomeFromLedger(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
-  return sumBy(
-    entries.filter((entry) => entry.currency_tag === currency && isRealizedStatus(entry.status) && entry.direction === "Gelir"),
-    (entry) => entry.amount,
-  );
+  return ledgerMetric(entries, currency, "realizedIncome");
 }
 
 export function realizedExpenseFromLedger(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
-  return sumBy(
-    entries.filter((entry) => entry.currency_tag === currency && isRealizedStatus(entry.status) && entry.direction === "Gider"),
-    (entry) => entry.amount,
-  );
+  return ledgerMetric(entries, currency, "realizedExpense");
 }
 
 export function plannedIncomeFromLedger(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
-  return sumBy(
-    entries.filter((entry) => entry.currency_tag === currency && isPlannedStatus(entry.status) && entry.direction === "Gelir"),
-    (entry) => entry.amount,
-  );
+  return ledgerMetric(entries, currency, "totalPlannedReceivable");
 }
 
 export function plannedExpenseFromLedger(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
-  return sumBy(
-    entries.filter((entry) => entry.currency_tag === currency && isPlannedStatus(entry.status) && entry.direction === "Gider"),
-    (entry) => entry.amount,
-  );
+  return ledgerMetric(entries, currency, "plannedCategoryCost");
 }
 
 export function netFromLedger(entries: FinancialEntryLike[], currency: CurrencyTag = "TRY"): number {
@@ -493,14 +549,108 @@ export function summarizeFinance(input: FinanceSummaryInput): FinanceSummary {
 }
 
 export function derivePlanStatus(plan: { amount: number | string; due_date: string; status: string }, paid: number): string {
-  if (plan.status === "İptal") return "İptal";
-  if (plan.status === "Ödendi") return "Ödendi";
-  if (paid <= 0) {
-    if (daysUntil(plan.due_date) < 0) return "Vadesi Geçti";
-    return "Bekliyor";
-  }
-  if (paid >= safeNumber(plan.amount)) return "Ödendi";
-  return "Kısmi Ödendi";
+  const amount = safeNumber(plan.amount);
+  const effectivePaid = plan.status === "Ödendi" ? amount : Math.min(amount, Math.max(0, paid));
+  const settlements: CanonicalReadSettlement[] = effectivePaid > 0 ? [{
+    id: "legacy-status-settlement",
+    payment_plan_id: "legacy-status-plan",
+    financial_entry_id: "legacy-payment-evidence",
+    allocated_amount: effectivePaid,
+    currency: "TRY",
+    account_type: "resmi",
+  }] : [];
+  const state = deriveCanonicalReadPlanState(
+    {
+      id: "legacy-status-plan",
+      amount,
+      direction: "income",
+      owner_type: "customer",
+      currency: "TRY",
+      account_type: "resmi",
+      due_date: plan.due_date,
+      status: plan.status,
+    },
+    settlements,
+    new Date().toISOString().slice(0, 10),
+  );
+
+  if (state.status === "canceled") return "İptal";
+  if (state.status === "paid") return "Ödendi";
+  if (state.status === "partial") return "Kısmi Ödendi";
+  if (state.status === "overdue") return "Vadesi Geçti";
+  return "Bekliyor";
+}
+
+export function summarizePaymentPlansWithCanonicalState(
+  plans: PaymentPlanLike[],
+  payments: LegacyPaymentLike[],
+  allocatedPaidByPlan = new Map<string, number>(),
+  asOfDate = new Date().toISOString().slice(0, 10),
+): CanonicalPlanSummary {
+  return plans.reduce<CanonicalPlanSummary>((summary, plan) => {
+    const amount = safeNumber(plan.amount);
+    const paid = effectivePaidForPlan(plan, payments, allocatedPaidByPlan.get(String(plan.id)) || 0);
+    const state = deriveCanonicalReadPlanState(
+      {
+        id: String(plan.id ?? `plan-${summary.activeCount}`),
+        amount,
+        direction: "income",
+        owner_type: "customer",
+        owner_id: plan.customer_id,
+        account_type: accountType(plan.account_type),
+        currency: "TRY",
+        due_date: plan.due_date,
+        status: plan.status,
+      },
+      paid > 0 ? [{
+        id: `settlement-${plan.id ?? summary.activeCount}`,
+        payment_plan_id: String(plan.id ?? `plan-${summary.activeCount}`),
+        financial_entry_id: "legacy-payment-evidence",
+        allocated_amount: paid,
+        account_type: accountType(plan.account_type),
+        currency: "TRY",
+      }] : [],
+      asOfDate,
+    );
+
+    if (state.status === "canceled") return summary;
+    summary.planned += amount;
+    summary.paid += paid;
+    summary.remaining += state.remainingAmount;
+    summary.overdue += state.isOverdue ? state.remainingAmount : 0;
+    summary.activeCount += 1;
+    return summary;
+  }, { planned: 0, paid: 0, remaining: 0, overdue: 0, activeCount: 0 });
+}
+
+export function summarizeLegacyExpenseRowsWithCanonicalAdapter(
+  expenses: LegacyExpenseLike[],
+  options: { from?: string; to?: string; month?: string } = {},
+): CanonicalAmountSummary {
+  const rows = expenses.filter((expense) => isInDateRange(expense.expense_date, options.from, options.to));
+  const entries: CanonicalReadEntry[] = rows.map((expense, index) => ({
+    id: `legacy-expense-${index}`,
+    amount: expense.amount ?? 0,
+    direction: "expense",
+    status: "Gerçekleşti",
+    event_type: "general_expense",
+    owner_type: "other",
+    project_id: expense.project_id,
+    account_type: "resmi",
+    currency: "TRY",
+    transaction_date: expense.expense_date,
+    category_code: "other",
+  }));
+  const monthEntries = options.month
+    ? entries.filter((entry) => String(entry.transaction_date || "").startsWith(options.month || ""))
+    : entries;
+
+  return {
+    total: calculateCanonicalCardMetrics({ entries, asOfDate: new Date().toISOString().slice(0, 10) }, { currency: "TRY" }).realizedExpense,
+    monthTotal: calculateCanonicalCardMetrics({ entries: monthEntries, asOfDate: new Date().toISOString().slice(0, 10) }, { currency: "TRY" }).realizedExpense,
+    projectCount: new Set(rows.map((row) => row.project_id).filter(Boolean)).size,
+    categoryCount: new Set(rows.map((row) => row.category).filter(Boolean)).size,
+  };
 }
 
 export function accountType(value: unknown): "resmi" | "gayri_resmi" {

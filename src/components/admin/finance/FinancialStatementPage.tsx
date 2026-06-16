@@ -33,6 +33,10 @@ import {
   type GroupTag,
 } from "@/lib/finance";
 import {
+  calculateCanonicalCardMetrics,
+  type CanonicalReadEntry,
+} from "@/lib/canonicalReadModel";
+import {
   chooseChartCurrency,
   formatCurrencyTotalLines,
   getCardTypeLabel,
@@ -514,11 +518,37 @@ function toLookupMap<T extends { id: string }>(items: T[]): Map<string, T> {
   return new Map(items.map((item) => [item.id, item]));
 }
 
+function statementEntriesForReadModel(entries: AdminFinancialEntry[]): CanonicalReadEntry[] {
+  return entries.map((entry) => ({
+    id: entry.id,
+    amount: entry.amount,
+    direction: entry.direction,
+    status: entry.status,
+    event_type: entry.direction === "Gelir" ? "customer_receipt" : "general_expense",
+    owner_type: entry.card_type === "employee" ? "employee" : entry.card_type === "expense" ? "supplier" : "customer",
+    owner_id: entry.card_type === "employee" ? entry.employee_id : entry.card_type === "expense" ? entry.expense_card_id : entry.customer_id,
+    project_id: entry.project_id,
+    account_type: entry.group_tag === "Gayri Resmi" ? "gayri_resmi" : "resmi",
+    currency: entry.currency_tag,
+    category_code: "other",
+  }));
+}
+
+function metricTotalsByCurrency(entries: AdminFinancialEntry[], metric: "realizedIncome" | "realizedExpense" | "totalPlannedReceivable" | "plannedCategoryCost"): CurrencyTotals {
+  return CURRENCIES.reduce<CurrencyTotals>((totals, currency) => {
+    totals[currency] = calculateCanonicalCardMetrics({
+      entries: statementEntriesForReadModel(entries),
+      asOfDate: today,
+    }, { currency })[metric];
+    return totals;
+  }, { TRY: 0, USD: 0, EUR: 0 });
+}
+
 function getSummary(entries: AdminFinancialEntry[]) {
-  const realizedIncome = sumEntriesByCurrency(entries.filter((entry) => entry.status === "Gerçekleşti" && entry.direction === "Gelir"));
-  const realizedExpense = sumEntriesByCurrency(entries.filter((entry) => entry.status === "Gerçekleşti" && entry.direction === "Gider"));
-  const plannedIncome = sumEntriesByCurrency(entries.filter((entry) => entry.status === "Planlandı" && entry.direction === "Gelir"));
-  const plannedExpense = sumEntriesByCurrency(entries.filter((entry) => entry.status === "Planlandı" && entry.direction === "Gider"));
+  const realizedIncome = metricTotalsByCurrency(entries, "realizedIncome");
+  const realizedExpense = metricTotalsByCurrency(entries, "realizedExpense");
+  const plannedIncome = metricTotalsByCurrency(entries, "totalPlannedReceivable");
+  const plannedExpense = metricTotalsByCurrency(entries, "plannedCategoryCost");
   const officialBalance = sumEntriesByCurrency(entries.filter((entry) => entry.status !== "İptal" && entry.group_tag === "Resmi"), true);
   const unofficialBalance = sumEntriesByCurrency(entries.filter((entry) => entry.status !== "İptal" && entry.group_tag === "Gayri Resmi"), true);
   const realizedNet = subtractCurrencyTotals(realizedIncome, realizedExpense);

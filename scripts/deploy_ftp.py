@@ -2,7 +2,7 @@ from ftplib import FTP
 from pathlib import Path
 import os
 
-ROOT = Path(r"C:\Users\Bediz\Documents\akinalinsaat.com")
+ROOT = Path(__file__).resolve().parents[1]
 
 FTP_HOST = "ftp.akinalinsaat.com"
 FTP_USER = "unalc@akinalinsaat.com"
@@ -15,6 +15,30 @@ if not FTP_PASS:
 ftp = FTP()
 ftp.connect(FTP_HOST, FTP_PORT, timeout=30)
 ftp.login(FTP_USER, FTP_PASS)
+
+EXCLUDED_REMOTE_PATHS = {
+    "/public_html/api/config.php",
+    "/public_html/api/config.local.php",
+    "/public_html/.env",
+    "/public_html/.env.local",
+}
+
+EXCLUDED_NAMES = {
+    ".env",
+    ".env.local",
+}
+
+
+def normalize_remote_path(remote_path: str) -> str:
+    return "/" + remote_path.replace("\\", "/").strip("/")
+
+
+def should_skip_upload(item: Path, remote_path: str) -> bool:
+    normalized = normalize_remote_path(remote_path)
+    if normalized in EXCLUDED_REMOTE_PATHS:
+        return True
+
+    return item.name in EXCLUDED_NAMES
 
 
 def ensure_dir(remote_dir: str):
@@ -66,6 +90,10 @@ def upload_dir(local_dir: Path, remote_dir: str):
 
         if item.name.lower() == "uploads":
             print("SKIP uploads")
+            continue
+
+        if should_skip_upload(item, remote_path):
+            print("SKIP protected", remote_path)
             continue
 
         if item.is_dir():

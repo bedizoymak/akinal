@@ -25,8 +25,9 @@ import {
   FINANCE_COLORS,
   printCurrentReport,
   safeNumber,
+  summarizeLegacyExpenseRowsWithCanonicalAdapter,
   summarizeLedgerFinance,
-  sumBy,
+  summarizePaymentPlansWithCanonicalState,
 } from "@/lib/finance";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
 import logoImg from "@/assets/logo.png";
@@ -261,12 +262,16 @@ function CustomerPaymentReport({ data }: any) {
     return customers.data.filter((c: any) => customerId === "all" || c.id === customerId).map((c: any) => {
       const pl = enrichedPlans.filter((x) => x.customer_id === c.id && (projectId === "all" || x.project_id === projectId) && inDateRange(x.due_date, from, to));
       const py = payments.data.filter((x: any) => x.customer_id === c.id && (projectId === "all" || x.project_id === projectId) && inDateRange(x.payment_date, from, to));
-      const totalDebt = sumBy(pl, (x: any) => x.amount);
-      const collected = sumBy(pl, (x) => x.paid);
-      const remaining = sumBy(pl, (x) => x.remaining);
-      const overdue = pl
-        .filter((x) => x.due_date < today && x.paid <= 0 && x.computed !== "İptal")
-        .reduce((s, x) => s + x.remaining, 0);
+      const planSummary = summarizePaymentPlansWithCanonicalState(
+        pl,
+        payments.data,
+        new Map(pl.map((plan) => [String(plan.id), plan.paid])),
+        today,
+      );
+      const totalDebt = planSummary.planned;
+      const collected = planSummary.paid;
+      const remaining = planSummary.remaining;
+      const overdue = planSummary.overdue;
       const lastPay = [...py].sort((a: any, b: any) => b.payment_date.localeCompare(a.payment_date))[0];
       const proj = pl[0] ? projects.data.find((p: any) => p.id === pl[0].project_id) : null;
       return {
@@ -374,7 +379,12 @@ function CollectionsReport({ data }: any) {
     };
   }), [payments.data, customers.data, projects.data, customerId, projectId, method, from, to]);
 
-  const total = rows.reduce((s: number, r: any) => s + r.amount, 0);
+  const total = summarizeLegacyExpenseRowsWithCanonicalAdapter(rows.map((row: any) => ({
+    amount: row.amount,
+    expense_date: row.date,
+    project_id: row.project === "-" ? null : row.project,
+    category: row.category,
+  }))).total;
   const dateRange = `${from || "Başlangıç"} - ${to || "Bugün"}`;
   const exportRows = rows.map((r: any) => ({
     "Müşteri": r.customer,

@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { EXPENSE_CATEGORIES, formatTRY, formatDate, customerDisplayName, exportCSV } from "@/lib/finance";
+import { EXPENSE_CATEGORIES, formatTRY, formatDate, customerDisplayName, exportCSV, summarizeLegacyExpenseRowsWithCanonicalAdapter } from "@/lib/finance";
 import { Plus, Edit, Trash2, Download, Receipt, FolderKanban, Tags, CalendarDays, Loader2 } from "lucide-react";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 import { QuickCreateCustomerButton } from "@/components/admin/QuickCreateCustomerButton";
@@ -109,16 +109,17 @@ export default function AdminExpenses() {
     return true;
   });
 
-  const total = filtered.reduce((s, x) => s + Number(x.amount), 0);
   const categoryOptions = useMemo(() => Array.from(new Set([
     ...EXPENSE_CATEGORIES,
     ...items.map((item) => item.category).filter(Boolean),
     ...customCategories,
   ])), [customCategories, items]);
   const thisMonth = new Date().toISOString().slice(0, 7);
-  const monthTotal = filtered.filter((x) => String(x.expense_date || "").startsWith(thisMonth)).reduce((s, x) => s + Number(x.amount), 0);
-  const projectCount = new Set(filtered.map((x) => x.project_id).filter(Boolean)).size;
-  const categoryCount = new Set(filtered.map((x) => x.category).filter(Boolean)).size;
+  const expenseSummary = summarizeLegacyExpenseRowsWithCanonicalAdapter(filtered, { month: thisMonth });
+  const total = expenseSummary.total;
+  const monthTotal = expenseSummary.monthTotal;
+  const projectCount = expenseSummary.projectCount;
+  const categoryCount = expenseSummary.categoryCount;
 
   function downloadCSV() {
     exportCSV("giderler.csv", filtered.map((it) => ({

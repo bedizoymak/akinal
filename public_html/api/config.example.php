@@ -37,3 +37,12 @@ define('TURNSTILE_SECRET_KEY', 'TURNSTILE_SECRET_KEY_HERE');
 // Set these to true only in a temporary, trusted setup copy when absolutely needed.
 define('ENABLE_ADMIN_SQL_EDITOR', false);
 define('ENABLE_DEMO_IMPORT', false);
+
+// Phase 4C foundation only. Keep disabled until an approved cutover phase.
+define('CANONICAL_SETTLEMENT_ENABLED', false);
+
+// Phase 5B read cutover flags. Keep canonical reads disabled until explicit approval.
+define('CANONICAL_READ_MODEL_ENABLED', false);
+define('CANONICAL_READ_MODEL_SHADOW_COMPARE', true);
+define('CANONICAL_READ_MODEL_FAIL_CLOSED', true);
+define('CANONICAL_READ_MODEL_LOG_MISMATCHES', true);

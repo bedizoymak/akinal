@@ -2,20 +2,28 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/canonical-read-flags.php';
 
 require_admin();
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 try {
-    ensure_account_type_column();
-
     if ($method === 'GET') {
+        $plans = fetch_all('SELECT id, title, customer_id, project_id, amount, paid_amount, account_type, due_date, status FROM ak_payment_plans ORDER BY due_date ASC');
+        $payments = fetch_all('SELECT customer_id, payment_plan_id, amount, account_type FROM ak_payments WHERE customer_id IS NOT NULL');
         json_success([
             'payments' => fetch_all('SELECT * FROM ak_payments ORDER BY payment_date DESC'),
             'customers' => fetch_all('SELECT * FROM ak_customers ORDER BY created_at DESC'),
             'projects' => fetch_all('SELECT id, title FROM ak_projects ORDER BY sort_order ASC, created_at DESC'),
-            'payment_plans' => fetch_all('SELECT id, title, customer_id, project_id, amount, due_date, status FROM ak_payment_plans ORDER BY due_date ASC'),
+            'payment_plans' => canonical_read_select('payments.payment_plans', $plans, array_map(static function (array $plan): array {
+                $plan['status'] = canonical_read_legacy_status_from_paid(
+                    canonical_read_money($plan['amount'] ?? 0),
+                    (string) ($plan['due_date'] ?? ''),
+                    canonical_read_money($plan['paid_amount'] ?? 0)
+                );
+                return $plan;
+            }, canonical_read_plan_states($plans, $payments))),
         ]);
     }
 
@@ -105,17 +113,6 @@ function account_type(array $input): string
     return in_array($value, ['resmi', 'gayri_resmi'], true) ? $value : 'resmi';
 }
 
-function ensure_account_type_column(): void
-{
-    $statement = db()->query("SHOW COLUMNS FROM ak_payments LIKE 'account_type'");
-    if ($statement && $statement->fetch()) {
-        return;
-    }
-
-    db()->exec("ALTER TABLE ak_payments ADD COLUMN account_type VARCHAR(20) NOT NULL DEFAULT 'resmi' AFTER amount");
-    db()->exec("ALTER TABLE ak_payments ADD INDEX idx_payments_account_type (account_type)");
-}
-
 function sync_plan_status(?string $planId): void
 {
     if (!$planId) return;
@@ -157,17 +154,9 @@ function sync_customer_account_plan_statuses(string $customerId, string $account
         $remainingCollection -= $unlinkedPaid;
         $allocatedPaid = $linkedPaid + $unlinkedPaid;
         $paid = max((float) ($plan['paid_amount'] ?? 0), $allocatedPaid);
-        $status = derive_plan_status($amount, (string) $plan['due_date'], $paid);
+        $status = canonical_read_legacy_status_from_paid($amount, (string) $plan['due_date'], $paid);
         $statement->execute(['id' => $plan['id'], 'status' => $status]);
     }
-}
-
-function derive_plan_status(float $amount, string $dueDate, float $paid): string
-{
-    if ($paid <= 0) {
-        return $dueDate < date('Y-m-d') ? 'Vadesi Geçti' : 'Bekliyor';
-    }
-    return $paid >= $amount ? 'Ödendi' : 'Kısmi Ödendi';
 }
 
 function fetch_all(string $sql, array $params = []): array { $stmt = db()->prepare($sql); $stmt->execute($params); return $stmt->fetchAll() ?: []; }
