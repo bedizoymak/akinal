@@ -38,6 +38,16 @@ type ApiResponse<T> = {
   details?: unknown;
 };
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function apiGet<T>(path: string): Promise<T> {
   let response: Response;
 
@@ -60,7 +70,7 @@ async function apiGet<T>(path: string): Promise<T> {
   }
 
   if (!response.ok) {
-    throw new Error(payload.message || `API isteği ${response.status} durum koduyla başarısız oldu.`);
+    throw new ApiError(payload.message || `API isteği ${response.status} durum koduyla başarısız oldu.`, response.status);
   }
 
   if (!payload.success) {
@@ -95,7 +105,7 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T
   }
 
   if (!response.ok) {
-    throw new Error(payload.message || `API isteği ${response.status} durum koduyla başarısız oldu.`);
+    throw new ApiError(payload.message || `API isteği ${response.status} durum koduyla başarısız oldu.`, response.status);
   }
 
   if (!payload.success) {

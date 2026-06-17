@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   BarChart3,
@@ -8,6 +8,7 @@ import {
   Inbox,
   Plus,
   Receipt,
+  ShieldCheck,
   TrendingDown,
   TrendingUp,
   Users,
@@ -36,8 +37,9 @@ import {
 } from "@/lib/finance";
 import { statusBadgeVariant } from "@/lib/projects";
 import { cn } from "@/lib/utils";
-import { getAdminDashboard } from "@/lib/apiClient";
+import { ApiError, getAdminDashboard } from "@/lib/apiClient";
 import type {
+  AdminDashboardResponse,
   AdminDashboardMonthlyFinancial,
   AdminDashboardMovement,
   AdminDashboardPaymentPlan,
@@ -46,8 +48,11 @@ import type {
   AdminCashflowActionCenter,
   AdminCashflowActionItem,
   AdminCashflowCommandCenter,
+  AdminExpenseCategoryIntelligence,
   AdminFinancialDrilldownRow,
   AdminFinancialDrilldowns,
+  AdminManagementDecisionDashboard,
+  AdminNetCashForecast,
   AdminUnifiedFinancialCards,
 } from "@/lib/apiTypes";
 
@@ -72,8 +77,11 @@ type DashboardData = {
   monthlyFinancials: AdminDashboardMonthlyFinancial[];
   unifiedFinancialCards: AdminUnifiedFinancialCards;
   cashflowCommandCenter: AdminCashflowCommandCenter;
+  netCashForecast: AdminNetCashForecast;
   cashflowActionCenter: AdminCashflowActionCenter;
+  managementDecisionDashboard: AdminManagementDecisionDashboard;
   financialDrilldowns: AdminFinancialDrilldowns;
+  expenseCategoryIntelligence: AdminExpenseCategoryIntelligence;
 };
 
 const initialData: DashboardData = {
@@ -113,6 +121,16 @@ const initialData: DashboardData = {
     most_expensive_projects: [],
     highest_supplier_debt: [],
   },
+  netCashForecast: {
+    available_cash: 0,
+    current_payables: 0,
+    overdue_collections: 0,
+    overdue_payables: 0,
+    official_cash_position: 0,
+    unofficial_cash_position: 0,
+    combined_operational_cash_position: 0,
+    windows: [],
+  },
   cashflowActionCenter: {
     critical_collections: {
       highest_overdue_customers: [],
@@ -123,6 +141,7 @@ const initialData: DashboardData = {
       upcoming_supplier_payments: [],
       upcoming_personnel_payments: [],
       highest_payable_balances: [],
+      overdue_payable_actions: [],
     },
     project_risk_list: {
       lowest_profitability_projects: [],
@@ -133,7 +152,21 @@ const initialData: DashboardData = {
       customers_to_contact_today: [],
       suppliers_requiring_payment_review: [],
       projects_requiring_financial_review: [],
+      payment_priority_queue: [],
     },
+  },
+  managementDecisionDashboard: {
+    top_risky_customers: [],
+    top_overdue_collections: [],
+    top_supplier_liabilities: [],
+    top_personnel_cost_centers: [],
+    top_profitable_projects: [],
+    top_loss_making_projects: [],
+    cash_shortage_warnings: [],
+    collection_priority_queue: [],
+    payment_priority_queue: [],
+    category_priority_queue: [],
+    official_unofficial_actions: [],
   },
   financialDrilldowns: {
     customer: { collections: [], pending_payments: [], overdue_payments: [] },
@@ -141,7 +174,84 @@ const initialData: DashboardData = {
     supplier: { purchases: [], payments: [], remaining_payable_rows: [] },
     personnel: { salary: [], advances: [], reimbursements: [], total_cost_rows: [] },
   },
+  expenseCategoryIntelligence: {
+    categories: [],
+    top_spending_categories: [],
+    uncategorized: [],
+    summary: {
+      realized_cost_total: 0,
+      planned_cost_total: 0,
+      cash_pressure_total: 0,
+      profitability_impact_total: 0,
+      uncategorized_count: 0,
+      category_count: 0,
+    },
+  },
 };
+
+export function normalizeDashboardData(dashboard: Partial<AdminDashboardResponse> | null | undefined): DashboardData {
+  return {
+    summary: dashboard?.summary || initialData.summary,
+    activeProjects: dashboard?.active_projects_list || [],
+    overduePlans: dashboard?.overdue_plans || [],
+    upcomingPlans: dashboard?.upcoming_plans || [],
+    recentMovements: dashboard?.recent_movements || [],
+    monthlyFinancials: dashboard?.monthly_financials || [],
+    unifiedFinancialCards: dashboard?.unified_financial_cards || initialData.unifiedFinancialCards,
+    cashflowCommandCenter: dashboard?.cashflow_command_center || initialData.cashflowCommandCenter,
+    netCashForecast: dashboard?.net_cash_forecast || initialData.netCashForecast,
+    cashflowActionCenter: {
+      ...initialData.cashflowActionCenter,
+      ...(dashboard?.cashflow_action_center || {}),
+      critical_collections: {
+        ...initialData.cashflowActionCenter.critical_collections,
+        ...(dashboard?.cashflow_action_center?.critical_collections || {}),
+      },
+      critical_payments: {
+        ...initialData.cashflowActionCenter.critical_payments,
+        ...(dashboard?.cashflow_action_center?.critical_payments || {}),
+      },
+      project_risk_list: {
+        ...initialData.cashflowActionCenter.project_risk_list,
+        ...(dashboard?.cashflow_action_center?.project_risk_list || {}),
+      },
+      daily_action_queue: {
+        ...initialData.cashflowActionCenter.daily_action_queue,
+        ...(dashboard?.cashflow_action_center?.daily_action_queue || {}),
+      },
+    },
+    managementDecisionDashboard: {
+      ...initialData.managementDecisionDashboard,
+      ...(dashboard?.management_decision_dashboard || {}),
+    },
+    financialDrilldowns: {
+      customer: {
+        ...initialData.financialDrilldowns.customer,
+        ...(dashboard?.financial_drilldowns?.customer || {}),
+      },
+      project: {
+        ...initialData.financialDrilldowns.project,
+        ...(dashboard?.financial_drilldowns?.project || {}),
+      },
+      supplier: {
+        ...initialData.financialDrilldowns.supplier,
+        ...(dashboard?.financial_drilldowns?.supplier || {}),
+      },
+      personnel: {
+        ...initialData.financialDrilldowns.personnel,
+        ...(dashboard?.financial_drilldowns?.personnel || {}),
+      },
+    },
+    expenseCategoryIntelligence: {
+      ...initialData.expenseCategoryIntelligence,
+      ...(dashboard?.expense_category_intelligence || {}),
+      summary: {
+        ...initialData.expenseCategoryIntelligence.summary,
+        ...(dashboard?.expense_category_intelligence?.summary || {}),
+      },
+    },
+  };
+}
 
 const chartColors = {
   income: "hsl(142 48% 28%)",
@@ -154,6 +264,8 @@ const dashboardCurrencyFormatter = new Intl.NumberFormat("tr-TR", {
   currency: "TRY",
   maximumFractionDigits: 0,
 });
+
+const ADMIN_DASHBOARD_AUTH_GUARD_CACHE_BUST = "20260617-hard-null-guard-v2";
 
 function formatDashboardTRY(value: number) {
   return dashboardCurrencyFormatter.format(value);
@@ -245,11 +357,11 @@ function UnifiedFinanceCard({ title, subtitle, metrics }: { title: string; subti
         <div className="truncate text-sm font-semibold">{title}</div>
         <div className="mt-1 truncate text-xs text-muted-foreground">{subtitle}</div>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
         {metrics.map(([label, value]) => (
           <div key={label} className="rounded-md bg-muted/40 px-2 py-1.5">
             <div className="text-[11px] text-muted-foreground">{label}</div>
-            <div className="mt-0.5 truncate text-xs font-bold tabular-nums">{value}</div>
+            <div className="mt-0.5 whitespace-normal break-words text-xs font-bold tabular-nums">{value}</div>
           </div>
         ))}
       </div>
@@ -337,39 +449,53 @@ function ActionCenterList({ title, items, valueLabel = "Tutar" }: { title: strin
 }
 
 export default function AdminDashboard() {
-  const [data, setData] = useState<DashboardData>(initialData);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [authError, setAuthError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
+    let active = true;
     (async () => {
       setLoading(true);
       setLoadError(false);
+      setAuthError(false);
+      setErrorMessage("");
       try {
         const dashboard = await getAdminDashboard();
-        setData({
-          summary: dashboard.summary,
-          activeProjects: dashboard.active_projects_list || [],
-          overduePlans: dashboard.overdue_plans || [],
-          upcomingPlans: dashboard.upcoming_plans || [],
-          recentMovements: dashboard.recent_movements || [],
-          monthlyFinancials: dashboard.monthly_financials || [],
-          unifiedFinancialCards: dashboard.unified_financial_cards || initialData.unifiedFinancialCards,
-          cashflowCommandCenter: dashboard.cashflow_command_center || initialData.cashflowCommandCenter,
-          cashflowActionCenter: dashboard.cashflow_action_center || initialData.cashflowActionCenter,
-          financialDrilldowns: dashboard.financial_drilldowns || initialData.financialDrilldowns,
-        });
-      } catch {
+        if (!active) return;
+        if (!dashboard) {
+          setData(null);
+          setErrorMessage("Dashboard API boş veri döndürdü.");
+          setLoadError(true);
+          return;
+        }
+        setData(normalizeDashboardData(dashboard));
+      } catch (error) {
+        if (!active) return;
+        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+          setAuthError(true);
+          navigate("/admin/giris", { replace: true });
+          return;
+        }
+        setData(null);
+        setErrorMessage(error instanceof Error ? error.message : "Dashboard verileri alınamadı.");
         setLoadError(true);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     })();
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [navigate]);
 
+  const normalizedData = data || initialData;
   const dashboard = useMemo(() => {
     const months = lastSixMonths();
-    const monthlyByKey = new Map(data.monthlyFinancials.map((item) => [item.month_key, item]));
+    const monthlyByKey = new Map(normalizedData.monthlyFinancials.map((item) => [item.month_key, item]));
     const monthlyFinancials = months.map((month) => {
       const item = monthlyByKey.get(month.key);
       const income = Number(item?.income || 0);
@@ -377,7 +503,7 @@ export default function AdminDashboard() {
       const net = Number(item?.net ?? income - expenses);
       return { month: month.month, income, expenses, net };
     });
-    const recentMovements: RecentMovement[] = data.recentMovements.map((movement) => ({
+    const recentMovements: RecentMovement[] = normalizedData.recentMovements.map((movement) => ({
       id: movement.id,
       label: movement.label || "Finansal hareket",
       amount: Number(movement.amount || 0),
@@ -390,28 +516,59 @@ export default function AdminDashboard() {
     }));
 
     return {
-      totalIncome: Number(data.summary.total_payments || 0),
-      totalExpenses: Number(data.summary.total_expenses || 0),
-      netStatus: Number(data.summary.basic_net_balance || 0),
-      monthIncome: Number(data.summary.month_income || 0),
-      monthExpenses: Number(data.summary.month_expenses || 0),
-      monthNet: Number(data.summary.month_net || 0),
-      activeProjects: data.activeProjects,
-      expectedPayments: Number(data.summary.expected_payments || 0),
-      overdueCollections: Number(data.summary.overdue_collections || 0),
-      overduePlanCount: Number(data.summary.overdue_plan_count || data.overduePlans.length),
-      overduePlans: data.overduePlans,
-      upcomingPlans: data.upcomingPlans,
+      summary: normalizedData.summary,
+      totalIncome: Number(normalizedData.summary.total_payments || 0),
+      totalExpenses: Number(normalizedData.summary.total_expenses || 0),
+      netStatus: Number(normalizedData.summary.basic_net_balance || 0),
+      monthIncome: Number(normalizedData.summary.month_income || 0),
+      monthExpenses: Number(normalizedData.summary.month_expenses || 0),
+      monthNet: Number(normalizedData.summary.month_net || 0),
+      activeProjects: normalizedData.activeProjects,
+      expectedPayments: Number(normalizedData.summary.expected_payments || 0),
+      overdueCollections: Number(normalizedData.summary.overdue_collections || 0),
+      overduePlanCount: Number(normalizedData.summary.overdue_plan_count || normalizedData.overduePlans.length),
+      overduePlans: normalizedData.overduePlans,
+      upcomingPlans: normalizedData.upcomingPlans,
       recentMovements,
-      newRequests: Array.from({ length: Number(data.summary.new_contact_requests || 0) }),
+      newRequests: Array.from({ length: Number(normalizedData.summary.new_contact_requests || 0) }),
+      cacheBust: ADMIN_DASHBOARD_AUTH_GUARD_CACHE_BUST,
       monthlyFinancials,
-      hasFinancialData: Boolean(Number(data.summary.financial_entry_count || 0) || data.monthlyFinancials.length || recentMovements.length),
-      unifiedFinancialCards: data.unifiedFinancialCards,
-      cashflowCommandCenter: data.cashflowCommandCenter,
-      cashflowActionCenter: data.cashflowActionCenter,
-      financialDrilldowns: data.financialDrilldowns,
+      hasFinancialData: Boolean(Number(normalizedData.summary.financial_entry_count || 0) || normalizedData.monthlyFinancials.length || recentMovements.length),
+      unifiedFinancialCards: normalizedData.unifiedFinancialCards,
+      cashflowCommandCenter: normalizedData.cashflowCommandCenter,
+      netCashForecast: normalizedData.netCashForecast,
+      cashflowActionCenter: normalizedData.cashflowActionCenter,
+      managementDecisionDashboard: normalizedData.managementDecisionDashboard,
+      financialDrilldowns: normalizedData.financialDrilldowns,
+      expenseCategoryIntelligence: normalizedData.expenseCategoryIntelligence,
     };
-  }, [data]);
+  }, [normalizedData]);
+
+  if (loading) {
+    return <LoadingDashboard />;
+  }
+
+  if (authError) {
+    return null;
+  }
+
+  if (loadError || !data) {
+    return (
+      <div className="w-full max-w-full space-y-6 overflow-x-hidden">
+        <AdminPageHeader
+          eyebrow="Yönetim Özeti"
+          title="Genel Bakış"
+          description="Projeler, tahsilatlar, giderler ve net durumu tek ekrandan takip edin."
+        />
+        <AdminEmptyState
+          title="Veriler alınamadı"
+          description={errorMessage || "Oturumunuz sona ermiş veya dashboard API geçici olarak yanıt vermiyor olabilir."}
+          icon={Wallet}
+          action={<Button onClick={() => window.location.reload()}>Tekrar Dene</Button>}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-full space-y-6 overflow-x-hidden">
@@ -439,13 +596,14 @@ export default function AdminDashboard() {
       ) : loadError ? (
         <AdminEmptyState
           title="Veriler alınamadı"
-          description="Veriler alınırken bir problem oluştu. Lütfen bağlantınızı kontrol edip tekrar deneyin."
+          description={errorMessage || "Oturumunuz sona ermiş veya dashboard API geçici olarak yanıt vermiyor olabilir."}
           icon={Wallet}
+          action={<Button onClick={() => window.location.reload()}>Tekrar Dene</Button>}
         />
       ) : (
         <>
           <div className="grid w-full max-w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <AdminMetricCard to="/admin/projeler" label="Aktif Projeler" value={data.summary.active_projects} description={`${data.summary.total_projects} toplam proje`} icon={FolderKanban} tone="accent" />
+            <AdminMetricCard to="/admin/projeler" label="Aktif Projeler" value={dashboard.summary.active_projects} description={`${dashboard.summary.total_projects} toplam proje`} icon={FolderKanban} tone="accent" />
             <AdminMetricCard to="/admin/tahsilatlar" label="Toplam Tahsilat" value={formatDashboardTRY(dashboard.totalIncome)} description="Gerçekleşen gelen ödemeler" icon={Wallet} tone="success" />
             <AdminMetricCard to="/admin/giderler" label="Toplam Gider" value={formatDashboardTRY(dashboard.totalExpenses)} description="Yapılan masraflar" icon={Receipt} tone="danger" />
             <AdminMetricCard to="/admin/finans-dashboard" label="Net Durum" value={formatDashboardTRY(dashboard.netStatus)} description="Gerçekleşen gelir eksi gider" icon={dashboard.netStatus >= 0 ? TrendingUp : TrendingDown} tone={dashboard.netStatus >= 0 ? "success" : "danger"} />
@@ -490,6 +648,32 @@ export default function AdminDashboard() {
             </div>
           </AdminSection>
 
+          <AdminSection title="Net Nakit Tahmini" description="Doğrulanmış alacak ve borç kaynaklarından bugün, 7, 30 ve 60 günlük tahmini nakit pozisyonu." contentClassName="space-y-5">
+            <div className="grid w-full max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <AdminMetricCard label="Kullanılabilir Nakit" value={formatDashboardTRY(Number(dashboard.netCashForecast.available_cash || 0))} icon={Wallet} tone={Number(dashboard.netCashForecast.available_cash || 0) >= 0 ? "success" : "danger"} />
+              <AdminMetricCard label="Vadesi Geçmiş Borç" value={formatDashboardTRY(Number(dashboard.netCashForecast.overdue_payables || 0))} icon={Receipt} tone="danger" />
+              <AdminMetricCard label="Resmi Nakit" value={formatDashboardTRY(Number(dashboard.netCashForecast.official_cash_position || 0))} icon={ShieldCheck} tone="accent" />
+              <AdminMetricCard label="Gayri Resmi Nakit" value={formatDashboardTRY(Number(dashboard.netCashForecast.unofficial_cash_position || 0))} icon={Wallet} tone="warning" />
+            </div>
+            <div className="grid w-full max-w-full grid-cols-1 gap-4 xl:grid-cols-4">
+              {dashboard.netCashForecast.windows.map((window) => (
+                <div key={window.window} className={cn("rounded-xl border bg-card p-4 shadow-sm", window.negative_forecast_cash ? "border-destructive/40 bg-destructive/5" : "border-border")}>
+                  <div className="text-sm font-semibold text-foreground">{window.label}</div>
+                  <div className={cn("mt-2 text-xl font-bold", Number(window.forecast_net_cash || 0) >= 0 ? "text-emerald-700" : "text-destructive")}>
+                    {formatDashboardTRY(Number(window.forecast_net_cash || 0))}
+                  </div>
+                  <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                    <div className="flex justify-between gap-2"><span>Tahsilat</span><span>{formatDashboardTRY(Number(window.expected_collections || 0))}</span></div>
+                    <div className="flex justify-between gap-2"><span>Ödeme</span><span>{formatDashboardTRY(Number(window.expected_payments || 0))}</span></div>
+                    <div className="flex justify-between gap-2"><span>Riskli tahmin</span><span>{formatDashboardTRY(Number(window.risk_adjusted_forecast || 0))}</span></div>
+                    <div className="flex justify-between gap-2"><span>Resmi tahsilat</span><span>{formatDashboardTRY(Number(window.official_expected_collections || 0))}</span></div>
+                    <div className="flex justify-between gap-2"><span>Resmi ödeme</span><span>{formatDashboardTRY(Number(window.official_expected_payments || 0))}</span></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </AdminSection>
+
           <AdminSection title="Cashflow Action Center" description="Bugün karar verilmesi gereken tahsilat, ödeme ve proje finans aksiyonları." contentClassName="space-y-5">
             <div className="grid w-full max-w-full grid-cols-1 gap-4 xl:grid-cols-3">
               <ActionCenterList title="Kritik Tahsilatlar" items={dashboard.cashflowActionCenter.critical_collections.highest_overdue_customers} valueLabel="Vadesi geçen" />
@@ -497,6 +681,7 @@ export default function AdminDashboard() {
               <ActionCenterList title="Tahsilat Risk Skoru" items={dashboard.cashflowActionCenter.critical_collections.collection_risk_scores} valueLabel="Riskli alacak" />
               <ActionCenterList title="Yaklaşan Tedarikçi Ödemeleri" items={dashboard.cashflowActionCenter.critical_payments.upcoming_supplier_payments} valueLabel="Yaklaşan ödeme" />
               <ActionCenterList title="Yaklaşan Personel Ödemeleri" items={dashboard.cashflowActionCenter.critical_payments.upcoming_personnel_payments} valueLabel="Yaklaşan ödeme" />
+              <ActionCenterList title="Vadesi Geçmiş Ödemeler" items={dashboard.cashflowActionCenter.critical_payments.overdue_payable_actions || []} valueLabel="Geciken ödeme" />
               <ActionCenterList title="Yüksek Borç Bakiyeleri" items={dashboard.cashflowActionCenter.critical_payments.highest_payable_balances} valueLabel="Kalan borç" />
               <ActionCenterList title="Düşük Kârlılık Projeleri" items={dashboard.cashflowActionCenter.project_risk_list.lowest_profitability_projects} valueLabel="Net durum" />
               <ActionCenterList title="En Giderli Projeler" items={dashboard.cashflowActionCenter.project_risk_list.highest_expense_projects} valueLabel="Gider etkisi" />
@@ -506,6 +691,46 @@ export default function AdminDashboard() {
               <ActionCenterList title="Bugün Aranacak Müşteriler" items={dashboard.cashflowActionCenter.daily_action_queue.customers_to_contact_today} valueLabel="Takip tutarı" />
               <ActionCenterList title="Ödeme İncelemesi Gereken Tedarikçiler" items={dashboard.cashflowActionCenter.daily_action_queue.suppliers_requiring_payment_review} valueLabel="Kontrol tutarı" />
               <ActionCenterList title="Finans İncelemesi Gereken Projeler" items={dashboard.cashflowActionCenter.daily_action_queue.projects_requiring_financial_review} valueLabel="Kontrol tutarı" />
+            </div>
+          </AdminSection>
+
+          <AdminSection title="Management Decision Dashboard" description="Doğrulanmış nakit akışı verilerinden yönetim karar listeleri." contentClassName="space-y-5">
+            <div className="grid w-full max-w-full grid-cols-1 gap-4 xl:grid-cols-3">
+              <ActionCenterList title="En Riskli Müşteriler" items={dashboard.managementDecisionDashboard.top_risky_customers} valueLabel="Riskli alacak" />
+              <ActionCenterList title="En Gecikmiş Tahsilatlar" items={dashboard.managementDecisionDashboard.top_overdue_collections} valueLabel="Vadesi geçen" />
+              <ActionCenterList title="Tahsilat Öncelik Kuyruğu" items={dashboard.managementDecisionDashboard.collection_priority_queue} valueLabel="Takip tutarı" />
+              <ActionCenterList title="Tedarikçi Borçları" items={dashboard.managementDecisionDashboard.top_supplier_liabilities} valueLabel="Kalan borç" />
+              <ActionCenterList title="Personel Maliyet Merkezleri" items={dashboard.managementDecisionDashboard.top_personnel_cost_centers} valueLabel="Toplam maliyet" />
+              <ActionCenterList title="Ödeme Öncelik Kuyruğu" items={dashboard.managementDecisionDashboard.payment_priority_queue} valueLabel="Ödeme etkisi" />
+              <ActionCenterList title="Kategori Aksiyonları" items={dashboard.managementDecisionDashboard.category_priority_queue || []} valueLabel="Kategori etkisi" />
+              <ActionCenterList title="Resmi/Gayri Resmi Uyarılar" items={dashboard.managementDecisionDashboard.official_unofficial_actions || []} valueLabel="Nakit etkisi" />
+              <ActionCenterList title="En Kârlı Projeler" items={dashboard.managementDecisionDashboard.top_profitable_projects} valueLabel="Net kâr" />
+              <ActionCenterList title="Zarar Eden Projeler" items={dashboard.managementDecisionDashboard.top_loss_making_projects} valueLabel="Net zarar" />
+              <ActionCenterList title="Nakit Açığı Uyarıları" items={dashboard.managementDecisionDashboard.cash_shortage_warnings} valueLabel="Risk tutarı" />
+            </div>
+          </AdminSection>
+
+          <AdminSection title="Gider Kategori Zekası" description="Gerçekleşen gider, planlanan yükümlülük ve proje kârlılığı etkisini kategori bazında gösterir." contentClassName="space-y-5">
+            <div className="grid w-full max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+              <AdminMetricCard label="Gerçekleşen Kategori Gideri" value={formatDashboardTRY(Number(dashboard.expenseCategoryIntelligence.summary.realized_cost_total || 0))} icon={Receipt} tone="danger" />
+              <AdminMetricCard label="Planlanan Kategori Gideri" value={formatDashboardTRY(Number(dashboard.expenseCategoryIntelligence.summary.planned_cost_total || 0))} icon={CalendarClock} tone="warning" />
+              <AdminMetricCard label="Nakit Baskısı" value={formatDashboardTRY(Number(dashboard.expenseCategoryIntelligence.summary.cash_pressure_total || 0))} icon={Wallet} tone="danger" />
+              <AdminMetricCard label="Kârlılık Etkisi" value={formatDashboardTRY(Number(dashboard.expenseCategoryIntelligence.summary.profitability_impact_total || 0))} icon={TrendingDown} tone="warning" />
+              <AdminMetricCard label="Kategorisiz Grup" value={String(dashboard.expenseCategoryIntelligence.summary.uncategorized_count || 0)} icon={Inbox} tone={dashboard.expenseCategoryIntelligence.summary.uncategorized_count > 0 ? "warning" : "success"} />
+            </div>
+            <div className="grid w-full max-w-full grid-cols-1 gap-4 xl:grid-cols-4">
+              {dashboard.expenseCategoryIntelligence.top_spending_categories.slice(0, 8).map((category) => (
+                <div key={category.category} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                  <div className="text-sm font-semibold text-foreground">{category.category}</div>
+                  <div className="mt-2 text-xl font-bold text-destructive">{formatDashboardTRY(Number(category.total_exposure || 0))}</div>
+                  <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                    <div className="flex justify-between gap-2"><span>Gerçekleşen</span><span>{formatDashboardTRY(Number(category.realized_cost || 0))}</span></div>
+                    <div className="flex justify-between gap-2"><span>Planlanan</span><span>{formatDashboardTRY(Number(category.planned_cost || 0))}</span></div>
+                    <div className="flex justify-between gap-2"><span>Nakit baskısı</span><span>{formatDashboardTRY(Number(category.cash_pressure || 0))}</span></div>
+                    <div className="flex justify-between gap-2"><span>Proje etkisi</span><span>{formatDashboardTRY(Number(category.profitability_impact || 0))}</span></div>
+                  </div>
+                </div>
+              ))}
             </div>
           </AdminSection>
 
@@ -544,6 +769,8 @@ export default function AdminDashboard() {
                       ["Kalan", formatDashboardTRY(Number(card.remaining_receivable || 0))],
                       ["Vadesi Geçen", formatDashboardTRY(Number(card.overdue_amount || 0))],
                       ["Yaklaşan", formatDashboardTRY(Number(card.upcoming_amount || 0))],
+                      ["Resmi Kalan", formatDashboardTRY(Number(card.official_remaining_receivable || 0))],
+                      ["Gayri Resmi Kalan", formatDashboardTRY(Number(card.unofficial_remaining_receivable || 0))],
                     ]}
                   />
                 )}
@@ -563,6 +790,9 @@ export default function AdminDashboard() {
                       ["Alacak", formatDashboardTRY(Number(card.outstanding_receivables || 0))],
                       ["Borç", formatDashboardTRY(Number(card.outstanding_payables || 0))],
                       ["Nakit", formatDashboardTRY(Number(card.current_cash_position || 0))],
+                      ["Nakit Maruziyeti", formatDashboardTRY(Number(card.cash_exposure || 0))],
+                      ["Resmi Kâr", formatDashboardTRY(Number(card.official_project_profit || 0))],
+                      ["Gayri Resmi Kâr", formatDashboardTRY(Number(card.unofficial_project_profit || 0))],
                     ]}
                   />
                 )}
@@ -581,6 +811,8 @@ export default function AdminDashboard() {
                       ["Ödenen", formatDashboardTRY(Number(card.total_paid || 0))],
                       ["Kalan", formatDashboardTRY(Number(card.remaining_payable || 0))],
                       ["Vadesi Geçen", formatDashboardTRY(Number(card.overdue_payable || 0))],
+                      ["Resmi Borç", formatDashboardTRY(Number(card.official_remaining_payable || 0))],
+                      ["Gayri Resmi Borç", formatDashboardTRY(Number(card.unofficial_remaining_payable || 0))],
                     ]}
                   />
                 )}
@@ -598,6 +830,10 @@ export default function AdminDashboard() {
                       ["Maaş", formatDashboardTRY(Number(card.salary_paid || 0))],
                       ["Avans", formatDashboardTRY(Number(card.advances_paid || 0))],
                       ["Masraf İadesi", formatDashboardTRY(Number(card.expense_reimbursements || 0))],
+                      ["Kalan Borç", formatDashboardTRY(Number(card.remaining_payable || 0))],
+                      ["Vadesi Geçen", formatDashboardTRY(Number(card.overdue_payable || 0))],
+                      ["Resmi Maliyet", formatDashboardTRY(Number(card.official_total_personnel_cost || 0))],
+                      ["Gayri Resmi Maliyet", formatDashboardTRY(Number(card.unofficial_total_personnel_cost || 0))],
                     ]}
                   />
                 )}

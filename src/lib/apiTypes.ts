@@ -134,8 +134,38 @@ export interface AdminDashboardResponse {
   monthly_financials?: AdminDashboardMonthlyFinancial[];
   unified_financial_cards?: AdminUnifiedFinancialCards;
   cashflow_command_center?: AdminCashflowCommandCenter;
+  net_cash_forecast?: AdminNetCashForecast;
   cashflow_action_center?: AdminCashflowActionCenter;
+  management_decision_dashboard?: AdminManagementDecisionDashboard;
   financial_drilldowns?: AdminFinancialDrilldowns;
+  expense_category_intelligence?: AdminExpenseCategoryIntelligence;
+}
+
+export interface AdminNetCashForecastWindow {
+  window: string;
+  label: string;
+  days: number;
+  expected_collections: number | string;
+  expected_payments: number | string;
+  overdue_payables: number | string;
+  forecast_net_cash: number | string;
+  risk_adjusted_forecast: number | string;
+  official_expected_collections: number | string;
+  unofficial_expected_collections: number | string;
+  official_expected_payments: number | string;
+  unofficial_expected_payments: number | string;
+  negative_forecast_cash: boolean;
+}
+
+export interface AdminNetCashForecast {
+  available_cash: number | string;
+  current_payables: number | string;
+  overdue_collections: number | string;
+  overdue_payables: number | string;
+  official_cash_position: number | string;
+  unofficial_cash_position: number | string;
+  combined_operational_cash_position: number | string;
+  windows: AdminNetCashForecastWindow[];
 }
 
 export interface AdminCashflowActionItem {
@@ -158,6 +188,7 @@ export interface AdminCashflowActionCenter {
     upcoming_supplier_payments: AdminCashflowActionItem[];
     upcoming_personnel_payments: AdminCashflowActionItem[];
     highest_payable_balances: AdminCashflowActionItem[];
+    overdue_payable_actions?: AdminCashflowActionItem[];
   };
   project_risk_list: {
     lowest_profitability_projects: AdminCashflowActionItem[];
@@ -168,6 +199,53 @@ export interface AdminCashflowActionCenter {
     customers_to_contact_today: AdminCashflowActionItem[];
     suppliers_requiring_payment_review: AdminCashflowActionItem[];
     projects_requiring_financial_review: AdminCashflowActionItem[];
+    payment_priority_queue?: AdminCashflowActionItem[];
+  };
+}
+
+export interface AdminManagementDecisionDashboard {
+  top_risky_customers: AdminCashflowActionItem[];
+  top_overdue_collections: AdminCashflowActionItem[];
+  top_supplier_liabilities: AdminCashflowActionItem[];
+  top_personnel_cost_centers: AdminCashflowActionItem[];
+  top_profitable_projects: AdminCashflowActionItem[];
+  top_loss_making_projects: AdminCashflowActionItem[];
+  cash_shortage_warnings: AdminCashflowActionItem[];
+  collection_priority_queue: AdminCashflowActionItem[];
+  payment_priority_queue: AdminCashflowActionItem[];
+  category_priority_queue?: AdminCashflowActionItem[];
+  official_unofficial_actions?: AdminCashflowActionItem[];
+  top_spending_categories?: AdminExpenseCategoryIntelligenceRow[];
+}
+
+export interface AdminExpenseCategoryIntelligenceRow {
+  category: string;
+  realized_cost: number | string;
+  planned_cost: number | string;
+  total_exposure: number | string;
+  cash_pressure: number | string;
+  profitability_impact: number | string;
+  official_realized_cost: number | string;
+  unofficial_realized_cost: number | string;
+  official_planned_cost: number | string;
+  unofficial_planned_cost: number | string;
+  project_linked_realized_cost: number | string;
+  supplier_related_cost: number | string;
+  personnel_related_cost: number | string;
+  row_count: number;
+}
+
+export interface AdminExpenseCategoryIntelligence {
+  categories: AdminExpenseCategoryIntelligenceRow[];
+  top_spending_categories: AdminExpenseCategoryIntelligenceRow[];
+  uncategorized: AdminExpenseCategoryIntelligenceRow[];
+  summary: {
+    realized_cost_total: number | string;
+    planned_cost_total: number | string;
+    cash_pressure_total: number | string;
+    profitability_impact_total: number | string;
+    uncategorized_count: number;
+    category_count: number;
   };
 }
 
@@ -232,6 +310,12 @@ export interface AdminCustomerFinancialCard {
   remaining_receivable: number | string;
   overdue_amount: number | string;
   upcoming_amount: number | string;
+  official_contract_value?: number | string;
+  unofficial_contract_value?: number | string;
+  official_collected?: number | string;
+  unofficial_collected?: number | string;
+  official_remaining_receivable?: number | string;
+  unofficial_remaining_receivable?: number | string;
   payment_performance_summary: string;
 }
 
@@ -244,6 +328,17 @@ export interface AdminProjectFinancialCard {
   outstanding_receivables: number | string;
   outstanding_payables: number | string;
   current_cash_position: number | string;
+  cash_exposure?: number | string;
+  official_project_revenue?: number | string;
+  unofficial_project_revenue?: number | string;
+  official_project_expenses?: number | string;
+  unofficial_project_expenses?: number | string;
+  official_project_profit?: number | string;
+  unofficial_project_profit?: number | string;
+  combined_project_profit?: number | string;
+  official_project_cash_exposure?: number | string;
+  unofficial_project_cash_exposure?: number | string;
+  combined_project_cash_exposure?: number | string;
 }
 
 export interface AdminSupplierFinancialCard {
@@ -254,6 +349,10 @@ export interface AdminSupplierFinancialCard {
   remaining_payable: number | string;
   overdue_payable: number | string;
   last_payment_date: string | null;
+  official_total_paid?: number | string;
+  unofficial_total_paid?: number | string;
+  official_remaining_payable?: number | string;
+  unofficial_remaining_payable?: number | string;
 }
 
 export interface AdminPersonnelFinancialCard {
@@ -263,6 +362,12 @@ export interface AdminPersonnelFinancialCard {
   advances_paid: number | string;
   expense_reimbursements: number | string;
   total_personnel_cost: number | string;
+  remaining_payable?: number | string;
+  overdue_payable?: number | string;
+  official_total_personnel_cost?: number | string;
+  unofficial_total_personnel_cost?: number | string;
+  official_remaining_payable?: number | string;
+  unofficial_remaining_payable?: number | string;
 }
 
 export interface AdminDashboardPaymentPlan {

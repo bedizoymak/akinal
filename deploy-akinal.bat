@@ -1,6 +1,6 @@
 @echo off
 title Akinal Insaat Deploy
-cd /d C:\Users\Ebru\Documents\akinalinsaat.com
+cd /d "%userprofile%\Documents\akinalinsaat.com"
 
 echo.
 echo === BUILD BASLIYOR ===
