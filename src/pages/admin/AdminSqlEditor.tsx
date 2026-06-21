@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Database, Loader2, Play, RotateCcw } from "lucide-react";
+import { AlertTriangle, ClipboardCopy, Database, Loader2, Play, RotateCcw } from "lucide-react";
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/AdminPage";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { executeAdminSql } from "@/lib/apiClient";
+import { serializeAdminSqlExecutionAsCsv, type AdminSqlExecutionSnapshot } from "@/lib/adminSqlCsv";
 import type { AdminSqlEditorResult } from "@/lib/apiTypes";
 
 type QueryHistoryItem = {
@@ -94,6 +95,8 @@ export default function AdminSqlEditor() {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<AdminSqlEditorResult | null>(null);
   const [error, setError] = useState("");
+  const [lastExecution, setLastExecution] = useState<AdminSqlExecutionSnapshot | null>(null);
+  const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState<QueryHistoryItem[]>([]);
 
   useEffect(() => {
@@ -107,6 +110,8 @@ export default function AdminSqlEditor() {
   const canExecute = sql.trim() && !multipleStatements && (isSelect || confirmed) && (!isDestructive || destructiveConfirmation.trim() === "UYGULA");
 
   async function runSql() {
+    const executedSql = sql;
+
     if (!sql.trim()) {
       toast({ title: "SQL sorgusu boş olamaz", variant: "destructive" });
       return;
@@ -129,20 +134,33 @@ export default function AdminSqlEditor() {
     setResult(null);
 
     try {
-      const response = await executeAdminSql({ sql, confirmed, destructive_confirmation: destructiveConfirmation });
+      const response = await executeAdminSql({ sql: executedSql, confirmed, destructive_confirmation: destructiveConfirmation });
       setResult(response);
+      setLastExecution({ sql: executedSql, result: response });
+      setCopied(false);
       const nextHistory = [
-        { sql, statementType: response.statement_type, executedAt: response.executed_at },
-        ...history.filter((item) => item.sql !== sql),
+        { sql: executedSql, statementType: response.statement_type, executedAt: response.executed_at },
+        ...history.filter((item) => item.sql !== executedSql),
       ].slice(0, 20);
       setHistory(nextHistory);
       saveHistory(nextHistory);
       toast({ title: "SQL sorgusu çalıştırıldı" });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "SQL sorgusu çalıştırılamadı.");
+      const message = caught instanceof Error ? caught.message : "SQL sorgusu çalıştırılamadı.";
+      setError(message);
+      setLastExecution({ sql: executedSql, error: message });
+      setCopied(false);
     } finally {
       setRunning(false);
     }
+  }
+
+  async function copyLastExecutionAsCsv() {
+    if (!lastExecution) return;
+
+    await navigator.clipboard.writeText(serializeAdminSqlExecutionAsCsv(lastExecution));
+    setCopied(true);
+    toast({ title: "Kopyalandı" });
   }
 
   function clearState() {
@@ -151,6 +169,7 @@ export default function AdminSqlEditor() {
     setDestructiveConfirmation("");
     setResult(null);
     setError("");
+    setCopied(false);
   }
 
   return (
@@ -214,6 +233,10 @@ export default function AdminSqlEditor() {
             <Button variant="outline" onClick={clearState} disabled={running}>
               <RotateCcw className="h-4 w-4" />
               Temizle
+            </Button>
+            <Button variant="outline" onClick={copyLastExecutionAsCsv} disabled={!lastExecution || running}>
+              <ClipboardCopy className="h-4 w-4" />
+              {copied ? "Copied" : "Copy command and output as CSV"}
             </Button>
           </div>
         </section>

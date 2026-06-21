@@ -1,0 +1,358 @@
+erDiagram
+  ak_admin_users {
+    CHAR id PK
+    VARCHAR email
+    VARCHAR email_lower UK
+    VARCHAR password_hash
+    VARCHAR role
+    TINYINT is_active
+    DATETIME created_at
+    DATETIME updated_at
+  }
+  ak_profiles {
+    CHAR id PK
+    CHAR user_id FK
+    VARCHAR email
+    VARCHAR display_name
+    DATETIME created_at
+  }
+  ak_user_roles {
+    CHAR id PK
+    CHAR user_id FK
+    VARCHAR role
+    DATETIME created_at
+  }
+  ak_site_settings {
+    CHAR id PK
+    VARCHAR company_name
+    VARCHAR phone
+    VARCHAR whatsapp_number
+    VARCHAR email
+    TEXT address
+    TEXT map_embed_url
+    TEXT instagram_url
+    TEXT facebook_url
+    TEXT linkedin_url
+    TEXT footer_description
+    VARCHAR hero_title
+    TEXT hero_subtitle
+    TEXT whatsapp_message
+    VARCHAR seo_title
+    TEXT seo_description
+    DATETIME updated_at
+  }
+  ak_cookie_consents {
+    CHAR id PK
+    VARCHAR consent_status
+    TINYINT necessary
+    TINYINT analytics
+    TINYINT marketing
+    TEXT user_agent
+    DATETIME created_at
+  }
+  ak_contact_requests {
+    CHAR id PK
+    VARCHAR full_name
+    VARCHAR phone
+    VARCHAR email
+    VARCHAR service_type
+    TEXT message
+    VARCHAR status
+    DATETIME created_at
+  }
+  ak_projects {
+    CHAR id PK
+    VARCHAR title
+    VARCHAR slug UK
+    TEXT short_description
+    LONGTEXT detailed_description
+    VARCHAR project_type
+    VARCHAR project_status
+    VARCHAR location
+    VARCHAR city
+    VARCHAR district
+    VARCHAR start_year
+    VARCHAR delivery_year
+    VARCHAR land_area
+    VARCHAR construction_area
+    VARCHAR apartment_count
+    VARCHAR floor_count
+    VARCHAR block_count
+    TEXT cover_image_url
+    TINYINT is_featured
+    TINYINT is_published
+    INT sort_order
+    VARCHAR seo_title
+    TEXT seo_description
+    DATETIME created_at
+    DATETIME updated_at
+  }
+  ak_project_images {
+    CHAR id PK
+    CHAR project_id FK
+    TEXT image_url
+    TEXT thumbnail_url
+    VARCHAR title
+    VARCHAR alt_text
+    INT sort_order
+    DATETIME created_at
+  }
+  ak_media_library {
+    CHAR id PK
+    TEXT image_url
+    TEXT thumbnail_url
+    VARCHAR file_name
+    VARCHAR title
+    VARCHAR alt_text
+    CHAR related_project_id FK
+    DATETIME created_at
+  }
+  ak_customers {
+    CHAR id PK
+    VARCHAR customer_type
+    VARCHAR full_name
+    VARCHAR company_name
+    VARCHAR phone
+    VARCHAR whatsapp
+    VARCHAR email
+    VARCHAR tax_or_identity_number
+    TEXT address
+    VARCHAR city
+    VARCHAR district
+    VARCHAR status
+    TEXT notes
+    DATETIME created_at
+    DATETIME updated_at
+  }
+  ak_customer_projects {
+    CHAR id PK
+    CHAR customer_id FK
+    CHAR project_id FK
+    DATETIME created_at
+  }
+  ak_customer_notes {
+    CHAR id PK
+    CHAR customer_id FK
+    TEXT note
+    DATETIME created_at
+  }
+  ak_documents {
+    CHAR id PK
+    CHAR customer_id FK
+    CHAR project_id FK
+    VARCHAR title
+    VARCHAR document_type
+    TEXT file_url
+    TEXT notes
+    DATETIME created_at
+  }
+  ak_employees {
+    CHAR id PK
+    VARCHAR full_name
+    VARCHAR phone
+    VARCHAR role
+    TEXT notes
+    VARCHAR status
+    DATETIME created_at
+    DATETIME updated_at
+  }
+  ak_expense_cards {
+    CHAR id PK
+    VARCHAR name
+    VARCHAR category
+    TEXT description
+    VARCHAR status
+    DATETIME created_at
+    DATETIME updated_at
+  }
+  ak_payment_plans {
+    CHAR id PK
+    CHAR customer_id FK
+    CHAR employee_id "soft FK"
+    CHAR expense_card_id "soft FK"
+    CHAR project_id FK
+    CHAR business_transaction_id "soft group key"
+    VARCHAR counterparty_type
+    CHAR counterparty_id "soft polymorphic FK"
+    VARCHAR direction
+    VARCHAR currency
+    VARCHAR allocation_scope
+    TEXT allocation_note
+    VARCHAR category_code
+    VARCHAR subcategory_code
+    VARCHAR migration_confidence
+    VARCHAR reconciliation_status
+    DATETIME archived_at
+    CHAR archived_by "soft FK"
+    DATETIME canceled_at
+    CHAR canceled_by "soft FK"
+    TEXT cancellation_reason
+    VARCHAR title
+    TEXT description
+    DECIMAL amount
+    DECIMAL paid_amount
+    VARCHAR payment_method
+    VARCHAR transaction_reference
+    VARCHAR card_note
+    DATE cheque_maturity_date
+    VARCHAR cheque_no
+    VARCHAR bank_name
+    DATE promissory_maturity_date
+    VARCHAR account_type
+    DATE due_date
+    VARCHAR status
+    TEXT notes
+    DATETIME created_at
+    DATETIME updated_at
+  }
+  ak_payments {
+    CHAR id PK
+    CHAR customer_id FK
+    CHAR project_id FK
+    CHAR payment_plan_id FK
+    DECIMAL amount
+    VARCHAR account_type
+    DATE payment_date
+    VARCHAR payment_method
+    TEXT description
+    TEXT document_url
+    DATETIME created_at
+    DATETIME updated_at
+  }
+  ak_expenses {
+    CHAR id PK
+    CHAR project_id FK
+    CHAR customer_id FK
+    VARCHAR title
+    VARCHAR category
+    DECIMAL amount
+    DATE expense_date
+    TEXT description
+    TEXT document_url
+    DATETIME created_at
+    DATETIME updated_at
+  }
+  ak_financial_entries {
+    CHAR id PK
+    CHAR project_id FK
+    DATE entry_date
+    CHAR business_transaction_id
+    VARCHAR event_type
+    VARCHAR source_type
+    CHAR source_id "soft polymorphic FK"
+    VARCHAR source_version
+    CHAR payment_plan_id "soft FK"
+    CHAR parent_entry_id "soft self FK"
+    VARCHAR counterparty_type
+    CHAR counterparty_id "soft polymorphic FK"
+    VARCHAR account_type
+    VARCHAR allocation_scope
+    TEXT allocation_note
+    DATE transaction_date
+    DATE due_date
+    DECIMAL exchange_rate
+    DECIMAL base_amount
+    VARCHAR category_code
+    VARCHAR subcategory_code
+    CHAR document_id "soft FK"
+    VARCHAR migration_confidence
+    VARCHAR reconciliation_status
+    DATETIME archived_at
+    CHAR archived_by "soft FK"
+    DATETIME canceled_at
+    CHAR canceled_by "soft FK"
+    TEXT cancellation_reason
+    CHAR reversal_entry_id "soft self FK"
+    VARCHAR card_type
+    CHAR customer_id FK
+    CHAR employee_id FK
+    CHAR expense_card_id FK
+    VARCHAR title
+    TEXT description
+    DECIMAL amount
+    VARCHAR currency_tag
+    VARCHAR group_tag
+    VARCHAR direction
+    VARCHAR status
+    TEXT document_url
+    DATETIME created_at
+    DATETIME updated_at
+  }
+  ak_payment_plan_settlements {
+    CHAR id PK
+    CHAR payment_plan_id FK
+    CHAR financial_entry_id FK
+    DECIMAL allocated_amount
+    VARCHAR currency
+    VARCHAR account_type
+    CHAR created_by FK
+    DATETIME created_at
+    DATETIME reversed_at
+    CHAR reversed_by FK
+    TEXT reversal_reason
+    TINYINT active_pair_guard
+  }
+  ak_notifications {
+    CHAR id PK
+    VARCHAR title
+    TEXT message
+    VARCHAR type
+    VARCHAR priority
+    CHAR related_customer_id FK
+    CHAR related_project_id FK
+    CHAR related_payment_plan_id FK
+    TINYINT is_read
+    DATETIME created_at
+  }
+  ak_push_subscriptions {
+    VARCHAR id PK
+    VARCHAR admin_id "soft FK"
+    TEXT endpoint
+    CHAR endpoint_hash UK
+    TEXT p256dh
+    TEXT auth
+    TEXT user_agent
+    DATETIME created_at
+    DATETIME updated_at
+    DATETIME last_used_at
+  }
+
+  ak_admin_users ||--o| ak_profiles : "FK user_id"
+  ak_admin_users ||--o{ ak_user_roles : "FK user_id"
+  ak_admin_users ||--o{ ak_payment_plan_settlements : "FK created_by"
+  ak_admin_users ||--o{ ak_payment_plan_settlements : "FK reversed_by"
+  ak_admin_users ||--o{ ak_push_subscriptions : "soft admin_id"
+
+  ak_projects ||--o{ ak_project_images : "FK project_id"
+  ak_projects ||--o{ ak_media_library : "FK related_project_id"
+  ak_projects ||--o{ ak_customer_projects : "FK project_id"
+  ak_projects ||--o{ ak_payment_plans : "FK project_id"
+  ak_projects ||--o{ ak_payments : "FK project_id"
+  ak_projects ||--o{ ak_expenses : "FK project_id"
+  ak_projects ||--o{ ak_documents : "FK project_id"
+  ak_projects ||--o{ ak_notifications : "FK related_project_id"
+  ak_projects ||--o{ ak_financial_entries : "FK project_id"
+
+  ak_customers ||--o{ ak_customer_projects : "FK customer_id"
+  ak_customers ||--o{ ak_payment_plans : "FK customer_id"
+  ak_customers ||--o{ ak_payments : "FK customer_id"
+  ak_customers ||--o{ ak_expenses : "FK customer_id"
+  ak_customers ||--o{ ak_customer_notes : "FK customer_id"
+  ak_customers ||--o{ ak_documents : "FK customer_id"
+  ak_customers ||--o{ ak_notifications : "FK related_customer_id"
+  ak_customers ||--o{ ak_financial_entries : "FK customer_id"
+
+  ak_payment_plans ||--o{ ak_payments : "FK payment_plan_id"
+  ak_payment_plans ||--o{ ak_notifications : "FK related_payment_plan_id"
+  ak_payment_plans ||--o{ ak_payment_plan_settlements : "FK payment_plan_id"
+  ak_payment_plans ||--o{ ak_financial_entries : "soft payment_plan_id"
+
+  ak_financial_entries ||--o{ ak_payment_plan_settlements : "FK financial_entry_id"
+  ak_financial_entries ||--o{ ak_financial_entries : "soft parent_entry_id"
+  ak_financial_entries ||--o{ ak_financial_entries : "soft reversal_entry_id"
+
+  ak_employees ||--o{ ak_payment_plans : "soft employee_id"
+  ak_employees ||--o{ ak_financial_entries : "FK employee_id"
+  ak_expense_cards ||--o{ ak_payment_plans : "soft expense_card_id"
+  ak_expense_cards ||--o{ ak_financial_entries : "FK expense_card_id"
+  ak_documents ||--o{ ak_financial_entries : "soft document_id"

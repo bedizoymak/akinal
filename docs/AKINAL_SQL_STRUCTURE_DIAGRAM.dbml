@@ -1,0 +1,435 @@
+Project "Akinal Insaat SQL Structure" {
+  database_type: "MySQL"
+  Note: '''
+  Documentation-only structure extracted from public_html/install-schema.php plus runtime ak_push_subscriptions in public_html/api/admin/push-utils.php.
+  Real refs are enforced by schema. Soft refs are inferred from code and indexes.
+  '''
+}
+
+TableGroup "Public/content" {
+  ak_site_settings
+  ak_contact_requests
+  ak_cookie_consents
+}
+
+TableGroup "Project" {
+  ak_projects
+  ak_project_images
+}
+
+TableGroup "CRM" {
+  ak_customers
+  ak_customer_projects
+  ak_customer_notes
+  ak_documents
+}
+
+TableGroup "Finance" {
+  ak_payment_plans
+  ak_payments
+  ak_expenses
+  ak_financial_entries
+  ak_payment_plan_settlements
+  ak_employees
+  ak_expense_cards
+}
+
+TableGroup "Admin/system" {
+  ak_admin_users
+  ak_notifications
+  ak_push_subscriptions
+}
+
+TableGroup "Unused/legacy candidates" {
+  ak_profiles
+  ak_user_roles
+  ak_media_library
+}
+
+Table ak_admin_users {
+  id char(36) [pk]
+  email varchar(255) [not null, unique]
+  email_lower varchar(255) [not null, unique]
+  password_hash varchar(255)
+  role varchar(50) [not null, default: 'admin']
+  is_active tinyint [not null, default: 1]
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table ak_profiles {
+  id char(36) [pk]
+  user_id char(36) [not null, unique]
+  email varchar(255)
+  display_name varchar(255)
+  created_at datetime [not null]
+}
+
+Table ak_user_roles {
+  id char(36) [pk]
+  user_id char(36) [not null]
+  role varchar(50) [not null]
+  created_at datetime [not null]
+
+  indexes {
+    (user_id, role) [unique]
+  }
+}
+
+Table ak_projects {
+  id char(36) [pk]
+  title varchar(255) [not null]
+  slug varchar(255) [not null, unique]
+  short_description text [not null]
+  detailed_description longtext
+  project_type varchar(100) [not null]
+  project_status varchar(100) [not null]
+  location varchar(255) [not null]
+  city varchar(100)
+  district varchar(100)
+  start_year varchar(20)
+  delivery_year varchar(20)
+  land_area varchar(100)
+  construction_area varchar(100)
+  apartment_count varchar(100)
+  floor_count varchar(100)
+  block_count varchar(100)
+  cover_image_url text
+  is_featured tinyint [not null, default: 0]
+  is_published tinyint [not null, default: 0]
+  sort_order int [not null, default: 0]
+  seo_title varchar(255)
+  seo_description text
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table ak_project_images {
+  id char(36) [pk]
+  project_id char(36) [not null]
+  image_url text [not null]
+  thumbnail_url text
+  title varchar(255)
+  alt_text varchar(255)
+  sort_order int [not null, default: 0]
+  created_at datetime [not null]
+}
+
+Table ak_media_library {
+  id char(36) [pk]
+  image_url text [not null]
+  thumbnail_url text
+  file_name varchar(255)
+  title varchar(255)
+  alt_text varchar(255)
+  related_project_id char(36)
+  created_at datetime [not null]
+}
+
+Table ak_site_settings {
+  id char(36) [pk]
+  company_name varchar(255) [not null, default: 'Akinal Insaat']
+  phone varchar(50)
+  whatsapp_number varchar(50)
+  email varchar(255)
+  address text
+  map_embed_url text
+  instagram_url text
+  facebook_url text
+  linkedin_url text
+  footer_description text
+  hero_title varchar(255)
+  hero_subtitle text
+  whatsapp_message text
+  seo_title varchar(255)
+  seo_description text
+  updated_at datetime [not null]
+}
+
+Table ak_contact_requests {
+  id char(36) [pk]
+  full_name varchar(255) [not null]
+  phone varchar(100) [not null]
+  email varchar(255)
+  service_type varchar(100)
+  message text [not null]
+  status varchar(50) [not null, default: 'Yeni']
+  created_at datetime [not null]
+}
+
+Table ak_customers {
+  id char(36) [pk]
+  customer_type varchar(100) [not null, default: 'Bireysel']
+  full_name varchar(255)
+  company_name varchar(255)
+  phone varchar(100) [not null]
+  whatsapp varchar(100)
+  email varchar(255)
+  tax_or_identity_number varchar(100)
+  address text
+  city varchar(100)
+  district varchar(100)
+  status varchar(50) [not null, default: 'Aktif']
+  notes text
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table ak_customer_projects {
+  id char(36) [pk]
+  customer_id char(36) [not null]
+  project_id char(36) [not null]
+  created_at datetime [not null]
+
+  indexes {
+    (customer_id, project_id) [unique]
+  }
+}
+
+Table ak_payment_plans {
+  id char(36) [pk]
+  customer_id char(36)
+  employee_id char(36) [note: 'soft FK to ak_employees.id']
+  expense_card_id char(36) [note: 'soft FK to ak_expense_cards.id']
+  project_id char(36)
+  business_transaction_id char(36) [note: 'soft transaction group key']
+  counterparty_type varchar(30)
+  counterparty_id char(36) [note: 'soft polymorphic FK']
+  direction varchar(20)
+  currency varchar(10)
+  allocation_scope varchar(30)
+  allocation_note text
+  category_code varchar(80)
+  subcategory_code varchar(80)
+  migration_confidence varchar(30)
+  reconciliation_status varchar(30)
+  archived_at datetime
+  archived_by char(36) [note: 'soft FK to ak_admin_users.id']
+  canceled_at datetime
+  canceled_by char(36) [note: 'soft FK to ak_admin_users.id']
+  cancellation_reason text
+  title varchar(255) [not null]
+  description text
+  amount decimal(14,2) [not null, default: 0.00]
+  paid_amount decimal(15,2) [not null, default: 0.00]
+  payment_method varchar(40) [not null, default: 'Nakit']
+  transaction_reference varchar(120)
+  card_note varchar(255)
+  cheque_maturity_date date
+  cheque_no varchar(80)
+  bank_name varchar(120)
+  promissory_maturity_date date
+  account_type varchar(20) [not null, default: 'resmi']
+  due_date date [not null]
+  status varchar(50) [not null, default: 'Bekliyor']
+  notes text
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table ak_payments {
+  id char(36) [pk]
+  customer_id char(36)
+  project_id char(36)
+  payment_plan_id char(36)
+  amount decimal(14,2) [not null, default: 0.00]
+  account_type varchar(20) [not null, default: 'resmi']
+  payment_date date [not null]
+  payment_method varchar(100) [not null, default: 'Nakit']
+  description text
+  document_url text
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table ak_expenses {
+  id char(36) [pk]
+  project_id char(36)
+  customer_id char(36)
+  title varchar(255) [not null]
+  category varchar(100) [not null, default: 'Diger']
+  amount decimal(14,2) [not null, default: 0.00]
+  expense_date date [not null]
+  description text
+  document_url text
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table ak_customer_notes {
+  id char(36) [pk]
+  customer_id char(36) [not null]
+  note text [not null]
+  created_at datetime [not null]
+}
+
+Table ak_documents {
+  id char(36) [pk]
+  customer_id char(36)
+  project_id char(36)
+  title varchar(255) [not null]
+  document_type varchar(100) [not null, default: 'Diger']
+  file_url text [not null]
+  notes text
+  created_at datetime [not null]
+}
+
+Table ak_notifications {
+  id char(36) [pk]
+  title varchar(255) [not null]
+  message text [not null]
+  type varchar(100) [not null, default: 'Genel']
+  priority varchar(50) [not null, default: 'Orta']
+  related_customer_id char(36)
+  related_project_id char(36)
+  related_payment_plan_id char(36)
+  is_read tinyint [not null, default: 0]
+  created_at datetime [not null]
+}
+
+Table ak_employees {
+  id char(36) [pk]
+  full_name varchar(255) [not null]
+  phone varchar(100)
+  role varchar(100)
+  notes text
+  status varchar(50) [not null, default: 'Aktif']
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table ak_expense_cards {
+  id char(36) [pk]
+  name varchar(255) [not null]
+  category varchar(100)
+  description text
+  status varchar(50) [not null, default: 'Aktif']
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table ak_financial_entries {
+  id char(36) [pk]
+  project_id char(36)
+  entry_date date [not null]
+  business_transaction_id char(36)
+  event_type varchar(50)
+  source_type varchar(50)
+  source_id char(36) [note: 'soft polymorphic source id']
+  source_version varchar(30)
+  payment_plan_id char(36) [note: 'soft FK to ak_payment_plans.id']
+  parent_entry_id char(36) [note: 'soft self FK']
+  counterparty_type varchar(30)
+  counterparty_id char(36) [note: 'soft polymorphic FK']
+  account_type varchar(20)
+  allocation_scope varchar(30)
+  allocation_note text
+  transaction_date date
+  due_date date
+  exchange_rate decimal(18,8)
+  base_amount decimal(18,2)
+  category_code varchar(80)
+  subcategory_code varchar(80)
+  document_id char(36) [note: 'soft FK to ak_documents.id']
+  migration_confidence varchar(30)
+  reconciliation_status varchar(30)
+  archived_at datetime
+  archived_by char(36) [note: 'soft FK to ak_admin_users.id']
+  canceled_at datetime
+  canceled_by char(36) [note: 'soft FK to ak_admin_users.id']
+  cancellation_reason text
+  reversal_entry_id char(36) [note: 'soft self FK']
+  card_type varchar(50) [not null]
+  customer_id char(36)
+  employee_id char(36)
+  expense_card_id char(36)
+  title varchar(255) [not null]
+  description text
+  amount decimal(14,2) [not null, default: 0.00]
+  currency_tag varchar(10) [not null, default: 'TRY']
+  group_tag varchar(50) [not null, default: 'Resmi']
+  direction varchar(50) [not null]
+  status varchar(50) [not null, default: 'Gerceklesti']
+  document_url text
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table ak_payment_plan_settlements {
+  id char(36) [pk]
+  payment_plan_id char(36) [not null]
+  financial_entry_id char(36) [not null]
+  allocated_amount decimal(18,2) [not null]
+  currency varchar(10) [not null]
+  account_type varchar(20) [not null]
+  created_by char(36)
+  created_at datetime [not null]
+  reversed_at datetime
+  reversed_by char(36)
+  reversal_reason text
+  active_pair_guard tinyint [note: 'generated active pair guard']
+}
+
+Table ak_cookie_consents {
+  id char(36) [pk]
+  consent_status varchar(50) [not null]
+  necessary tinyint [not null, default: 1]
+  analytics tinyint [not null, default: 0]
+  marketing tinyint [not null, default: 0]
+  user_agent text
+  created_at datetime [not null]
+}
+
+Table ak_push_subscriptions {
+  id varchar(36) [pk]
+  admin_id varchar(191) [not null, note: 'soft FK to ak_admin_users.id']
+  endpoint text [not null]
+  endpoint_hash char(64) [not null, unique]
+  p256dh text [not null]
+  auth text [not null]
+  user_agent text
+  created_at datetime [not null]
+  updated_at datetime [not null]
+  last_used_at datetime
+}
+
+Ref: ak_profiles.user_id > ak_admin_users.id [delete: cascade]
+Ref: ak_user_roles.user_id > ak_admin_users.id [delete: cascade]
+Ref: ak_project_images.project_id > ak_projects.id [delete: cascade]
+Ref: ak_media_library.related_project_id > ak_projects.id [delete: set null]
+Ref: ak_customer_projects.customer_id > ak_customers.id [delete: cascade]
+Ref: ak_customer_projects.project_id > ak_projects.id [delete: cascade]
+Ref: ak_payment_plans.customer_id > ak_customers.id [delete: set null]
+Ref: ak_payment_plans.project_id > ak_projects.id [delete: set null]
+Ref: ak_payments.customer_id > ak_customers.id [delete: set null]
+Ref: ak_payments.project_id > ak_projects.id [delete: set null]
+Ref: ak_payments.payment_plan_id > ak_payment_plans.id [delete: set null]
+Ref: ak_expenses.project_id > ak_projects.id [delete: set null]
+Ref: ak_expenses.customer_id > ak_customers.id [delete: set null]
+Ref: ak_customer_notes.customer_id > ak_customers.id [delete: cascade]
+Ref: ak_documents.customer_id > ak_customers.id [delete: set null]
+Ref: ak_documents.project_id > ak_projects.id [delete: set null]
+Ref: ak_notifications.related_customer_id > ak_customers.id [delete: set null]
+Ref: ak_notifications.related_project_id > ak_projects.id [delete: set null]
+Ref: ak_notifications.related_payment_plan_id > ak_payment_plans.id [delete: set null]
+Ref: ak_financial_entries.project_id > ak_projects.id [delete: set null]
+Ref: ak_financial_entries.customer_id > ak_customers.id [delete: set null]
+Ref: ak_financial_entries.employee_id > ak_employees.id [delete: set null]
+Ref: ak_financial_entries.expense_card_id > ak_expense_cards.id [delete: set null]
+Ref: ak_payment_plan_settlements.payment_plan_id > ak_payment_plans.id [delete: restrict]
+Ref: ak_payment_plan_settlements.financial_entry_id > ak_financial_entries.id [delete: restrict]
+Ref: ak_payment_plan_settlements.created_by > ak_admin_users.id [delete: restrict]
+Ref: ak_payment_plan_settlements.reversed_by > ak_admin_users.id [delete: restrict]
+
+// Soft refs, inferred from API/dashboard code:
+// ak_payment_plans.employee_id > ak_employees.id
+// ak_payment_plans.expense_card_id > ak_expense_cards.id
+// ak_payment_plans.archived_by > ak_admin_users.id
+// ak_payment_plans.canceled_by > ak_admin_users.id
+// ak_financial_entries.payment_plan_id > ak_payment_plans.id
+// ak_financial_entries.parent_entry_id > ak_financial_entries.id
+// ak_financial_entries.reversal_entry_id > ak_financial_entries.id
+// ak_financial_entries.document_id > ak_documents.id
+// ak_financial_entries.archived_by > ak_admin_users.id
+// ak_financial_entries.canceled_by > ak_admin_users.id
+// ak_push_subscriptions.admin_id > ak_admin_users.id

@@ -1,0 +1,364 @@
+﻿<svg xmlns='http://www.w3.org/2000/svg' width='4400' height='2700' viewBox='0 0 4400 2700'>
+<defs><marker id='arrow-real' viewBox='0 0 10 10' refX='9' refY='5' markerWidth='9' markerHeight='9' orient='auto-start-reverse'><path d='M 0 0 L 10 5 L 0 10 z' fill='#334155'/></marker><marker id='arrow-soft' viewBox='0 0 10 10' refX='9' refY='5' markerWidth='9' markerHeight='9' orient='auto-start-reverse'><path d='M 0 0 L 10 5 L 0 10 z' fill='#64748B'/></marker><marker id='arrow-flow' viewBox='0 0 10 10' refX='9' refY='5' markerWidth='11' markerHeight='11' orient='auto-start-reverse'><path d='M 0 0 L 10 5 L 0 10 z' fill='#D97706'/></marker><filter id='shadow' x='-10%' y='-10%' width='120%' height='120%'><feDropShadow dx='0' dy='3' stdDeviation='4' flood-color='#0f172a' flood-opacity='.16'/></filter></defs>
+<rect width='100%' height='100%' fill='#F8FAFC'/>
+<text x='80' y='78' font-family='Segoe UI, Arial' font-size='42' font-weight='800' fill='#0F172A'>Akinal SQL Structure Diagram</text>
+<text x='80' y='118' font-family='Segoe UI, Arial' font-size='20' fill='#475569'>Large landscape database map generated from DBML. Solid = real FK, dashed = soft/inferred FK, amber = finance flow.</text>
+<rect x='700' y='160' width='1120' height='1180' rx='24' fill='#EEF4FF' stroke='#3B66B8' stroke-width='3' opacity='.92'/>
+<text x='728' y='206' font-family='Segoe UI, Arial' font-size='28' font-weight='800' fill='#315AA3'>CRM</text>
+<rect x='80' y='960' width='2440' height='860' rx='24' fill='#F1F5F9' stroke='#475569' stroke-width='3' opacity='.92'/>
+<text x='108' y='1006' font-family='Segoe UI, Arial' font-size='28' font-weight='800' fill='#334155'>Admin</text>
+<rect x='80' y='160' width='540' height='700' rx='24' fill='#E7F5EE' stroke='#2F7D57' stroke-width='3' opacity='.92'/>
+<text x='108' y='206' font-family='Segoe UI, Arial' font-size='28' font-weight='800' fill='#2F7D57'>Public</text>
+<rect x='1900' y='160' width='620' height='980' rx='24' fill='#FFF4E5' stroke='#B66A00' stroke-width='3' opacity='.92'/>
+<text x='1928' y='206' font-family='Segoe UI, Arial' font-size='28' font-weight='800' fill='#A35E00'>Projects</text>
+<rect x='2600' y='160' width='1720' height='2100' rx='24' fill='#F7ECFF' stroke='#7A49A5' stroke-width='3' opacity='.92'/>
+<text x='2628' y='206' font-family='Segoe UI, Arial' font-size='28' font-weight='800' fill='#6F3E98'>Finance</text>
+<line x1='685' y1='1152.7' x2='585' y2='1158.8' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='1255' y1='1145.6' x2='585' y2='1165.9' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='2170' y1='610' x2='2170' y2='611' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='2170' y1='840' x2='2170' y2='611' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='1305' y1='371.4' x2='1205' y2='387.6' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='1775' y1='367.8' x2='1935' y2='391.2' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='2635' y1='496' x2='1205' y2='435.5' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='2635' y1='479' x2='2405' y2='452.5' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='2635' y1='993.8' x2='1205' y2='505.7' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='2635' y1='856.3' x2='2405' y2='643.2' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='2870' y1='900' x2='2870' y2='772' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='3190' y1='943.2' x2='2405' y2='544.8' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='3190' y1='1001.5' x2='1205' y2='486.5' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='970' y1='590' x2='970' y2='611' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='1305' y1='597.4' x2='1205' y2='546.1' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='1775' y1='608.9' x2='1935' y2='534.6' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='926.9' y1='1365' x2='961.5' y2='611' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='1155' y1='1311' x2='1935' y2='630.5' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='1155' y1='1394.3' x2='2635' y2='627.7' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='3190' y1='500.3' x2='2405' y2='442.7' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='3190' y1='508.7' x2='1205' y2='434.3' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='3660' y1='733.7' x2='3745' y2='811.8' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='3610.8' y1='795' x2='3902' y2='1230' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='3745' y1='433.5' x2='3105' y2='486.5' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='3745' y1='457.8' x2='3660' y2='473.7' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='3745' y1='463.1' x2='585' y2='1123.9' stroke='#334155' stroke-width='3' opacity='.72' marker-end='url(#arrow-real)'/>
+<line x1='3105' y1='616.5' x2='3745' y2='917.5' stroke='#64748B' stroke-width='3' opacity='.72' stroke-dasharray='12 9' marker-end='url(#arrow-soft)'/>
+<line x1='3105' y1='683.9' x2='3745' y2='1168.6' stroke='#64748B' stroke-width='3' opacity='.72' stroke-dasharray='12 9' marker-end='url(#arrow-soft)'/>
+<line x1='2635' y1='568.2' x2='585' y2='1110.8' stroke='#64748B' stroke-width='3' opacity='.72' stroke-dasharray='12 9' marker-end='url(#arrow-soft)'/>
+<line x1='3190' y1='512.6' x2='3105' y2='510.9' stroke='#64748B' stroke-width='3' opacity='.72' stroke-dasharray='12 9' marker-end='url(#arrow-soft)'/>
+<line x1='3425' y1='795' x2='3425' y2='795' stroke='#64748B' stroke-width='3' opacity='.72' stroke-dasharray='12 9' marker-end='url(#arrow-soft)'/>
+<line x1='3190' y1='542.5' x2='1775' y2='693' stroke='#64748B' stroke-width='3' opacity='.72' stroke-dasharray='12 9' marker-end='url(#arrow-soft)'/>
+<line x1='3190' y1='567.6' x2='585' y2='1122.9' stroke='#64748B' stroke-width='3' opacity='.72' stroke-dasharray='12 9' marker-end='url(#arrow-soft)'/>
+<line x1='1255' y1='1445.3' x2='585' y2='1243.7' stroke='#64748B' stroke-width='3' opacity='.72' stroke-dasharray='12 9' marker-end='url(#arrow-soft)'/>
+<line x1='3105' y1='486.5' x2='3745' y2='433.5' stroke='#D97706' stroke-width='6' opacity='.72' marker-end='url(#arrow-flow)'/>
+<line x1='3043.5' y1='900' x2='3148.2' y2='795' stroke='#D97706' stroke-width='6' opacity='.72' marker-end='url(#arrow-flow)'/>
+<line x1='3425' y1='900' x2='3425' y2='795' stroke='#D97706' stroke-width='6' opacity='.72' marker-end='url(#arrow-flow)'/>
+<line x1='3745' y1='457.8' x2='3660' y2='473.7' stroke='#D97706' stroke-width='6' opacity='.72' marker-end='url(#arrow-flow)'/>
+<rect x='1935' y='610' width='470' height='256' rx='14' fill='#FFFFFF' stroke='#B66A00' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='1935' y='610' width='470' height='44' rx='14' fill='#A35E00'/>
+<path d='M 1935 640 H 2405 V 654 H 1935 Z' fill='#A35E00'/>
+<text x='1951' y='640' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_project_images</text>
+<text x='1951' y='684' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='1951' y='707' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK project_id : char(36)</text>
+<text x='1951' y='730' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   image_url : text</text>
+<text x='1951' y='753' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   thumbnail_url : text</text>
+<text x='1951' y='776' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   title : varchar(255)</text>
+<text x='1951' y='799' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   alt_text : varchar(255)</text>
+<text x='1951' y='822' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   sort_order : int</text>
+<text x='1951' y='845' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<rect x='685' y='1365' width='470' height='302' rx='14' fill='#FFFFFF' stroke='#475569' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='685' y='1365' width='470' height='44' rx='14' fill='#334155'/>
+<path d='M 685 1395 H 1155 V 1409 H 685 Z' fill='#334155'/>
+<text x='701' y='1395' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_notifications</text>
+<text x='701' y='1439' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='701' y='1462' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   title : varchar(255)</text>
+<text x='701' y='1485' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   message : text</text>
+<text x='701' y='1508' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   type : varchar(100)</text>
+<text x='701' y='1531' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   priority : varchar(50)</text>
+<text x='701' y='1554' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK related_customer_id : char(36)</text>
+<text x='701' y='1577' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK related_project_id : char(36)</text>
+<text x='701' y='1600' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK related_payment_plan_id : char(36)</text>
+<text x='701' y='1623' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   is_read : tinyint</text>
+<text x='701' y='1646' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<rect x='3745' y='240' width='470' height='348' rx='14' fill='#FFFFFF' stroke='#7A49A5' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='3745' y='240' width='470' height='44' rx='14' fill='#6F3E98'/>
+<path d='M 3745 270 H 4215 V 284 H 3745 Z' fill='#6F3E98'/>
+<text x='3761' y='270' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_payment_plan_settlements</text>
+<text x='3761' y='314' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='3761' y='337' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK payment_plan_id : char(36)</text>
+<text x='3761' y='360' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK financial_entry_id : char(36)</text>
+<text x='3761' y='383' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   allocated_amount : decimal(18,2)</text>
+<text x='3761' y='406' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   currency : varchar(10)</text>
+<text x='3761' y='429' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   account_type : varchar(20)</text>
+<text x='3761' y='452' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK created_by : char(36)</text>
+<text x='3761' y='475' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<text x='3761' y='498' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   reversed_at : datetime</text>
+<text x='3761' y='521' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK reversed_by : char(36)</text>
+<text x='3761' y='544' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   reversal_reason : text</text>
+<text x='3761' y='567' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   active_pair_guard : tinyint</text>
+<rect x='1935' y='240' width='470' height='371' rx='14' fill='#FFFFFF' stroke='#B66A00' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='1935' y='240' width='470' height='44' rx='14' fill='#A35E00'/>
+<path d='M 1935 270 H 2405 V 284 H 1935 Z' fill='#A35E00'/>
+<text x='1951' y='270' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_projects</text>
+<text x='1951' y='314' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='1951' y='337' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   title : varchar(255)</text>
+<text x='1951' y='360' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   slug : varchar(255)</text>
+<text x='1951' y='383' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   short_description : text</text>
+<text x='1951' y='406' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   detailed_description : longtext</text>
+<text x='1951' y='429' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   project_type : varchar(100)</text>
+<text x='1951' y='452' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   project_status : varchar(100)</text>
+<text x='1951' y='475' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   location : varchar(255)</text>
+<text x='1951' y='498' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   city : varchar(100)</text>
+<text x='1951' y='521' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   district : varchar(100)</text>
+<text x='1951' y='544' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   start_year : varchar(20)</text>
+<text x='1951' y='567' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   delivery_year : varchar(20)</text>
+<text x='1951' y='590' font-family='Segoe UI, Arial' font-size='14' font-weight='700' fill='#64748B'>... 13 more columns</text>
+<rect x='115' y='1045' width='470' height='256' rx='14' fill='#FFFFFF' stroke='#475569' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='115' y='1045' width='470' height='44' rx='14' fill='#334155'/>
+<path d='M 115 1075 H 585 V 1089 H 115 Z' fill='#334155'/>
+<text x='131' y='1075' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_admin_users</text>
+<text x='131' y='1119' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='131' y='1142' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   email : varchar(255)</text>
+<text x='131' y='1165' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   email_lower : varchar(255)</text>
+<text x='131' y='1188' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   password_hash : varchar(255)</text>
+<text x='131' y='1211' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   role : varchar(50)</text>
+<text x='131' y='1234' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   is_active : tinyint</text>
+<text x='131' y='1257' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<text x='131' y='1280' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   updated_at : datetime</text>
+<rect x='115' y='675' width='470' height='233' rx='14' fill='#FFFFFF' stroke='#2F7D57' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='115' y='675' width='470' height='44' rx='14' fill='#2F7D57'/>
+<path d='M 115 705 H 585 V 719 H 115 Z' fill='#2F7D57'/>
+<text x='131' y='705' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_cookie_consents</text>
+<text x='131' y='749' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='131' y='772' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   consent_status : varchar(50)</text>
+<text x='131' y='795' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   necessary : tinyint</text>
+<text x='131' y='818' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   analytics : tinyint</text>
+<text x='131' y='841' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   marketing : tinyint</text>
+<text x='131' y='864' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   user_agent : text</text>
+<text x='131' y='887' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<rect x='3190' y='240' width='470' height='555' rx='14' fill='#FFFFFF' stroke='#7A49A5' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='3190' y='240' width='470' height='44' rx='14' fill='#6F3E98'/>
+<path d='M 3190 270 H 3660 V 284 H 3190 Z' fill='#6F3E98'/>
+<text x='3206' y='270' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_financial_entries</text>
+<text x='3206' y='314' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='3206' y='337' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK project_id : char(36)</text>
+<text x='3206' y='360' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   entry_date : date</text>
+<text x='3206' y='383' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK business_transaction_id : char(36)</text>
+<text x='3206' y='406' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   event_type : varchar(50)</text>
+<text x='3206' y='429' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   source_type : varchar(50)</text>
+<text x='3206' y='452' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK source_id : char(36)</text>
+<text x='3206' y='475' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   source_version : varchar(30)</text>
+<text x='3206' y='498' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK payment_plan_id : char(36)</text>
+<text x='3206' y='521' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK parent_entry_id : char(36)</text>
+<text x='3206' y='544' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   counterparty_type : varchar(30)</text>
+<text x='3206' y='567' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK counterparty_id : char(36)</text>
+<text x='3206' y='590' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   account_type : varchar(20)</text>
+<text x='3206' y='613' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   allocation_scope : varchar(30)</text>
+<text x='3206' y='636' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   allocation_note : text</text>
+<text x='3206' y='659' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   transaction_date : date</text>
+<text x='3206' y='682' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   due_date : date</text>
+<text x='3206' y='705' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   exchange_rate : decimal(18,8)</text>
+<text x='3206' y='728' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   base_amount : decimal(18,2)</text>
+<text x='3206' y='751' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   category_code : varchar(80)</text>
+<text x='3206' y='774' font-family='Segoe UI, Arial' font-size='14' font-weight='700' fill='#64748B'>... 24 more columns</text>
+<rect x='2635' y='900' width='470' height='348' rx='14' fill='#FFFFFF' stroke='#7A49A5' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='2635' y='900' width='470' height='44' rx='14' fill='#6F3E98'/>
+<path d='M 2635 930 H 3105 V 944 H 2635 Z' fill='#6F3E98'/>
+<text x='2651' y='930' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_payments</text>
+<text x='2651' y='974' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='2651' y='997' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK customer_id : char(36)</text>
+<text x='2651' y='1020' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK project_id : char(36)</text>
+<text x='2651' y='1043' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK payment_plan_id : char(36)</text>
+<text x='2651' y='1066' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   amount : decimal(14,2)</text>
+<text x='2651' y='1089' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   account_type : varchar(20)</text>
+<text x='2651' y='1112' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   payment_date : date</text>
+<text x='2651' y='1135' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   payment_method : varchar(100)</text>
+<text x='2651' y='1158' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   description : text</text>
+<text x='2651' y='1181' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   document_url : text</text>
+<text x='2651' y='1204' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<text x='2651' y='1227' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   updated_at : datetime</text>
+<rect x='115' y='475' width='470' height='256' rx='14' fill='#FFFFFF' stroke='#2F7D57' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='115' y='475' width='470' height='44' rx='14' fill='#2F7D57'/>
+<path d='M 115 505 H 585 V 519 H 115 Z' fill='#2F7D57'/>
+<text x='131' y='505' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_contact_requests</text>
+<text x='131' y='549' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='131' y='572' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   full_name : varchar(255)</text>
+<text x='131' y='595' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   phone : varchar(100)</text>
+<text x='131' y='618' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   email : varchar(255)</text>
+<text x='131' y='641' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   service_type : varchar(100)</text>
+<text x='131' y='664' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   message : text</text>
+<text x='131' y='687' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   status : varchar(50)</text>
+<text x='131' y='710' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<rect x='1305' y='240' width='470' height='187' rx='14' fill='#FFFFFF' stroke='#3B66B8' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='1305' y='240' width='470' height='44' rx='14' fill='#315AA3'/>
+<path d='M 1305 270 H 1775 V 284 H 1305 Z' fill='#315AA3'/>
+<text x='1321' y='270' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_customer_projects</text>
+<text x='1321' y='314' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='1321' y='337' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK customer_id : char(36)</text>
+<text x='1321' y='360' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK project_id : char(36)</text>
+<text x='1321' y='383' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<text x='1321' y='406' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   indexes : {</text>
+<rect x='2635' y='240' width='470' height='532' rx='14' fill='#FFFFFF' stroke='#7A49A5' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='2635' y='240' width='470' height='44' rx='14' fill='#6F3E98'/>
+<path d='M 2635 270 H 3105 V 284 H 2635 Z' fill='#6F3E98'/>
+<text x='2651' y='270' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_payment_plans</text>
+<text x='2651' y='314' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='2651' y='337' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK customer_id : char(36)</text>
+<text x='2651' y='360' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK employee_id : char(36)</text>
+<text x='2651' y='383' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK expense_card_id : char(36)</text>
+<text x='2651' y='406' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK project_id : char(36)</text>
+<text x='2651' y='429' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK business_transaction_id : char(36)</text>
+<text x='2651' y='452' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   counterparty_type : varchar(30)</text>
+<text x='2651' y='475' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK counterparty_id : char(36)</text>
+<text x='2651' y='498' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   direction : varchar(20)</text>
+<text x='2651' y='521' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   currency : varchar(10)</text>
+<text x='2651' y='544' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   allocation_scope : varchar(30)</text>
+<text x='2651' y='567' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   allocation_note : text</text>
+<text x='2651' y='590' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   category_code : varchar(80)</text>
+<text x='2651' y='613' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   subcategory_code : varchar(80)</text>
+<text x='2651' y='636' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   migration_confidence : varchar(30)</text>
+<text x='2651' y='659' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   reconciliation_status : varchar(30)</text>
+<text x='2651' y='682' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   archived_at : datetime</text>
+<text x='2651' y='705' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK archived_by : char(36)</text>
+<text x='2651' y='728' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   canceled_at : datetime</text>
+<text x='2651' y='751' font-family='Segoe UI, Arial' font-size='14' font-weight='700' fill='#64748B'>... 19 more columns</text>
+<rect x='3190' y='900' width='470' height='325' rx='14' fill='#FFFFFF' stroke='#7A49A5' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='3190' y='900' width='470' height='44' rx='14' fill='#6F3E98'/>
+<path d='M 3190 930 H 3660 V 944 H 3190 Z' fill='#6F3E98'/>
+<text x='3206' y='930' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_expenses</text>
+<text x='3206' y='974' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='3206' y='997' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK project_id : char(36)</text>
+<text x='3206' y='1020' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK customer_id : char(36)</text>
+<text x='3206' y='1043' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   title : varchar(255)</text>
+<text x='3206' y='1066' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   category : varchar(100)</text>
+<text x='3206' y='1089' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   amount : decimal(14,2)</text>
+<text x='3206' y='1112' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   expense_date : date</text>
+<text x='3206' y='1135' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   description : text</text>
+<text x='3206' y='1158' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   document_url : text</text>
+<text x='3206' y='1181' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<text x='3206' y='1204' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   updated_at : datetime</text>
+<rect x='1255' y='1045' width='470' height='187' rx='14' fill='#FFFFFF' stroke='#475569' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='1255' y='1045' width='470' height='44' rx='14' fill='#334155'/>
+<path d='M 1255 1075 H 1725 V 1089 H 1255 Z' fill='#334155'/>
+<text x='1271' y='1075' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_user_roles</text>
+<text x='1271' y='1119' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='1271' y='1142' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK user_id : char(36)</text>
+<text x='1271' y='1165' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   role : varchar(50)</text>
+<text x='1271' y='1188' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<text x='1271' y='1211' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   indexes : {</text>
+<rect x='115' y='240' width='470' height='371' rx='14' fill='#FFFFFF' stroke='#2F7D57' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='115' y='240' width='470' height='44' rx='14' fill='#2F7D57'/>
+<path d='M 115 270 H 585 V 284 H 115 Z' fill='#2F7D57'/>
+<text x='131' y='270' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_site_settings</text>
+<text x='131' y='314' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='131' y='337' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   company_name : varchar(255)</text>
+<text x='131' y='360' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   phone : varchar(50)</text>
+<text x='131' y='383' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   whatsapp_number : varchar(50)</text>
+<text x='131' y='406' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   email : varchar(255)</text>
+<text x='131' y='429' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   address : text</text>
+<text x='131' y='452' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   map_embed_url : text</text>
+<text x='131' y='475' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   instagram_url : text</text>
+<text x='131' y='498' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   facebook_url : text</text>
+<text x='131' y='521' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   linkedin_url : text</text>
+<text x='131' y='544' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   footer_description : text</text>
+<text x='131' y='567' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   hero_title : varchar(255)</text>
+<text x='131' y='590' font-family='Segoe UI, Arial' font-size='14' font-weight='700' fill='#64748B'>... 5 more columns</text>
+<rect x='1305' y='590' width='470' height='256' rx='14' fill='#FFFFFF' stroke='#3B66B8' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='1305' y='590' width='470' height='44' rx='14' fill='#315AA3'/>
+<path d='M 1305 620 H 1775 V 634 H 1305 Z' fill='#315AA3'/>
+<text x='1321' y='620' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_documents</text>
+<text x='1321' y='664' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='1321' y='687' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK customer_id : char(36)</text>
+<text x='1321' y='710' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK project_id : char(36)</text>
+<text x='1321' y='733' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   title : varchar(255)</text>
+<text x='1321' y='756' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   document_type : varchar(100)</text>
+<text x='1321' y='779' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   file_url : text</text>
+<text x='1321' y='802' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   notes : text</text>
+<text x='1321' y='825' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<rect x='735' y='590' width='470' height='164' rx='14' fill='#FFFFFF' stroke='#3B66B8' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='735' y='590' width='470' height='44' rx='14' fill='#315AA3'/>
+<path d='M 735 620 H 1205 V 634 H 735 Z' fill='#315AA3'/>
+<text x='751' y='620' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_customer_notes</text>
+<text x='751' y='664' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='751' y='687' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK customer_id : char(36)</text>
+<text x='751' y='710' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   note : text</text>
+<text x='751' y='733' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<rect x='1255' y='1365' width='470' height='302' rx='14' fill='#FFFFFF' stroke='#475569' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='1255' y='1365' width='470' height='44' rx='14' fill='#334155'/>
+<path d='M 1255 1395 H 1725 V 1409 H 1255 Z' fill='#334155'/>
+<text x='1271' y='1395' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_push_subscriptions</text>
+<text x='1271' y='1439' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : varchar(36)</text>
+<text x='1271' y='1462' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK admin_id : varchar(191)</text>
+<text x='1271' y='1485' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   endpoint : text</text>
+<text x='1271' y='1508' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   endpoint_hash : char(64)</text>
+<text x='1271' y='1531' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   p256dh : text</text>
+<text x='1271' y='1554' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   auth : text</text>
+<text x='1271' y='1577' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   user_agent : text</text>
+<text x='1271' y='1600' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<text x='1271' y='1623' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   updated_at : datetime</text>
+<text x='1271' y='1646' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   last_used_at : datetime</text>
+<rect x='3745' y='900' width='470' height='256' rx='14' fill='#FFFFFF' stroke='#7A49A5' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='3745' y='900' width='470' height='44' rx='14' fill='#6F3E98'/>
+<path d='M 3745 930 H 4215 V 944 H 3745 Z' fill='#6F3E98'/>
+<text x='3761' y='930' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_employees</text>
+<text x='3761' y='974' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='3761' y='997' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   full_name : varchar(255)</text>
+<text x='3761' y='1020' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   phone : varchar(100)</text>
+<text x='3761' y='1043' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   role : varchar(100)</text>
+<text x='3761' y='1066' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   notes : text</text>
+<text x='3761' y='1089' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   status : varchar(50)</text>
+<text x='3761' y='1112' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<text x='3761' y='1135' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   updated_at : datetime</text>
+<rect x='685' y='1045' width='470' height='187' rx='14' fill='#FFFFFF' stroke='#475569' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='685' y='1045' width='470' height='44' rx='14' fill='#334155'/>
+<path d='M 685 1075 H 1155 V 1089 H 685 Z' fill='#334155'/>
+<text x='701' y='1075' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_profiles</text>
+<text x='701' y='1119' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='701' y='1142' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK user_id : char(36)</text>
+<text x='701' y='1165' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   email : varchar(255)</text>
+<text x='701' y='1188' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   display_name : varchar(255)</text>
+<text x='701' y='1211' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<rect x='3745' y='1230' width='470' height='233' rx='14' fill='#FFFFFF' stroke='#7A49A5' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='3745' y='1230' width='470' height='44' rx='14' fill='#6F3E98'/>
+<path d='M 3745 1260 H 4215 V 1274 H 3745 Z' fill='#6F3E98'/>
+<text x='3761' y='1260' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_expense_cards</text>
+<text x='3761' y='1304' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='3761' y='1327' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   name : varchar(255)</text>
+<text x='3761' y='1350' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   category : varchar(100)</text>
+<text x='3761' y='1373' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   description : text</text>
+<text x='3761' y='1396' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   status : varchar(50)</text>
+<text x='3761' y='1419' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<text x='3761' y='1442' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   updated_at : datetime</text>
+<rect x='1935' y='840' width='470' height='256' rx='14' fill='#FFFFFF' stroke='#B66A00' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='1935' y='840' width='470' height='44' rx='14' fill='#A35E00'/>
+<path d='M 1935 870 H 2405 V 884 H 1935 Z' fill='#A35E00'/>
+<text x='1951' y='870' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_media_library</text>
+<text x='1951' y='914' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='1951' y='937' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   image_url : text</text>
+<text x='1951' y='960' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   thumbnail_url : text</text>
+<text x='1951' y='983' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   file_name : varchar(255)</text>
+<text x='1951' y='1006' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   title : varchar(255)</text>
+<text x='1951' y='1029' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   alt_text : varchar(255)</text>
+<text x='1951' y='1052' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#1D4ED8'>FK related_project_id : char(36)</text>
+<text x='1951' y='1075' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   created_at : datetime</text>
+<rect x='735' y='240' width='470' height='371' rx='14' fill='#FFFFFF' stroke='#3B66B8' stroke-width='2.4' filter='url(#shadow)'/>
+<rect x='735' y='240' width='470' height='44' rx='14' fill='#315AA3'/>
+<path d='M 735 270 H 1205 V 284 H 735 Z' fill='#315AA3'/>
+<text x='751' y='270' font-family='Segoe UI, Arial' font-size='20' font-weight='800' fill='white'>ak_customers</text>
+<text x='751' y='314' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='800' fill='#7C2D12'>PK id : char(36)</text>
+<text x='751' y='337' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   customer_type : varchar(100)</text>
+<text x='751' y='360' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   full_name : varchar(255)</text>
+<text x='751' y='383' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   company_name : varchar(255)</text>
+<text x='751' y='406' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   phone : varchar(100)</text>
+<text x='751' y='429' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   whatsapp : varchar(100)</text>
+<text x='751' y='452' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   email : varchar(255)</text>
+<text x='751' y='475' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   tax_or_identity_number : varchar(100)</text>
+<text x='751' y='498' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   address : text</text>
+<text x='751' y='521' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   city : varchar(100)</text>
+<text x='751' y='544' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   district : varchar(100)</text>
+<text x='751' y='567' font-family='Consolas, Menlo, monospace' font-size='15' font-weight='500' fill='#334155'>   status : varchar(50)</text>
+<text x='751' y='590' font-family='Segoe UI, Arial' font-size='14' font-weight='700' fill='#64748B'>... 3 more columns</text>
+<rect x='2670' y='2350' width='1580' height='230' rx='22' fill='#FFFFFF' stroke='#CBD5E1' stroke-width='2' filter='url(#shadow)'/>
+<text x='2698' y='2392' font-family='Segoe UI, Arial' font-size='24' font-weight='800' fill='#0F172A'>Legend and finance source rules</text>
+<line x1='2702' y1='2428' x2='2860' y2='2428' stroke='#334155' stroke-width='4' marker-end='url(#arrow-real)'/><text x='2885' y='2435' font-family='Segoe UI, Arial' font-size='18' fill='#334155'>Real FK enforced by schema</text>
+<line x1='2702' y1='2468' x2='2860' y2='2468' stroke='#64748B' stroke-width='4' stroke-dasharray='12 9' marker-end='url(#arrow-soft)'/><text x='2885' y='2475' font-family='Segoe UI, Arial' font-size='18' fill='#334155'>Soft/inferred FK from API/dashboard code</text>
+<line x1='2702' y1='2508' x2='2860' y2='2508' stroke='#D97706' stroke-width='7' marker-end='url(#arrow-flow)'/><text x='2885' y='2515' font-family='Segoe UI, Arial' font-size='18' fill='#334155'>Finance flow: schedule/actual source tables toward canonical ledger/settlements</text>
+<text x='2702' y='2554' font-family='Segoe UI, Arial' font-size='17' fill='#475569'>ak_payment_plans = planned schedule | ak_payments = actual collection | ak_expenses = actual expense | ak_financial_entries = canonical ledger. Double-count risk when source tables and ledger are summed together.</text>
+</svg>
