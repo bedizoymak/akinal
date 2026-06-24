@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, Edit, Mail, MapPin, MessageCircle, Phone, Plus, Trash2 } from "lucide-react";
-import { accountType, allocateCollectionsToPlans, customerDisplayName, derivePlanStatus, displayLabel, formatTRY, formatDate, statusBadgeClass, daysUntil, safeNumber, whatsappLink } from "@/lib/finance";
+import { accountType, allocateCollectionsToPlans, customerDisplayName, derivePlanStatus, displayLabel, formatTRY, formatDate, statusBadgeClass, daysUntil, safeNumber, summarizeCustomerLedgerEntries, whatsappLink } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -82,6 +82,7 @@ export default function AdminCustomerDetail() {
   const [allProjects, setAllProjects] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [pays, setPays] = useState<any[]>([]);
+  const [financialEntries, setFinancialEntries] = useState<any[]>([]);
   const [notes, setNotes] = useState<any[]>([]);
   const [docs, setDocs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,6 +117,7 @@ export default function AdminCustomerDetail() {
       setProjects((data.projects || []).filter((p) => linkedIds.includes(p.id)));
       setPlans(data.payment_plans || []);
       setPays(data.payments || []);
+      setFinancialEntries(data.financial_entries || []);
       setNotes(data.notes || []);
       setDocs(data.documents || []);
     } catch (error) {
@@ -166,10 +168,26 @@ export default function AdminCustomerDetail() {
         const paid = safeNumber(plan.paid);
         return dueDate > today && paid <= 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal";
       });
-      result[account.value] = { totalDue, totalPaid, totalAmount, balance, overdue, upcoming, plans: enrichedPlans, accountSummaryPlans, futurePlans, chartFuturePlans: futureUnpaidPlans, pays: accountPays };
+      const ledgerSummary = summarizeCustomerLedgerEntries(financialEntries, {
+        group: account.value === "resmi" ? "Resmi" : "Gayri Resmi",
+        today,
+      });
+      result[account.value] = {
+        totalDue: ledgerSummary.hasEntries ? ledgerSummary.planned : totalDue,
+        totalPaid: ledgerSummary.hasEntries ? ledgerSummary.paid : totalPaid,
+        totalAmount: ledgerSummary.hasEntries ? ledgerSummary.totalAmount : totalAmount,
+        balance: ledgerSummary.hasEntries ? ledgerSummary.remaining : balance,
+        overdue: ledgerSummary.hasEntries ? ledgerSummary.overdue : overdue,
+        upcoming: ledgerSummary.hasEntries ? ledgerSummary.upcoming : upcoming,
+        plans: enrichedPlans,
+        accountSummaryPlans,
+        futurePlans,
+        chartFuturePlans: futureUnpaidPlans,
+        pays: accountPays,
+      };
       return result;
     }, {} as Record<string, any>);
-  }, [plans, pays, today]);
+  }, [plans, pays, financialEntries, today]);
 
   const accountPaymentCharts = useMemo(() => {
     const buildChart = (summary: any, accountLabel: string, colors: { paid: string; remaining: string }) => {
@@ -329,7 +347,7 @@ export default function AdminCustomerDetail() {
       <AdminPageHeader
         eyebrow="Cari ve Tahsilat"
         title={name}
-        description={`${displayLabel(customer.customer_type)} · ${displayLabel(customer.status)} · müşteri bakiyesi, tahsilat planı, notlar ve belgeler.`}
+        description={`${displayLabel(customer.customer_type)} · müşteri bakiyesi, tahsilat planı, notlar ve belgeler.`}
         actions={
           <>
           <Button asChild variant="outline"><Link to="/admin/musteriler"><ArrowLeft className="h-4 w-4" /> Müşterilere Dön</Link></Button>

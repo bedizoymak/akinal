@@ -5,8 +5,7 @@ import {
   type CanonicalReadSettlement,
 } from "@/lib/canonicalReadModel";
 
-export const CUSTOMER_TYPES = ["Bireysel", "Firma", "Arsa Sahibi", "Daire Sahibi", "Yatırımcı", "Diğer"] as const;
-export const CUSTOMER_STATUSES = ["Aktif", "Beklemede", "Tamamlandı", "Pasif"] as const;
+export const CUSTOMER_TYPES = ["Bireysel", "Kurumsal"] as const;
 export const PAYMENT_PLAN_STATUSES = ["Bekliyor", "Kısmi Ödendi", "Ödendi", "Vadesi Geçti", "İptal"] as const;
 export const PAYMENT_METHODS = ["Nakit", "Havale / EFT", "Kredi Kartı", "Çek", "Senet", "Diğer"] as const;
 export const CURRENCIES = ["TRY", "USD", "EUR"] as const;
@@ -59,10 +58,12 @@ export type PaymentPlanLike = {
 export type FinancialEntryLike = {
   amount?: number | string | null;
   entry_date?: string | null;
+  due_date?: string | null;
   direction?: string | null;
   status?: string | null;
   currency_tag?: string | null;
   group_tag?: string | null;
+  customer_id?: string | null;
   project_id?: string | null;
 };
 
@@ -621,6 +622,45 @@ export function summarizePaymentPlansWithCanonicalState(
     summary.activeCount += 1;
     return summary;
   }, { planned: 0, paid: 0, remaining: 0, overdue: 0, activeCount: 0 });
+}
+
+export function summarizeCustomerLedgerEntries(
+  entries: FinancialEntryLike[],
+  options: { currency?: CurrencyTag; group?: GroupTag | "all"; today?: string } = {},
+): CanonicalPlanSummary & { hasEntries: boolean; totalAmount: number; upcoming: number } {
+  const currency = options.currency ?? "TRY";
+  const group = options.group ?? "all";
+  const todayValue = options.today ?? new Date().toISOString().slice(0, 10);
+  const scoped = entries.filter((entry) =>
+    entry.direction === "Gelir"
+    && entry.status !== "İptal"
+    && (entry.currency_tag || "TRY") === currency
+    && (group === "all" || entry.group_tag === group)
+  );
+  const realized = scoped
+    .filter((entry) => entry.status === "Gerçekleşti")
+    .reduce((sum, entry) => sum + safeNumber(entry.amount), 0);
+  const plannedEntries = scoped.filter((entry) => entry.status === "Planlandı");
+  const planned = plannedEntries.reduce((sum, entry) => sum + safeNumber(entry.amount), 0);
+  const remaining = planned - realized;
+  const datedPlannedEntries = plannedEntries.filter((entry) => String(entry.due_date || entry.entry_date || "") !== "");
+  const overdue = datedPlannedEntries
+    .filter((entry) => String(entry.due_date || entry.entry_date || "") < todayValue)
+    .reduce((sum, entry) => sum + safeNumber(entry.amount), 0);
+  const upcoming = datedPlannedEntries
+    .filter((entry) => String(entry.due_date || entry.entry_date || "") >= todayValue)
+    .sort((a, b) => String(a.due_date || a.entry_date || "").localeCompare(String(b.due_date || b.entry_date || "")))[0];
+
+  return {
+    hasEntries: scoped.length > 0,
+    planned,
+    paid: realized,
+    remaining,
+    overdue,
+    upcoming: upcoming ? safeNumber(upcoming.amount) : 0,
+    totalAmount: planned,
+    activeCount: plannedEntries.length,
+  };
 }
 
 export function summarizeLegacyExpenseRowsWithCanonicalAdapter(

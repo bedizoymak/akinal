@@ -521,6 +521,7 @@ export interface AdminFinancialEntry {
   id: string;
   project_id: string | null;
   entry_date: string;
+  due_date?: string | null;
   card_type: CardType;
   customer_id: string | null;
   employee_id: string | null;
@@ -570,6 +571,7 @@ export interface AdminCustomerListResponse {
   customers: AdminCustomer[];
   payment_plans: Pick<AdminPaymentPlan, "customer_id" | "amount">[];
   payments: Pick<AdminPayment, "customer_id" | "amount">[];
+  financial_entries: AdminFinancialEntry[];
   customer_projects: AdminCustomerProjectLink[];
   projects: Pick<PublicProject, "id" | "title">[];
 }
@@ -580,6 +582,7 @@ export interface AdminCustomerDetailResponse {
   projects: Pick<PublicProject, "id" | "title" | "slug">[];
   payment_plans: AdminPaymentPlan[];
   payments: AdminPayment[];
+  financial_entries: AdminFinancialEntry[];
   expenses: Record<string, unknown>[];
   notes: AdminCustomerNote[];
   documents: Record<string, unknown>[];

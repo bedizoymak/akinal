@@ -20,6 +20,7 @@ try {
                 'projects' => fetch_all('SELECT id, title, slug FROM ak_projects ORDER BY sort_order ASC, created_at DESC'),
                 'payment_plans' => fetch_all('SELECT * FROM ak_payment_plans WHERE customer_id = :id ORDER BY due_date ASC', ['id' => $id]),
                 'payments' => fetch_all('SELECT * FROM ak_payments WHERE customer_id = :id ORDER BY payment_date DESC', ['id' => $id]),
+                'financial_entries' => fetch_all('SELECT * FROM ak_financial_entries WHERE customer_id = :id ORDER BY entry_date DESC, created_at DESC', ['id' => $id]),
                 'notes' => fetch_all('SELECT * FROM ak_customer_notes WHERE customer_id = :id ORDER BY created_at DESC', ['id' => $id]),
                 'documents' => fetch_all('SELECT * FROM ak_documents WHERE customer_id = :id ORDER BY created_at DESC', ['id' => $id]),
             ]);
@@ -29,6 +30,7 @@ try {
             'customers' => fetch_all('SELECT * FROM ak_customers ORDER BY created_at DESC'),
             'payment_plans' => fetch_all('SELECT id, customer_id, amount, paid_amount, account_type, due_date, status FROM ak_payment_plans'),
             'payments' => fetch_all('SELECT customer_id, payment_plan_id, amount, account_type FROM ak_payments'),
+            'financial_entries' => fetch_all("SELECT id, customer_id, amount, currency_tag, group_tag, direction, status, entry_date, due_date FROM ak_financial_entries WHERE customer_id IS NOT NULL AND direction = 'Gelir' AND status <> 'İptal'"),
             'customer_projects' => fetch_all('SELECT customer_id, project_id FROM ak_customer_projects'),
             'projects' => fetch_all('SELECT id, title FROM ak_projects ORDER BY sort_order ASC, created_at DESC'),
         ]);
@@ -48,10 +50,11 @@ try {
 
         $id = uuid_v4();
         $payload = customer_payload($input);
+        $projectIds = require_customer_project_ids($input['project_ids'] ?? []);
         $payload['id'] = $id;
         db()->beginTransaction();
         insert_row('ak_customers', $payload);
-        replace_customer_projects($id, $input['project_ids'] ?? []);
+        replace_customer_projects($id, $projectIds);
         db()->commit();
         json_success(['customer' => fetch_customer($id)], 201);
     }
@@ -63,9 +66,10 @@ try {
             json_error('Müşteri bulunamadı.', 404);
         }
         $payload = customer_payload($input);
+        $projectIds = require_customer_project_ids($input['project_ids'] ?? []);
         db()->beginTransaction();
         update_row('ak_customers', $payload, $id);
-        replace_customer_projects($id, $input['project_ids'] ?? []);
+        replace_customer_projects($id, $projectIds);
         db()->commit();
         json_success(['customer' => fetch_customer($id)]);
     }
@@ -144,15 +148,53 @@ function ensure_account_type_column(string $table, string $afterColumn): void
 
 function customer_payload(array $input): array
 {
+    $customerType = nullable_string($input, 'customer_type') ?? 'Bireysel';
+    if ($customerType === 'Firma') {
+        $customerType = 'Kurumsal';
+    }
+    if (!in_array($customerType, ['Bireysel', 'Kurumsal'], true)) {
+        json_error('Müşteri türü Bireysel veya Kurumsal olmalıdır.');
+    }
+
+    $isCorporate = $customerType === 'Kurumsal';
+    $fullName = nullable_string($input, 'full_name');
+    $companyName = nullable_string($input, 'company_name');
+    if ($isCorporate && $companyName === null) {
+        json_error('Firma Resmi Ünvanı zorunludur.');
+    }
+    if (!$isCorporate && $fullName === null) {
+        json_error('Ad Soyad zorunludur.');
+    }
+
+    $phone = normalize_customer_phone(require_non_empty($input, 'phone', 'Telefon zorunludur.'));
+    $whatsappInput = nullable_string($input, 'whatsapp');
+    $whatsapp = $whatsappInput === null ? null : normalize_customer_whatsapp($whatsappInput);
+    $email = nullable_string($input, 'email');
+    if ($email !== null && filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+        json_error('Geçerli bir e-posta adresi girin.');
+    }
+
+    $taxNumber = nullable_string($input, 'tax_or_identity_number');
+    if ($taxNumber !== null && !preg_match('/^\d{10,11}$/', $taxNumber)) {
+        json_error('T.C. Kimlik / Vergi No yalnızca 10 veya 11 rakam olmalıdır.');
+    }
+    if ($isCorporate && $taxNumber === null) {
+        json_error('Vergi No zorunludur.');
+    }
+    $address = nullable_string($input, 'address');
+    if ($isCorporate && $address === null) {
+        json_error('Adres zorunludur.');
+    }
+
     return [
-        'customer_type' => nullable_string($input, 'customer_type') ?? 'Bireysel',
-        'full_name' => nullable_string($input, 'full_name'),
-        'company_name' => nullable_string($input, 'company_name'),
-        'phone' => require_non_empty($input, 'phone', 'Telefon zorunludur.'),
-        'whatsapp' => nullable_string($input, 'whatsapp'),
-        'email' => nullable_string($input, 'email'),
-        'tax_or_identity_number' => nullable_string($input, 'tax_or_identity_number'),
-        'address' => nullable_string($input, 'address'),
+        'customer_type' => $customerType,
+        'full_name' => $isCorporate ? null : $fullName,
+        'company_name' => $isCorporate ? $companyName : null,
+        'phone' => $phone,
+        'whatsapp' => $whatsapp,
+        'email' => $email,
+        'tax_or_identity_number' => $taxNumber,
+        'address' => $address,
         'city' => nullable_string($input, 'city'),
         'district' => nullable_string($input, 'district'),
         'status' => nullable_string($input, 'status') ?? 'Aktif',
@@ -160,9 +202,17 @@ function customer_payload(array $input): array
     ];
 }
 
-function replace_customer_projects(string $customerId, $projectIds): void
+function require_customer_project_ids($projectIds): array
 {
     $ids = is_array($projectIds) ? array_values(array_unique(array_filter(array_map('strval', $projectIds)))) : [];
+    if ($ids === []) {
+        json_error('En az bir ilgili proje seçmelisiniz.');
+    }
+    return $ids;
+}
+
+function replace_customer_projects(string $customerId, array $ids): void
+{
     $pdo = db();
     $pdo->prepare('DELETE FROM ak_customer_projects WHERE customer_id = :id')->execute(['id' => $customerId]);
     if ($ids === []) return;
@@ -170,6 +220,26 @@ function replace_customer_projects(string $customerId, $projectIds): void
     foreach ($ids as $projectId) {
         $stmt->execute(['id' => uuid_v4(), 'customer_id' => $customerId, 'project_id' => $projectId]);
     }
+}
+
+function normalize_customer_phone(string $value): string
+{
+    $digits = preg_replace('/\D+/', '', $value) ?? '';
+    if (strlen($digits) === 12 && str_starts_with($digits, '90')) {
+        $digits = '0' . substr($digits, 2);
+    } elseif (strlen($digits) === 10 && str_starts_with($digits, '5')) {
+        $digits = '0' . $digits;
+    }
+    if (!preg_match('/^05\d{9}$/', $digits)) {
+        json_error('Telefon 05XXXXXXXXX biçiminde 11 haneli olmalıdır.');
+    }
+    return $digits;
+}
+
+function normalize_customer_whatsapp(string $value): string
+{
+    $phone = normalize_customer_phone($value);
+    return '90' . substr($phone, 1);
 }
 
 function fetch_customer(string $id): ?array
