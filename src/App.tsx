@@ -33,6 +33,8 @@ const AdminCustomerDetail = lazy(() => import("./pages/admin/AdminCustomerDetail
 const AdminCustomerFinance = lazy(() => import("./pages/admin/AdminCustomerFinance"));
 const AdminEmployees = lazy(() => import("./pages/admin/AdminEmployees"));
 const AdminEmployeeFinance = lazy(() => import("./pages/admin/AdminEmployeeFinance"));
+const AdminEmployeeAllocations = lazy(() => import("./pages/admin/AdminEmployeeAllocations"));
+const AdminEmployeeDetail = lazy(() => import("./pages/admin/AdminEmployeeDetail"));
 const AdminCollections = lazy(() => import("./pages/admin/AdminCollections"));
 const AdminExpenses = lazy(() => import("./pages/admin/AdminExpenses"));
 const AdminExpenseCards = lazy(() => import("./pages/admin/AdminExpenseCards"));
@@ -69,6 +71,8 @@ const App = () => (
                   <Route path="musteriler/:id/finans" element={<AdminCustomerFinance />} />
                   <Route path="personeller" element={<AdminEmployees />} />
                   <Route path="personeller/:id/finans" element={<AdminEmployeeFinance />} />
+                  <Route path="personeller/:id/tahsisat" element={<AdminEmployeeAllocations />} />
+                  <Route path="personeller/:id" element={<AdminEmployeeDetail />} />
                   <Route path="odeme-planlari" element={<Navigate to="/admin/musteriler" replace />} />
                   <Route path="tahsilatlar" element={<AdminCollections />} />
                   <Route path="giderler" element={<AdminExpenses />} />

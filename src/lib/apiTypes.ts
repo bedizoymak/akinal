@@ -504,6 +504,77 @@ export interface AdminEmployee {
   updated_at: string;
 }
 
+export interface AkRole {
+  id: string;
+  name: string;
+  normalized_name: string;
+  is_active: number | boolean;
+  created_at: string;
+}
+
+export interface AkEmployeeRole {
+  employee_id: string;
+  role_id: string;
+  assigned_at: string;
+  ended_at: string | null;
+  role_name: string;
+  normalized_name?: string;
+  role_is_active?: number | boolean;
+}
+
+export interface AkEmployeeCostPeriod {
+  id: string;
+  employee_id: string;
+  effective_from: string;
+  effective_to: string | null;
+  salary: string | number;
+  sgk: string | number;
+  meal: string | number;
+  transportation: string | number;
+  bonus: string | number;
+  accommodation: string | number;
+  other: string | number;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface AkEmployeeProjectAssignment {
+  id: string;
+  employee_id: string;
+  project_id: string;
+  start_date: string;
+  end_date: string | null;
+  notes: string | null;
+  created_at: string;
+  project_title?: string;
+  employee_name?: string;
+}
+
+export interface AkEmployeeProjectAllocation {
+  id: string;
+  employee_id: string;
+  project_id: string;
+  allocation_year: number;
+  allocation_month: number;
+  days_worked: string | number;
+  working_days_base: number;
+  cost_date: string;
+  salary_snapshot: string | number;
+  sgk_snapshot: string | number;
+  meal_snapshot: string | number;
+  transportation_snapshot: string | number;
+  bonus_snapshot: string | number;
+  accommodation_snapshot: string | number;
+  other_snapshot: string | number;
+  monthly_cost_snapshot: string | number;
+  calculated_cost: string | number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  employee_name?: string;
+  project_title?: string;
+}
+
 export interface AdminNotification {
   id: string;
   title: string;
@@ -560,13 +631,6 @@ export interface AdminFinancialStatementResponse {
   payments?: AdminPayment[];
 }
 
-export interface AdminCustomerNote {
-  id: string;
-  customer_id: string;
-  note: string;
-  created_at: string;
-}
-
 export interface AdminCustomerListResponse {
   customers: AdminCustomer[];
   payment_plans: Pick<AdminPaymentPlan, "customer_id" | "amount">[];
@@ -584,8 +648,6 @@ export interface AdminCustomerDetailResponse {
   payments: AdminPayment[];
   financial_entries: AdminFinancialEntry[];
   expenses: Record<string, unknown>[];
-  notes: AdminCustomerNote[];
-  documents: Record<string, unknown>[];
 }
 
 export interface AdminPaymentsResponse {
@@ -616,6 +678,26 @@ export interface AdminExpenseCardsResponse {
 
 export interface AdminEmployeesResponse {
   employees: AdminEmployee[];
+}
+
+export interface AkRolesResponse {
+  roles: AkRole[];
+}
+
+export interface AkEmployeeRolesResponse {
+  employee_roles: AkEmployeeRole[];
+}
+
+export interface AkEmployeeCostPeriodsResponse {
+  cost_periods: AkEmployeeCostPeriod[];
+}
+
+export interface AkEmployeeProjectAssignmentsResponse {
+  assignments: AkEmployeeProjectAssignment[];
+}
+
+export interface AkEmployeeProjectAllocationsResponse {
+  allocations: AkEmployeeProjectAllocation[];
 }
 
 export interface AdminNotificationsResponse {

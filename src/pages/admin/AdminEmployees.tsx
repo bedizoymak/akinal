@@ -218,7 +218,9 @@ export default function AdminEmployees() {
                   <td className="max-w-xs truncate p-3 text-muted-foreground">{employee.notes || "—"}</td>
                   <td className="p-3">
                     <div className="flex justify-end gap-1" onClick={(event) => event.stopPropagation()}>
+                      <Button asChild size="sm" variant="outline"><Link to={`/admin/personeller/${employee.id}`}><FileText className="h-4 w-4" /> Detay</Link></Button>
                       <Button asChild size="sm" variant="outline"><Link to={`/admin/personeller/${employee.id}/finans`}><FileText className="h-4 w-4" /> Finans</Link></Button>
+                      <Button asChild size="sm" variant="outline"><Link to={`/admin/personeller/${employee.id}/tahsisat`}><FileText className="h-4 w-4" /> Tahsisat</Link></Button>
                       <Button size="sm" variant="ghost" onClick={() => openEdit(employee)} title="Düzenle"><Edit className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Düzenle</span></Button>
                       <Button size="sm" variant="ghost" onClick={() => deleteEmployee(employee)} title="Sil"><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only xl:not-sr-only xl:ml-1">Sil</span></Button>
                     </div>

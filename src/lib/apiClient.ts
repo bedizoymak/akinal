@@ -8,7 +8,6 @@ import type {
   AdminPayment,
   AdminPaymentPlan,
   AdminPaymentsResponse,
-  AdminCustomerNote,
   AdminExpense,
   AdminExpenseCard,
   AdminExpenseCardsResponse,
@@ -24,6 +23,16 @@ import type {
   AdminNotificationsResponse,
   AdminReportsResponse,
   AdminSqlEditorResult,
+  AkRole,
+  AkRolesResponse,
+  AkEmployeeRole,
+  AkEmployeeRolesResponse,
+  AkEmployeeCostPeriod,
+  AkEmployeeCostPeriodsResponse,
+  AkEmployeeProjectAssignment,
+  AkEmployeeProjectAssignmentsResponse,
+  AkEmployeeProjectAllocation,
+  AkEmployeeProjectAllocationsResponse,
   ContactRequestPayload,
   CookieConsentPayload,
   ProjectDetailResponse,
@@ -463,22 +472,6 @@ export async function deleteAdminCustomer(id: string): Promise<void> {
   });
 }
 
-export async function createAdminCustomerNote(customerId: string, note: string): Promise<AdminCustomerNote> {
-  const data = await apiRequest<{ note: AdminCustomerNote }>("/api/admin/customers.php", {
-    method: "POST",
-    credentials: "include",
-    body: JSON.stringify({ action: "note", customer_id: customerId, note }),
-  });
-  return data.note;
-}
-
-export async function deleteAdminCustomerNote(noteId: string): Promise<void> {
-  await apiRequest<{ deleted: boolean }>(`/api/admin/customers.php?note_id=${encodeURIComponent(noteId)}`, {
-    method: "DELETE",
-    credentials: "include",
-  });
-}
-
 export async function createAdminPaymentPlan(payload: Partial<AdminPaymentPlan>): Promise<AdminPaymentPlan> {
   const data = await apiRequest<{ payment_plan: AdminPaymentPlan }>("/api/admin/payment-plans.php", {
     method: "POST",
@@ -769,4 +762,222 @@ export async function executeAdminSql(payload: { sql: string; confirmed?: boolea
     body: JSON.stringify(payload),
   });
   return data.result;
+}
+
+// ── Roles ─────────────────────────────────────────────────────────────────────
+
+export async function getAdminRoles(activeOnly = false): Promise<AkRole[]> {
+  const data = await apiRequest<AkRolesResponse>(
+    `/api/admin/roles.php${activeOnly ? "?active_only=1" : ""}`,
+    { method: "GET", credentials: "include" }
+  );
+  return data.roles || [];
+}
+
+export async function createAdminRole(payload: { name: string }): Promise<AkRole> {
+  const data = await apiRequest<{ role: AkRole }>("/api/admin/roles.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.role;
+}
+
+export async function updateAdminRole(payload: { id: string; name?: string; is_active?: boolean }): Promise<AkRole> {
+  const data = await apiRequest<{ role: AkRole }>("/api/admin/roles.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.role;
+}
+
+export async function deactivateAdminRole(id: string): Promise<void> {
+  await apiRequest<{ deactivated: boolean }>(`/api/admin/roles.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+// ── Employee Roles ─────────────────────────────────────────────────────────────
+
+export async function getEmployeeRoles(employeeId: string): Promise<AkEmployeeRole[]> {
+  const data = await apiRequest<AkEmployeeRolesResponse>(
+    `/api/admin/employee-roles.php?employee_id=${encodeURIComponent(employeeId)}`,
+    { method: "GET", credentials: "include" }
+  );
+  return data.employee_roles || [];
+}
+
+export async function assignEmployeeRole(payload: { employee_id: string; role_id: string; assigned_at: string }): Promise<AkEmployeeRole> {
+  const data = await apiRequest<{ employee_role: AkEmployeeRole }>("/api/admin/employee-roles.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.employee_role;
+}
+
+export async function endEmployeeRole(payload: { employee_id: string; role_id: string; assigned_at: string; ended_at: string | null }): Promise<void> {
+  await apiRequest<{ updated: boolean }>("/api/admin/employee-roles.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteEmployeeRole(payload: { employee_id: string; role_id: string; assigned_at: string }): Promise<void> {
+  await apiRequest<{ deleted: boolean }>("/api/admin/employee-roles.php", {
+    method: "DELETE",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+}
+
+// ── Employee Cost Periods ──────────────────────────────────────────────────────
+
+export async function getEmployeeCostPeriods(employeeId: string): Promise<AkEmployeeCostPeriod[]> {
+  const data = await apiRequest<AkEmployeeCostPeriodsResponse>(
+    `/api/admin/employee-cost-periods.php?employee_id=${encodeURIComponent(employeeId)}`,
+    { method: "GET", credentials: "include" }
+  );
+  return data.cost_periods || [];
+}
+
+export async function createEmployeeCostPeriod(payload: {
+  employee_id: string;
+  effective_from: string;
+  salary?: number;
+  sgk?: number;
+  meal?: number;
+  transportation?: number;
+  bonus?: number;
+  accommodation?: number;
+  other?: number;
+  notes?: string | null;
+}): Promise<AkEmployeeCostPeriod> {
+  const data = await apiRequest<{ cost_period: AkEmployeeCostPeriod }>("/api/admin/employee-cost-periods.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.cost_period;
+}
+
+export async function updateEmployeeCostPeriodNotes(id: string, notes: string | null): Promise<void> {
+  await apiRequest<{ updated: boolean }>("/api/admin/employee-cost-periods.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify({ id, notes }),
+  });
+}
+
+export async function deleteEmployeeCostPeriod(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/employee-cost-periods.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+// ── Employee Project Assignments ───────────────────────────────────────────────
+
+export async function getEmployeeAssignments(employeeId: string): Promise<AkEmployeeProjectAssignment[]> {
+  const data = await apiRequest<AkEmployeeProjectAssignmentsResponse>(
+    `/api/admin/employee-project-assignments.php?employee_id=${encodeURIComponent(employeeId)}`,
+    { method: "GET", credentials: "include" }
+  );
+  return data.assignments || [];
+}
+
+export async function getProjectAssignments(projectId: string): Promise<AkEmployeeProjectAssignment[]> {
+  const data = await apiRequest<AkEmployeeProjectAssignmentsResponse>(
+    `/api/admin/employee-project-assignments.php?project_id=${encodeURIComponent(projectId)}`,
+    { method: "GET", credentials: "include" }
+  );
+  return data.assignments || [];
+}
+
+export async function createEmployeeAssignment(payload: {
+  employee_id: string;
+  project_id: string;
+  start_date: string;
+  notes?: string | null;
+}): Promise<AkEmployeeProjectAssignment> {
+  const data = await apiRequest<{ assignment: AkEmployeeProjectAssignment }>("/api/admin/employee-project-assignments.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.assignment;
+}
+
+export async function updateEmployeeAssignment(payload: { id: string; end_date?: string | null; notes?: string | null }): Promise<void> {
+  await apiRequest<{ updated: boolean }>("/api/admin/employee-project-assignments.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteEmployeeAssignment(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/employee-project-assignments.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+// ── Employee Project Allocations ───────────────────────────────────────────────
+
+export async function getProjectAllocations(projectId: string): Promise<AkEmployeeProjectAllocation[]> {
+  const data = await apiRequest<AkEmployeeProjectAllocationsResponse>(
+    `/api/admin/employee-project-allocations.php?project_id=${encodeURIComponent(projectId)}`,
+    { method: "GET", credentials: "include" }
+  );
+  return data.allocations || [];
+}
+
+export async function getEmployeeAllocations(employeeId: string): Promise<AkEmployeeProjectAllocation[]> {
+  const data = await apiRequest<AkEmployeeProjectAllocationsResponse>(
+    `/api/admin/employee-project-allocations.php?employee_id=${encodeURIComponent(employeeId)}`,
+    { method: "GET", credentials: "include" }
+  );
+  return data.allocations || [];
+}
+
+export async function createEmployeeAllocation(payload: {
+  employee_id: string;
+  project_id: string;
+  allocation_year: number;
+  allocation_month: number;
+  days_worked: number;
+  working_days_base: number;
+  notes?: string | null;
+}): Promise<AkEmployeeProjectAllocation> {
+  const data = await apiRequest<{ allocation: AkEmployeeProjectAllocation }>("/api/admin/employee-project-allocations.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.allocation;
+}
+
+export async function updateEmployeeAllocation(payload: {
+  id: string;
+  days_worked?: number;
+  working_days_base?: number;
+  notes?: string | null;
+}): Promise<AkEmployeeProjectAllocation> {
+  const data = await apiRequest<{ allocation: AkEmployeeProjectAllocation }>("/api/admin/employee-project-allocations.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.allocation;
+}
+
+export async function deleteEmployeeAllocation(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/employee-project-allocations.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
 }

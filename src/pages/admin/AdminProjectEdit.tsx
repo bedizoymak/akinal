@@ -15,6 +15,7 @@ import { districtsForProvince, TURKEY_PROVINCES } from "@/lib/turkeyLocations";
 import { ArrowLeft, Upload, Trash2, Star, GripVertical, ExternalLink, Check, ChevronsUpDown } from "lucide-react";
 import ImageCropDialog from "@/components/admin/ImageCropDialog";
 import { AdminPageHeader } from "@/components/admin/AdminPage";
+import { ProjectEmployeeCostPanel } from "@/components/admin/projects/ProjectEmployeeCostPanel";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -446,6 +447,12 @@ export default function AdminProjectEdit() {
             </div>
             <p className="text-xs text-muted-foreground">Konum, ilçe ve il seçiminden otomatik oluşturulur. Eski projelerde il/ilçe yoksa kayıtlı konum korunur.</p>
           </section>
+
+          {!isNew && id && (
+            <section className="p-6 bg-card border border-border rounded-md">
+              <ProjectEmployeeCostPanel projectId={id} />
+            </section>
+          )}
 
           <section className="p-6 bg-card border border-border rounded-md space-y-3">
             <h2 className="font-display text-lg font-bold">Teknik Bilgiler</h2>
