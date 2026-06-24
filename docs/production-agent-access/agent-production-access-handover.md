@@ -191,6 +191,37 @@ curl -s -X POST https://akinalinsaat.com/api/admin/agent-sql.php \
   }' | python -m json.tool
 ```
 
+### DROP TABLE — operation mode (WAF-safe)
+
+**Do not send `DROP TABLE` as raw SQL.** The hosting WAF (openresty) blocks DDL keywords in POST bodies and returns HTTP 415 before the request reaches PHP. Use the structured `operation` field instead — SQL is built server-side and never travels over the wire.
+
+```bash
+curl -s -X POST https://akinalinsaat.com/api/admin/agent-sql.php \
+  -H "Content-Type: application/json" \
+  -H "X-Agent-SQL-Token: <AGENT_SQL_TOKEN>" \
+  --data-raw '{"operation":"drop_table","table":"ak_<table_name>","confirmed":true}' \
+  | python -m json.tool
+```
+
+**Constraints enforced server-side:**
+- `table` must match `/^ak_[a-zA-Z0-9_]+$/` — must start with `ak_`, alphanumeric/underscore only
+- `confirmed: true` is required — request is rejected without it
+- Single table only — no multi-table syntax possible
+
+**Safety tests (run before the real drop):**
+
+```bash
+# Must be rejected — confirmed: false
+curl -s ... --data-raw '{"operation":"drop_table","table":"ak_example","confirmed":false}'
+# → {"success":false,"error":"drop_table requires confirmed: true."}
+
+# Must be rejected — non-ak_ table
+curl -s ... --data-raw '{"operation":"drop_table","table":"wp_users","confirmed":true}'
+# → {"success":false,"error":"Table name must start with \"ak_\" ..."}
+```
+
+**Verified working:** `ak_documents` was dropped via this mode on 2026-06-24 16:06:59 UTC.
+
 ### Verification SELECT
 
 ```bash

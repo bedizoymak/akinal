@@ -320,23 +320,6 @@ CREATE TABLE IF NOT EXISTS ak_customer_notes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
 
-    'ak_documents' => <<<'SQL'
-CREATE TABLE IF NOT EXISTS ak_documents (
-  id CHAR(36) NOT NULL PRIMARY KEY,
-  customer_id CHAR(36) NULL,
-  project_id CHAR(36) NULL,
-  title VARCHAR(255) NOT NULL,
-  document_type VARCHAR(100) NOT NULL DEFAULT 'Diğer',
-  file_url TEXT NOT NULL,
-  notes TEXT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_documents_customer (customer_id),
-  KEY idx_documents_project (project_id),
-  CONSTRAINT fk_documents_customer FOREIGN KEY (customer_id) REFERENCES ak_customers(id) ON DELETE SET NULL,
-  CONSTRAINT fk_documents_project FOREIGN KEY (project_id) REFERENCES ak_projects(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-SQL,
-
     'ak_notifications' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_notifications (
   id CHAR(36) NOT NULL PRIMARY KEY,
