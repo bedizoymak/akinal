@@ -455,13 +455,32 @@ SQL,
 
     'ak_expense_cards' => <<<'SQL'
 CREATE TABLE IF NOT EXISTS ak_expense_cards (
-  id CHAR(36) NOT NULL PRIMARY KEY,
+  id   CHAR(36)     NOT NULL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
-  category VARCHAR(100) NULL,
-  description TEXT NULL,
-  status VARCHAR(50) NOT NULL DEFAULT 'Aktif',
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  KEY idx_expense_cards_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+
+    'ak_project_expense_transactions' => <<<'SQL'
+CREATE TABLE IF NOT EXISTS ak_project_expense_transactions (
+  id                         CHAR(36)      NOT NULL PRIMARY KEY,
+  project_id                 CHAR(36)      NOT NULL,
+  expense_item_id            CHAR(36)          NULL,
+  expense_item_name_snapshot VARCHAR(255)  NOT NULL,
+  amount                     DECIMAL(14,4) NOT NULL,
+  currency                   VARCHAR(10)   NOT NULL DEFAULT 'TRY',
+  exchange_rate_snapshot     DECIMAL(18,8)     NULL,
+  exchange_rate_overridden   TINYINT(1)    NOT NULL DEFAULT 0,
+  expense_date               DATE          NOT NULL,
+  created_at                 DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at                 DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_pet_project      (project_id),
+  KEY idx_pet_expense_item (expense_item_id),
+  KEY idx_pet_date         (expense_date),
+  KEY idx_pet_project_date (project_id, expense_date),
+  KEY idx_pet_currency     (currency),
+  CONSTRAINT fk_pet_project      FOREIGN KEY (project_id)      REFERENCES ak_projects(id)      ON DELETE RESTRICT,
+  CONSTRAINT fk_pet_expense_item FOREIGN KEY (expense_item_id) REFERENCES ak_expense_cards(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
 

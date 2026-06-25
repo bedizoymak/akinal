@@ -4,11 +4,13 @@ import {
   type CanonicalReadEntry,
   type CanonicalReadSettlement,
 } from "@/lib/canonicalReadModel";
+import { normalizeWhatsApp } from "@/lib/customerMasterData";
 
 export const CUSTOMER_TYPES = ["Bireysel", "Kurumsal"] as const;
 export const PAYMENT_PLAN_STATUSES = ["Bekliyor", "Kısmi Ödendi", "Ödendi", "Vadesi Geçti", "İptal"] as const;
 export const PAYMENT_METHODS = ["Nakit", "Havale / EFT", "Kredi Kartı", "Çek", "Senet", "Diğer"] as const;
 export const CURRENCIES = ["TRY", "USD", "EUR"] as const;
+export const EXPENSE_CURRENCIES = ["TRY", "USD", "EUR", "XAU_GRAM"] as const;
 export const GROUP_TAGS = ["Resmi", "Gayri Resmi"] as const;
 export const ENTRY_DIRECTIONS = ["Gelir", "Gider"] as const;
 export const ENTRY_STATUSES = ["Planlandı", "Gerçekleşti", "İptal"] as const;
@@ -312,7 +314,7 @@ export function exportCSV(filename: string, rows: Record<string, unknown>[], fal
 }
 
 export function whatsappLink(phone: string, message: string): string {
-  const clean = (phone || "").replace(/[^\d+]/g, "").replace(/^\+/, "");
+  const clean = normalizeWhatsApp(phone) || (phone || "").replace(/[^\d+]/g, "").replace(/^\+/, "");
   return `https://wa.me/${clean}?text=${encodeURIComponent(message)}`;
 }
 

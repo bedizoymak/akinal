@@ -1,235 +1,129 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Edit, FileText, Layers, Plus, Search, Tags, Trash2 } from "lucide-react";
+import { Edit, Layers, Plus, Search, Trash2 } from "lucide-react";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { displayLabel } from "@/lib/finance";
-import { createAdminExpenseCard, deleteAdminExpenseCard, getAdminExpenseCards, updateAdminExpenseCard } from "@/lib/apiClient";
+import { createAdminExpenseItem, deleteAdminExpenseItem, getAdminExpenseItems, updateAdminExpenseItem } from "@/lib/apiClient";
 import type { AdminExpenseCard } from "@/lib/apiTypes";
-import { cn } from "@/lib/utils";
 
-const EXPENSE_CARD_STATUSES = ["Aktif", "Pasif"] as const;
-const DEFAULT_CATEGORIES = [
-  "Malzeme",
-  "Vergi",
-  "Ruhsat",
-  "Kamu İzni",
-  "İnşaat İzni",
-  "Arsa Gideri",
-  "Tapu",
-  "Harç",
-  "Taşeron",
-  "Nakliye",
-  "Şantiye Gideri",
-  "Diğer",
-] as const;
-
-type ExpenseCardForm = {
-  id: string | null;
-  name: string;
-  category: string;
-  description: string;
-  status: string;
-};
-
-const emptyForm: ExpenseCardForm = {
-  id: null,
-  name: "",
-  category: "",
-  description: "",
-  status: "Aktif",
-};
-
-function formFromCard(card: AdminExpenseCard): ExpenseCardForm {
-  return {
-    id: card.id,
-    name: card.name,
-    category: card.category ?? "",
-    description: card.description ?? "",
-    status: card.status,
-  };
-}
+type ItemForm = { id: string | null; name: string };
+const emptyForm: ItemForm = { id: null, name: "" };
 
 export default function AdminExpenseCards() {
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [items, setItems] = useState<AdminExpenseCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<ExpenseCardForm>(emptyForm);
+  const [form, setForm] = useState<ItemForm>(emptyForm);
   const [formError, setFormError] = useState("");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getAdminExpenseCards();
-      setItems(data);
-    } catch (error) {
-      toast({ title: "Gider kartları alınamadı.", description: "Veriler alınırken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
+      setItems(await getAdminExpenseItems());
+    } catch {
+      toast({ title: "Gider kalemleri alınamadı.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   }, [toast]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
-  const filtered = useMemo(() => items.filter((card) => {
-    if (statusFilter !== "all" && card.status !== statusFilter && displayLabel(card.status) !== statusFilter) return false;
-    if (search) {
-      const haystack = `${card.name} ${card.category ?? ""}`.toLocaleLowerCase("tr-TR");
-      if (!haystack.includes(search.toLocaleLowerCase("tr-TR"))) return false;
-    }
-    return true;
-  }), [items, search, statusFilter]);
+  const filtered = useMemo(() => {
+    if (!search) return items;
+    const q = search.toLocaleLowerCase("tr-TR");
+    return items.filter((item) => item.name.toLocaleLowerCase("tr-TR").includes(q));
+  }, [items, search]);
 
-  const summary = useMemo(() => ({
-    total: items.length,
-    active: items.filter((item) => displayLabel(item.status) === "Aktif").length,
-    categories: new Set(items.map((item) => item.category).filter(Boolean)).size,
-  }), [items]);
+  function openCreate() { setForm(emptyForm); setFormError(""); setDialogOpen(true); }
+  function openEdit(item: AdminExpenseCard) { setForm({ id: item.id, name: item.name }); setFormError(""); setDialogOpen(true); }
 
-  function openCreate() {
-    setForm(emptyForm);
-    setFormError("");
-    setDialogOpen(true);
-  }
-
-  function openEdit(card: AdminExpenseCard) {
-    setForm(formFromCard(card));
-    setFormError("");
-    setDialogOpen(true);
-  }
-
-  function updateForm<K extends keyof ExpenseCardForm>(key: K, value: ExpenseCardForm[K]) {
-    setForm((current) => ({ ...current, [key]: value }));
-  }
-
-  async function saveCard() {
-    if (!form.name.trim()) {
-      setFormError("Gider Kartı Adı zorunludur.");
-      return;
-    }
-
+  async function save() {
+    if (!form.name.trim()) { setFormError("Gider kalemi adı zorunludur."); return; }
     setSaving(true);
     setFormError("");
-
-    const payload: Partial<AdminExpenseCard> = {
-      name: form.name.trim(),
-      category: form.category.trim() || null,
-      description: form.description.trim() || null,
-      status: form.status,
-    };
-
     try {
-      if (form.id) await updateAdminExpenseCard({ ...payload, id: form.id });
-      else await createAdminExpenseCard(payload);
-    } catch (error) {
+      if (form.id) await updateAdminExpenseItem({ id: form.id, name: form.name.trim() });
+      else await createAdminExpenseItem({ name: form.name.trim() });
+    } catch {
       setSaving(false);
-      toast({ title: "Gider kartı kaydedilemedi.", description: "Gider kartı kaydedilirken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
+      toast({ title: "Gider kalemi kaydedilemedi.", variant: "destructive" });
       return;
     }
-
     setSaving(false);
-    toast({ title: form.id ? "Gider kartı güncellendi." : "Gider kartı oluşturuldu." });
+    toast({ title: form.id ? "Gider kalemi güncellendi." : "Gider kalemi oluşturuldu." });
     setDialogOpen(false);
     await load();
   }
 
-  async function deleteCard(card: AdminExpenseCard) {
-    if (!confirm(`"${card.name}" gider kartını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
-
+  async function remove(item: AdminExpenseCard) {
+    if (!confirm(`"${item.name}" gider kalemini silmek istediğinize emin misiniz?\n\nBu kalem geçmiş gider kayıtlarından bağlantısı kaldırılır; isim kopyaları korunur.`)) return;
     try {
-      await deleteAdminExpenseCard(card.id);
-    } catch (error) {
-      toast({ title: "Gider kartı silinemedi.", description: "Gider kartı silinirken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
-      return;
+      await deleteAdminExpenseItem(item.id);
+      toast({ title: "Gider kalemi silindi." });
+      await load();
+    } catch {
+      toast({ title: "Gider kalemi silinemedi.", variant: "destructive" });
     }
-
-    toast({ title: "Gider kartı silindi." });
-    await load();
   }
 
   return (
     <div>
       <AdminPageHeader
         eyebrow="Finans"
-        title="Gider Kartları"
-        description="Malzeme, vergi, ruhsat, tapu, taşeron ve benzeri tekrar kullanılabilir gider kartlarını yönetin."
-        actions={<Button onClick={openCreate} className="bg-accent text-accent-foreground hover:bg-accent-glow"><Plus className="h-4 w-4" /> Yeni Gider Kartı</Button>}
+        title="Gider Kalemleri"
+        description="Projeler genelinde tekrar kullanılabilir gider kalemlerini yönetin. Demir, Çimento, Nakliye, Ruhsat gibi kalemler buradan tanımlanır."
+        actions={<Button onClick={openCreate} className="bg-accent text-accent-foreground hover:bg-accent-glow"><Plus className="h-4 w-4" /> Yeni Gider Kalemi</Button>}
       />
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-3">
-        <AdminMetricCard label="Toplam Gider Kartı" value={summary.total} description="Kayıtlı gider kartı" icon={Layers} tone="accent" />
-        <AdminMetricCard label="Aktif" value={summary.active} description="Kullanılabilir kartlar" icon={Tags} tone="success" />
-        <AdminMetricCard label="Kategori" value={summary.categories} description="Farklı kategori sayısı" icon={Tags} tone="default" />
+      <div className="mb-5 grid gap-3 sm:grid-cols-2">
+        <AdminMetricCard label="Toplam Gider Kalemi" value={items.length} description="Kayıtlı kalem sayısı" icon={Layers} tone="accent" />
+        <AdminMetricCard label="Filtre Sonucu" value={filtered.length} description="Arama sonucu" icon={Search} tone="default" />
       </div>
 
-      <div className="mb-5 grid gap-3 rounded-md border border-border bg-card p-4 md:grid-cols-2">
+      <div className="mb-5 rounded-md border border-border bg-card p-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Gider kartı veya kategori ara..." className="pl-9" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Gider kalemi ara..." className="pl-9" />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tüm Durumlar</SelectItem>
-            {EXPENSE_CARD_STATUSES.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}
-          </SelectContent>
-        </Select>
       </div>
 
       {loading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">Yükleniyor...</div>
       ) : filtered.length === 0 ? (
         <AdminEmptyState
-          title={items.length === 0 ? "Henüz gider kartı oluşturulmamış." : "Gider kartı bulunamadı"}
-          description="Yeni gider kartı oluşturarak proje maliyetlerini standart kartlar üzerinden takip edebilirsiniz."
+          title={items.length === 0 ? "Henüz gider kalemi oluşturulmamış." : "Gider kalemi bulunamadı."}
+          description="Yeni gider kalemi oluşturarak proje giderlerini standart kalemler üzerinden takip edebilirsiniz."
           icon={Layers}
-          action={<Button onClick={openCreate}>Yeni Gider Kartı Ekle</Button>}
+          action={<Button onClick={openCreate}>Yeni Gider Kalemi Ekle</Button>}
         />
       ) : (
         <div className="overflow-x-auto rounded-md border border-border bg-card">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="p-3">Gider Kartı</th>
-                <th className="p-3">Kategori</th>
-                <th className="p-3">Açıklama</th>
-                <th className="p-3">Durum</th>
+                <th className="p-3">Gider Kalemi</th>
                 <th className="p-3 text-right">İşlemler</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((card) => (
-                <tr
-                  key={card.id}
-                  className="cursor-pointer border-t border-border transition-colors hover:bg-emerald-50/60"
-                  onClick={() => navigate(`/admin/gider-kartlari/${card.id}/finans`)}
-                >
-                  <td className="p-3 font-semibold">{card.name}</td>
-                  <td className="p-3">{card.category || <span className="text-muted-foreground">—</span>}</td>
-                  <td className="max-w-md truncate p-3 text-muted-foreground">{card.description || "—"}</td>
+              {filtered.map((item) => (
+                <tr key={item.id} className="border-t border-border transition-colors hover:bg-emerald-50/60">
+                  <td className="p-3 font-semibold">{item.name}</td>
                   <td className="p-3">
-                    <span className={cn("rounded-md border px-2 py-0.5 text-xs", displayLabel(card.status) === "Aktif" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-zinc-200 bg-zinc-50 text-zinc-600")}>
-                      {displayLabel(card.status)}
-                    </span>
-                  </td>
-                  <td className="p-3">
-                    <div className="flex justify-end gap-1" onClick={(event) => event.stopPropagation()}>
-                      <Button asChild size="sm" variant="outline"><Link to={`/admin/gider-kartlari/${card.id}/finans`}><FileText className="h-4 w-4" /> Finans</Link></Button>
-                      <Button size="sm" variant="ghost" onClick={() => openEdit(card)} title="Düzenle"><Edit className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Düzenle</span></Button>
-                      <Button size="sm" variant="ghost" onClick={() => deleteCard(card)} title="Sil"><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only xl:not-sr-only xl:ml-1">Sil</span></Button>
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => openEdit(item)} title="Düzenle">
+                        <Edit className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Düzenle</span>
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => remove(item)} title="Sil">
+                        <Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only xl:not-sr-only xl:ml-1">Sil</span>
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -240,38 +134,23 @@ export default function AdminExpenseCards() {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{form.id ? "Gider Kartını Düzenle" : "Yeni Gider Kartı"}</DialogTitle>
+            <DialogTitle>{form.id ? "Gider Kalemini Düzenle" : "Yeni Gider Kalemi"}</DialogTitle>
           </DialogHeader>
           {formError && <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{formError}</div>}
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label>Gider Kartı Adı *</Label>
-              <Input value={form.name} onChange={(event) => updateForm("name", event.target.value)} />
-            </div>
-            <div>
-              <Label>Kategori</Label>
-              <Input list="expense-card-categories" value={form.category} onChange={(event) => updateForm("category", event.target.value)} />
-              <datalist id="expense-card-categories">
-                {DEFAULT_CATEGORIES.map((category) => <option key={category} value={category} />)}
-              </datalist>
-            </div>
-            <div>
-              <Label>Durum</Label>
-              <Select value={form.status} onValueChange={(value) => updateForm("status", value)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{EXPENSE_CARD_STATUSES.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-2">
-              <Label>Açıklama</Label>
-              <Textarea rows={3} value={form.description} onChange={(event) => updateForm("description", event.target.value)} />
-            </div>
+          <div>
+            <Label>Gider Kalemi Adı *</Label>
+            <Input
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="örn. Demir, Çimento, Nakliye, Ruhsat..."
+              onKeyDown={(e) => e.key === "Enter" && save()}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>Vazgeç</Button>
-            <Button onClick={saveCard} disabled={saving} className="bg-accent text-accent-foreground hover:bg-accent-glow">
+            <Button onClick={save} disabled={saving} className="bg-accent text-accent-foreground hover:bg-accent-glow">
               {saving ? "Kaydediliyor..." : "Kaydet"}
             </Button>
           </DialogFooter>

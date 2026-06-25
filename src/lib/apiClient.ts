@@ -33,6 +33,8 @@ import type {
   AkEmployeeProjectAssignmentsResponse,
   AkEmployeeProjectAllocation,
   AkEmployeeProjectAllocationsResponse,
+  AkExpenseTransaction,
+  AkExpenseTransactionsResponse,
   ContactRequestPayload,
   CookieConsentPayload,
   ProjectDetailResponse,
@@ -627,38 +629,98 @@ export async function uploadAdminExpenseDocument(file: File): Promise<string> {
   return data.url;
 }
 
-export async function getAdminExpenseCards(): Promise<AdminExpenseCard[]> {
-  const data = await apiRequest<AdminExpenseCardsResponse>("/api/admin/expense-cards.php", {
+export async function getAdminExpenseItems(q?: string): Promise<AdminExpenseCard[]> {
+  const params = q ? `?q=${encodeURIComponent(q)}` : "";
+  const data = await apiRequest<AdminExpenseCardsResponse>(`/api/admin/expense-cards.php${params}`, {
     method: "GET",
     credentials: "include",
   });
-  return data.expense_cards || [];
+  return data.expense_items || [];
 }
 
-export async function createAdminExpenseCard(payload: Partial<AdminExpenseCard>): Promise<AdminExpenseCard> {
-  const data = await apiRequest<{ expense_card: AdminExpenseCard }>("/api/admin/expense-cards.php", {
+export async function createAdminExpenseItem(payload: { name: string }): Promise<AdminExpenseCard> {
+  const data = await apiRequest<{ expense_item: AdminExpenseCard }>("/api/admin/expense-cards.php", {
     method: "POST",
     credentials: "include",
     body: JSON.stringify(payload),
   });
-  return data.expense_card;
+  return data.expense_item;
 }
 
-export async function updateAdminExpenseCard(payload: Partial<AdminExpenseCard> & { id: string }): Promise<AdminExpenseCard> {
-  const data = await apiRequest<{ expense_card: AdminExpenseCard }>("/api/admin/expense-cards.php", {
+export async function updateAdminExpenseItem(payload: { id: string; name: string }): Promise<AdminExpenseCard> {
+  const data = await apiRequest<{ expense_item: AdminExpenseCard }>("/api/admin/expense-cards.php", {
     method: "PATCH",
     credentials: "include",
     body: JSON.stringify(payload),
   });
-  return data.expense_card;
+  return data.expense_item;
 }
 
-export async function deleteAdminExpenseCard(id: string): Promise<void> {
+export async function deleteAdminExpenseItem(id: string): Promise<void> {
   await apiRequest<{ deleted: boolean }>(`/api/admin/expense-cards.php?id=${encodeURIComponent(id)}`, {
     method: "DELETE",
     credentials: "include",
   });
 }
+
+// ── Project Expense Transactions ───────────────────────────────────────────────
+
+export async function getProjectExpenseTransactions(projectId: string): Promise<AkExpenseTransactionsResponse> {
+  return apiRequest<AkExpenseTransactionsResponse>(
+    `/api/admin/project-expense-transactions.php?project_id=${encodeURIComponent(projectId)}`,
+    { method: "GET", credentials: "include" }
+  );
+}
+
+export async function createProjectExpenseTransaction(payload: {
+  project_id: string;
+  expense_item_id: string | null;
+  expense_item_name_snapshot: string;
+  amount: number;
+  currency: string;
+  exchange_rate_snapshot?: number | null;
+  exchange_rate_overridden?: boolean;
+  expense_date: string;
+}): Promise<AkExpenseTransaction> {
+  const data = await apiRequest<{ transaction: AkExpenseTransaction }>("/api/admin/project-expense-transactions.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.transaction;
+}
+
+export async function updateProjectExpenseTransaction(payload: {
+  id: string;
+  project_id: string;
+  expense_item_id: string | null;
+  expense_item_name_snapshot: string;
+  amount: number;
+  currency: string;
+  exchange_rate_snapshot?: number | null;
+  exchange_rate_overridden?: boolean;
+  expense_date: string;
+}): Promise<AkExpenseTransaction> {
+  const data = await apiRequest<{ transaction: AkExpenseTransaction }>("/api/admin/project-expense-transactions.php", {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return data.transaction;
+}
+
+export async function deleteProjectExpenseTransaction(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/project-expense-transactions.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+// Legacy aliases kept for components that still reference old names (will be removed when those components are updated)
+export const getAdminExpenseCards = getAdminExpenseItems;
+export const createAdminExpenseCard = (p: Partial<AdminExpenseCard>) => createAdminExpenseItem({ name: p.name ?? "" });
+export const updateAdminExpenseCard = (p: Partial<AdminExpenseCard> & { id: string }) => updateAdminExpenseItem({ id: p.id, name: p.name ?? "" });
+export const deleteAdminExpenseCard = deleteAdminExpenseItem;
 
 export async function getAdminNotifications(limit?: number): Promise<AdminNotificationsResponse> {
   const params = new URLSearchParams({ generate: "1" });

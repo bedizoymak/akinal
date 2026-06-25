@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, Edit, Eye, EyeOff, Copy, Trash2, ExternalLink, GripVertical, Star, Search, Plus, FolderKanban, Download, Upload, Loader2 } from "lucide-react";
+import { BarChart3, Edit, Eye, EyeOff, Copy, Trash2, ExternalLink, GripVertical, Star, Search, Plus, FolderKanban, Download, Upload, Loader2, TrendingDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { displayLabel } from "@/lib/finance";
 import { resolveImageUrl, statusBadgeVariant, PROJECT_STATUSES, PROJECT_TYPES } from "@/lib/projects";
@@ -19,7 +19,7 @@ function Row({ p, onChange }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
   return (
-    <div ref={setNodeRef} style={style} className="flex flex-col gap-3 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-center">
+    <div ref={setNodeRef} style={style} className="flex flex-col gap-3 rounded-md border border-border bg-card p-3 transition-colors duration-150 hover:border-emerald-300 hover:bg-emerald-50/80 sm:flex-row sm:items-center">
       <div className="flex min-w-0 items-center gap-3">
         <button {...attributes} {...listeners} className="text-muted-foreground hover:text-foreground cursor-grab"><GripVertical className="h-5 w-5" /></button>
         <div className="h-14 w-20 rounded bg-muted overflow-hidden shrink-0">
@@ -42,6 +42,7 @@ function Row({ p, onChange }: any) {
       <div className="flex flex-wrap items-center gap-1 sm:ml-auto sm:justify-end">
         <Button asChild size="sm" variant="ghost" title="Görüntüle"><Link to={`/projelerimiz/${p.slug}`} target="_blank"><ExternalLink className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Görüntüle</span></Link></Button>
         <Button asChild size="sm" variant="outline" title="Finans"><Link to={`/admin/projeler/${p.id}/finans`}><BarChart3 className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Finans</span></Link></Button>
+        <Button asChild size="sm" variant="outline" title="Giderler"><Link to={`/admin/projeler/${p.id}/giderler`}><TrendingDown className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Giderler</span></Link></Button>
         <Button asChild size="sm" variant="ghost" title="Düzenle"><Link to={`/admin/projeler/${p.id}`}><Edit className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Düzenle</span></Link></Button>
         <Button size="sm" variant="ghost" title={p.is_published ? "Yayından Kaldır" : "Yayınla"} onClick={() => onChange("toggle", p)}>{p.is_published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
         <Button size="sm" variant="ghost" title="Çoğalt" onClick={() => onChange("duplicate", p)}><Copy className="h-4 w-4" /></Button>

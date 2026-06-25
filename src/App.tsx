@@ -41,6 +41,7 @@ const AdminExpenseCards = lazy(() => import("./pages/admin/AdminExpenseCards"));
 const AdminExpenseCardFinance = lazy(() => import("./pages/admin/AdminExpenseCardFinance"));
 const AdminFinance = lazy(() => import("./pages/admin/AdminFinance"));
 const AdminProjectFinance = lazy(() => import("./pages/admin/AdminProjectFinance"));
+const AdminProjectExpenses = lazy(() => import("./pages/admin/AdminProjectExpenses"));
 const AdminNotifications = lazy(() => import("./pages/admin/AdminNotifications"));
 const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
 const AdminSqlEditor = lazy(() => import("./pages/admin/AdminSqlEditor"));
@@ -64,6 +65,7 @@ const App = () => (
                   <Route path="projeler/yeni" element={<AdminProjectEdit />} />
                   <Route path="projeler/:id" element={<AdminProjectEdit />} />
                   <Route path="projeler/:id/finans" element={<AdminProjectFinance />} />
+                  <Route path="projeler/:id/giderler" element={<AdminProjectExpenses />} />
                   <Route path="musteriler" element={<AdminCustomers />} />
                   <Route path="musteriler/yeni" element={<AdminCustomerEdit />} />
                   <Route path="musteriler/:id" element={<AdminCustomerDetail />} />

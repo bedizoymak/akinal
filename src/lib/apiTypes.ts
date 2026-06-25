@@ -486,11 +486,36 @@ export interface AdminExpense {
 export interface AdminExpenseCard {
   id: string;
   name: string;
-  category: string | null;
-  description: string | null;
-  status: string;
-  created_at: string;
-  updated_at: string;
+}
+
+export interface AkExpenseTransaction {
+  id: string;
+  project_id: string;
+  expense_item_id: string | null;
+  expense_item_name_snapshot: string;
+  amount: number | string;
+  currency: string;
+  exchange_rate_snapshot: number | string | null;
+  exchange_rate_overridden: number | boolean;
+  expense_date: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AkExpenseProfitability {
+  realized: Record<string, string | number>;
+  planned: Record<string, string | number>;
+  today: string;
+}
+
+export interface AkExpenseTransactionsResponse {
+  transactions: AkExpenseTransaction[];
+  profitability: AkExpenseProfitability;
+  project: { id: string; title: string } | null;
+}
+
+export interface AkExpenseItemsResponse {
+  expense_items: AdminExpenseCard[];
 }
 
 export interface AdminEmployee {
@@ -673,7 +698,7 @@ export interface AdminExpensesResponse {
 }
 
 export interface AdminExpenseCardsResponse {
-  expense_cards: AdminExpenseCard[];
+  expense_items: AdminExpenseCard[];
 }
 
 export interface AdminEmployeesResponse {
