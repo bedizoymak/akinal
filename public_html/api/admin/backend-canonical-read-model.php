@@ -20,10 +20,10 @@ function canonical_read_dashboard_summary(PDO $pdo): array
     $paymentRows = canonical_read_all($pdo, 'SELECT id, amount, payment_date FROM ak_payments');
     $expenseRows = canonical_read_all($pdo, 'SELECT id, amount, expense_date FROM ak_expenses');
     $planRows = canonical_read_all($pdo, "
-        SELECT id, title, amount, paid_amount, due_date, status, customer_id, project_id, account_type
+        SELECT id, title, amount, paid_amount, `date` AS due_date, status, customer_id, project_id, account_type
         FROM ak_payment_plans
         WHERE customer_id IS NOT NULL
-        ORDER BY customer_id ASC, account_type ASC, due_date ASC
+        ORDER BY customer_id ASC, account_type ASC, `date` ASC
     ");
     $planPayments = canonical_read_all($pdo, "
         SELECT customer_id, payment_plan_id, amount, account_type

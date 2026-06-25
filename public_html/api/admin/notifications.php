@@ -64,10 +64,10 @@ function ensure_payment_notifications(): void
     $today = date('Y-m-d');
     $in7 = date('Y-m-d', strtotime('+7 days'));
     $rawPlans = fetch_all_notifications(
-        "SELECT id, title, amount, paid_amount, due_date, status, customer_id, project_id, account_type
+        "SELECT id, title, amount, paid_amount, `date` AS due_date, status, customer_id, project_id, account_type
          FROM ak_payment_plans
-         WHERE status <> 'İptal'
-         ORDER BY customer_id ASC, account_type ASC, due_date ASC"
+         WHERE customer_id IS NOT NULL
+         ORDER BY customer_id ASC, account_type ASC, `date` ASC"
     );
     $payments = fetch_all_notifications('SELECT customer_id, payment_plan_id, amount, account_type FROM ak_payments WHERE customer_id IS NOT NULL');
     $plans = canonical_read_select(

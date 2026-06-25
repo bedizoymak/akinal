@@ -6,6 +6,16 @@ export function normalizeCustomerType(value: string | null | undefined): Custome
   return value === "Kurumsal" || value === "Firma" ? "Kurumsal" : "Bireysel";
 }
 
+export function normalizeCustomerNames(
+  customerType: CustomerType,
+  fullName: string | null | undefined,
+  companyName: string | null | undefined,
+): { full_name: string; company_name: string } {
+  return customerType === "Kurumsal"
+    ? { full_name: "", company_name: (companyName || "").trim() }
+    : { full_name: (fullName || "").trim(), company_name: "" };
+}
+
 export function normalizeTurkishPhone(value: string): string | null {
   let digits = value.replace(/\D/g, "");
   if (digits.startsWith("90") && digits.length === 12) digits = `0${digits.slice(2)}`;
@@ -17,6 +27,24 @@ export function normalizeWhatsApp(value: string): string | null {
   if (!value.trim()) return "";
   const phone = normalizeTurkishPhone(value);
   return phone ? `90${phone.slice(1)}` : null;
+}
+
+export function normalizeCustomerContactPayload(
+  customerTypeValue: string | null | undefined,
+  values: {
+    full_name?: string | null;
+    company_name?: string | null;
+    phone?: string | null;
+    whatsapp?: string | null;
+  },
+) {
+  const customer_type = normalizeCustomerType(customerTypeValue);
+  return {
+    customer_type,
+    ...normalizeCustomerNames(customer_type, values.full_name, values.company_name),
+    phone: normalizeTurkishPhone(values.phone || ""),
+    whatsapp: normalizeWhatsApp(values.whatsapp || ""),
+  };
 }
 
 export function formatTurkishPhone(value: string | null | undefined): string {
@@ -32,4 +60,8 @@ export function isValidEmail(value: string): boolean {
 
 export function isValidTaxOrIdentityNumber(value: string): boolean {
   return /^\d{10,11}$/.test(value);
+}
+
+export function isValidCustomerTaxOrIdentityNumber(customerType: CustomerType, value: string): boolean {
+  return customerType === "Kurumsal" ? /^\d{10,11}$/.test(value) : /^\d{11}$/.test(value);
 }

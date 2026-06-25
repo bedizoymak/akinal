@@ -51,6 +51,7 @@ export type PaymentPlanLike = {
   id?: string | null;
   amount?: number | string | null;
   paid_amount?: number | string | null;
+  date?: string | null;
   due_date?: string | null;
   status?: string | null;
   customer_id?: string | null;
@@ -353,7 +354,7 @@ export function effectivePaidForPlan(
       owner_id: plan.customer_id,
       account_type: accountType(plan.account_type),
       currency: "TRY",
-      due_date: plan.due_date,
+      due_date: plan.due_date ?? plan.date ?? undefined,
       status: plan.status,
     },
     settlementAmount > 0 ? [{
@@ -551,7 +552,7 @@ export function summarizeFinance(input: FinanceSummaryInput): FinanceSummary {
   };
 }
 
-export function derivePlanStatus(plan: { amount: number | string; due_date: string; status: string }, paid: number): string {
+export function derivePlanStatus(plan: { amount: number | string; due_date?: string | null; date?: string | null; status: string }, paid: number): string {
   const amount = safeNumber(plan.amount);
   const effectivePaid = plan.status === "Ödendi" ? amount : Math.min(amount, Math.max(0, paid));
   const settlements: CanonicalReadSettlement[] = effectivePaid > 0 ? [{
@@ -570,7 +571,7 @@ export function derivePlanStatus(plan: { amount: number | string; due_date: stri
       owner_type: "customer",
       currency: "TRY",
       account_type: "resmi",
-      due_date: plan.due_date,
+      due_date: plan.due_date ?? plan.date ?? undefined,
       status: plan.status,
     },
     settlements,

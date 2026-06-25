@@ -36,6 +36,7 @@ const AdminEmployeeFinance = lazy(() => import("./pages/admin/AdminEmployeeFinan
 const AdminEmployeeAllocations = lazy(() => import("./pages/admin/AdminEmployeeAllocations"));
 const AdminEmployeeDetail = lazy(() => import("./pages/admin/AdminEmployeeDetail"));
 const AdminCollections = lazy(() => import("./pages/admin/AdminCollections"));
+const AdminPaymentPlans = lazy(() => import("./pages/admin/AdminPaymentPlans"));
 const AdminExpenses = lazy(() => import("./pages/admin/AdminExpenses"));
 const AdminExpenseCards = lazy(() => import("./pages/admin/AdminExpenseCards"));
 const AdminExpenseCardFinance = lazy(() => import("./pages/admin/AdminExpenseCardFinance"));
@@ -76,6 +77,7 @@ const App = () => (
                   <Route path="personeller/:id/tahsisat" element={<AdminEmployeeAllocations />} />
                   <Route path="personeller/:id" element={<AdminEmployeeDetail />} />
                   <Route path="odeme-planlari" element={<Navigate to="/admin/musteriler" replace />} />
+                  <Route path="gelenler" element={<AdminPaymentPlans />} />
                   <Route path="tahsilatlar" element={<AdminCollections />} />
                   <Route path="giderler" element={<AdminExpenses />} />
                   <Route path="gider-kartlari" element={<AdminExpenseCards />} />

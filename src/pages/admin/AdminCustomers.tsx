@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Plus, Edit, Trash2, Eye, Download, Phone, MessageCircle, Users, Wallet, AlertTriangle, CheckCircle2, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CUSTOMER_TYPES, accountType, allocateCollectionsToPlans, customerDisplayName, displayLabel, formatTRY, exportCSV, whatsappLink, summarizeCustomerLedgerEntries, summarizePaymentPlansWithCanonicalState } from "@/lib/finance";
+import { formatTurkishPhone } from "@/lib/customerMasterData";
 import { cn } from "@/lib/utils";
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 import { deleteAdminCustomer, getAdminCustomersData } from "@/lib/apiClient";
@@ -203,8 +204,8 @@ export default function AdminCustomers() {
                     <div className="text-xs text-muted-foreground">{displayLabel(c.customer_type)}</div>
                   </td>
                   <td className="p-3">
-                    <div className="flex items-center gap-1 text-xs"><Phone className="h-3 w-3" /> {c.phone || "-"}</div>
-                    {c.whatsapp && <a href={whatsappLink(c.whatsapp, "Merhaba, Akınal İnşaat")} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-emerald-700" onClick={(event) => event.stopPropagation()}><MessageCircle className="h-3 w-3" /> {c.whatsapp}</a>}
+                    <div className="flex items-center gap-1 text-xs"><Phone className="h-3 w-3" /> {c.phone ? formatTurkishPhone(c.phone) : "-"}</div>
+                    {c.whatsapp && <a href={whatsappLink(c.whatsapp, "Merhaba, Akınal İnşaat")} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-emerald-700" onClick={(event) => event.stopPropagation()}><MessageCircle className="h-3 w-3" /> {formatTurkishPhone(c.whatsapp)}</a>}
                   </td>
                   <td className="p-3 text-xs">{c.projectNames.join(", ") || <span className="text-muted-foreground">—</span>}</td>
                   <td className="p-3 text-right font-medium">{formatTRY(c.totalDue)}</td>

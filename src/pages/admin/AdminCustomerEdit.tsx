@@ -14,10 +14,9 @@ import { createAdminCustomer, getAdminCustomerDetail, getAdminCustomersData, upd
 import {
   formatTurkishPhone,
   isValidEmail,
-  isValidTaxOrIdentityNumber,
+  isValidCustomerTaxOrIdentityNumber,
+  normalizeCustomerContactPayload,
   normalizeCustomerType,
-  normalizeTurkishPhone,
-  normalizeWhatsApp,
 } from "@/lib/customerMasterData";
 
 const empty = {
@@ -84,8 +83,8 @@ export default function AdminCustomerEdit() {
 
   async function save() {
     const isCorporate = form.customer_type === "Kurumsal";
-    const phone = normalizeTurkishPhone(form.phone || "");
-    const whatsapp = normalizeWhatsApp(form.whatsapp || "");
+    const normalizedCustomer = normalizeCustomerContactPayload(form.customer_type, form);
+    const { phone, whatsapp } = normalizedCustomer;
     const email = (form.email || "").trim();
     const taxNumber = (form.tax_or_identity_number || "").trim();
     if (!phone) { toast({ title: "Telefon 05XXXXXXXXX biçiminde 11 haneli olmalıdır", variant: "destructive" }); return; }
@@ -93,7 +92,10 @@ export default function AdminCustomerEdit() {
     if (isCorporate && !(form.company_name || "").trim()) { toast({ title: "Firma Resmi Ünvanı zorunludur", variant: "destructive" }); return; }
     if (!isCorporate && !(form.full_name || "").trim()) { toast({ title: "Ad Soyad zorunludur", variant: "destructive" }); return; }
     if (email && !isValidEmail(email)) { toast({ title: "Geçerli bir e-posta adresi girin", variant: "destructive" }); return; }
-    if (taxNumber && !isValidTaxOrIdentityNumber(taxNumber)) { toast({ title: "T.C. Kimlik / Vergi No yalnızca 10 veya 11 rakam olmalıdır", variant: "destructive" }); return; }
+    if (taxNumber && !isValidCustomerTaxOrIdentityNumber(form.customer_type, taxNumber)) {
+      toast({ title: isCorporate ? "Vergi No 10 veya 11 rakam olmalıdır" : "T.C. Kimlik No 11 rakam olmalıdır", variant: "destructive" });
+      return;
+    }
     if (isCorporate && !taxNumber) { toast({ title: "Vergi No zorunludur", variant: "destructive" }); return; }
     if (isCorporate && !(form.address || "").trim()) { toast({ title: "Adres zorunludur", variant: "destructive" }); return; }
     if (linkedIds.length === 0) { toast({ title: "En az bir ilgili proje seçmelisiniz", variant: "destructive" }); return; }
@@ -101,10 +103,7 @@ export default function AdminCustomerEdit() {
     try {
       const payload = {
         ...form,
-        full_name: isCorporate ? "" : form.full_name.trim(),
-        company_name: isCorporate ? form.company_name.trim() : "",
-        phone,
-        whatsapp,
+        ...normalizedCustomer,
         email,
         tax_or_identity_number: taxNumber,
         status: form.status || "Aktif",
@@ -140,37 +139,39 @@ export default function AdminCustomerEdit() {
 
       <div className="bg-card border border-border rounded-md p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label>Müşteri Türü</Label>
-          <Select value={form.customer_type} onValueChange={changeCustomerType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CUSTOMER_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select>
+          <Label htmlFor="customer-type">Müşteri Türü</Label>
+          <Select name="customer_type" value={form.customer_type} onValueChange={changeCustomerType}><SelectTrigger id="customer-type"><SelectValue /></SelectTrigger><SelectContent>{CUSTOMER_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select>
         </div>
         <div>
-          <Label>{form.customer_type === "Kurumsal" ? "Firma Resmi Ünvanı *" : "Ad Soyad *"}</Label>
+          <Label htmlFor="customer-name">{form.customer_type === "Kurumsal" ? "Firma Resmi Ünvanı *" : "Ad Soyad *"}</Label>
           <Input
+            id="customer-name"
+            name={form.customer_type === "Kurumsal" ? "company_name" : "full_name"}
             value={form.customer_type === "Kurumsal" ? form.company_name || "" : form.full_name || ""}
             onChange={(e) => set(form.customer_type === "Kurumsal" ? "company_name" : "full_name", e.target.value)}
           />
         </div>
-        {form.customer_type === "Kurumsal" && <div><Label>Yetkili Kişi</Label><Input disabled placeholder="Veritabanı alanı henüz tanımlı değil" /></div>}
-        <div><Label>Telefon *</Label><Input inputMode="tel" value={form.phone || ""} onChange={(e) => changePhone(e.target.value)} onBlur={() => set("phone", formatTurkishPhone(form.phone))} /></div>
-        <div><Label>WhatsApp</Label><Input inputMode="tel" value={form.whatsapp || ""} onChange={(e) => { setWhatsappEdited(true); set("whatsapp", e.target.value); }} onBlur={() => set("whatsapp", formatTurkishPhone(form.whatsapp))} /></div>
-        <div><Label>E-posta</Label><Input type="email" value={form.email || ""} onChange={(e) => set("email", e.target.value)} /></div>
-        <div><Label>T.C. Kimlik / Vergi No{form.customer_type === "Kurumsal" ? " *" : ""}</Label><Input inputMode="numeric" maxLength={11} value={form.tax_or_identity_number || ""} onChange={(e) => set("tax_or_identity_number", e.target.value.replace(/\D/g, ""))} /></div>
-        <div className="md:col-span-2"><Label>Adres{form.customer_type === "Kurumsal" ? " *" : ""}</Label><Input value={form.address || ""} onChange={(e) => set("address", e.target.value)} /></div>
-        <div><Label>İl</Label><Input value={form.city || ""} onChange={(e) => set("city", e.target.value)} /></div>
-        <div><Label>İlçe</Label><Input value={form.district || ""} onChange={(e) => set("district", e.target.value)} /></div>
+        {form.customer_type === "Kurumsal" && <div><Label htmlFor="customer-contact-person">Yetkili Kişi</Label><Input id="customer-contact-person" name="contact_person" disabled placeholder="Veritabanı alanı henüz tanımlı değil" /></div>}
+        <div><Label htmlFor="customer-phone">Telefon *</Label><Input id="customer-phone" name="phone" inputMode="tel" value={form.phone || ""} onChange={(e) => changePhone(e.target.value)} onBlur={() => set("phone", formatTurkishPhone(form.phone))} /></div>
+        <div><Label htmlFor="customer-whatsapp">WhatsApp</Label><Input id="customer-whatsapp" name="whatsapp" inputMode="tel" value={form.whatsapp || ""} onChange={(e) => { setWhatsappEdited(true); set("whatsapp", e.target.value); }} onBlur={() => set("whatsapp", formatTurkishPhone(form.whatsapp))} /></div>
+        <div><Label htmlFor="customer-email">E-posta</Label><Input id="customer-email" name="email" type="email" value={form.email || ""} onChange={(e) => set("email", e.target.value)} /></div>
+        <div><Label htmlFor="customer-tax-number">T.C. Kimlik / Vergi No{form.customer_type === "Kurumsal" ? " *" : ""}</Label><Input id="customer-tax-number" name="tax_or_identity_number" inputMode="numeric" maxLength={11} value={form.tax_or_identity_number || ""} onChange={(e) => set("tax_or_identity_number", e.target.value.replace(/\D/g, ""))} /></div>
+        <div className="md:col-span-2"><Label htmlFor="customer-address">Adres{form.customer_type === "Kurumsal" ? " *" : ""}</Label><Input id="customer-address" name="address" value={form.address || ""} onChange={(e) => set("address", e.target.value)} /></div>
+        <div><Label htmlFor="customer-city">İl</Label><Input id="customer-city" name="city" value={form.city || ""} onChange={(e) => set("city", e.target.value)} /></div>
+        <div><Label htmlFor="customer-district">İlçe</Label><Input id="customer-district" name="district" value={form.district || ""} onChange={(e) => set("district", e.target.value)} /></div>
         <div className="md:col-span-2">
           <Label>İlgili Projeler *</Label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 p-3 border border-border rounded-md max-h-56 overflow-auto">
             {projects.length === 0 && <div className="text-sm text-muted-foreground">Henüz proje yok.</div>}
             {projects.map((p) => (
               <label key={p.id} className="flex items-center gap-2 text-sm">
-                <Checkbox checked={linkedIds.includes(p.id)} onCheckedChange={(v) => toggleProject(p.id, !!v)} />
+                <Checkbox id={`customer-project-${p.id}`} name="project_ids" value={p.id} checked={linkedIds.includes(p.id)} onCheckedChange={(v) => toggleProject(p.id, !!v)} />
                 {p.title}
               </label>
             ))}
           </div>
         </div>
-        <div className="md:col-span-2"><Label>Notlar</Label><Textarea value={form.notes || ""} onChange={(e) => set("notes", e.target.value)} rows={4} /></div>
+        <div className="md:col-span-2"><Label htmlFor="customer-notes">Notlar</Label><Textarea id="customer-notes" name="notes" value={form.notes || ""} onChange={(e) => set("notes", e.target.value)} rows={4} /></div>
       </div>
     </div>
   );

@@ -8,8 +8,6 @@ require_admin();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 try {
-    ensure_account_type_columns();
-
     if ($method === 'GET') {
         $id = trim((string) ($_GET['id'] ?? ''));
         if ($id !== '') {
@@ -17,37 +15,39 @@ try {
             json_success([
                 'customer' => $customer,
                 'links' => fetch_all('SELECT project_id FROM ak_customer_projects WHERE customer_id = :id', ['id' => $id]),
-                'projects' => fetch_all('SELECT id, title, slug FROM ak_projects ORDER BY sort_order ASC, created_at DESC'),
-                'payment_plans' => fetch_all('SELECT * FROM ak_payment_plans WHERE customer_id = :id ORDER BY due_date ASC', ['id' => $id]),
+                'projects' => fetch_project_lookup(true),
+                'payment_plans' => fetch_all('SELECT * FROM ak_payment_plans WHERE customer_id = :id ORDER BY `date` ASC', ['id' => $id]),
                 'payments' => fetch_all('SELECT * FROM ak_payments WHERE customer_id = :id ORDER BY payment_date DESC', ['id' => $id]),
-                'financial_entries' => fetch_all('SELECT * FROM ak_financial_entries WHERE customer_id = :id ORDER BY entry_date DESC, created_at DESC', ['id' => $id]),
-                'notes' => fetch_all('SELECT * FROM ak_customer_notes WHERE customer_id = :id ORDER BY created_at DESC', ['id' => $id]),
-                'documents' => fetch_all('SELECT * FROM ak_documents WHERE customer_id = :id ORDER BY created_at DESC', ['id' => $id]),
+                'financial_entries' => fetch_customer_financial_entries($id),
             ]);
         }
 
+        $customers = fetch_all('SELECT * FROM ak_customers ORDER BY created_at DESC');
+        if ($customers === []) {
+            json_success([
+                'customers' => [],
+                'payment_plans' => [],
+                'payments' => [],
+                'financial_entries' => [],
+                'customer_projects' => [],
+                'projects' => fetch_project_lookup(false),
+            ]);
+        }
+
+        $projects = fetch_project_lookup(false);
         json_success([
-            'customers' => fetch_all('SELECT * FROM ak_customers ORDER BY created_at DESC'),
-            'payment_plans' => fetch_all('SELECT id, customer_id, amount, paid_amount, account_type, due_date, status FROM ak_payment_plans'),
+            'customers' => $customers,
+            'payment_plans' => fetch_all('SELECT id, customer_id, amount, paid_amount, currency, account_type, `date`, `date` AS due_date, status, type FROM ak_payment_plans WHERE customer_id IS NOT NULL'),
             'payments' => fetch_all('SELECT customer_id, payment_plan_id, amount, account_type FROM ak_payments'),
-            'financial_entries' => fetch_all("SELECT id, customer_id, amount, currency_tag, group_tag, direction, status, entry_date, due_date FROM ak_financial_entries WHERE customer_id IS NOT NULL AND direction = 'Gelir' AND status <> 'İptal'"),
+            'financial_entries' => fetch_customer_financial_entry_summary(),
             'customer_projects' => fetch_all('SELECT customer_id, project_id FROM ak_customer_projects'),
-            'projects' => fetch_all('SELECT id, title FROM ak_projects ORDER BY sort_order ASC, created_at DESC'),
+            'projects' => $projects,
         ]);
     }
 
     if ($method === 'POST') {
+        ensure_account_type_columns();
         $input = read_admin_json_body();
-        if (($input['action'] ?? '') === 'note') {
-            $noteId = uuid_v4();
-            db()->prepare('INSERT INTO ak_customer_notes (id, customer_id, note) VALUES (:id, :customer_id, :note)')->execute([
-                'id' => $noteId,
-                'customer_id' => require_non_empty($input, 'customer_id', 'Müşteri bulunamadı.'),
-                'note' => require_non_empty($input, 'note', 'Not boş olamaz.'),
-            ]);
-            json_success(['note' => fetch_note($noteId)], 201);
-        }
-
         $id = uuid_v4();
         $payload = customer_payload($input);
         $projectIds = require_customer_project_ids($input['project_ids'] ?? []);
@@ -60,6 +60,7 @@ try {
     }
 
     if ($method === 'PATCH') {
+        ensure_account_type_columns();
         $input = read_admin_json_body();
         $id = require_non_empty($input, 'id', 'Müşteri bulunamadı.');
         if (!fetch_customer($id)) {
@@ -76,11 +77,6 @@ try {
 
     if ($method === 'DELETE') {
         $id = trim((string) ($_GET['id'] ?? ''));
-        $noteId = trim((string) ($_GET['note_id'] ?? ''));
-        if ($noteId !== '') {
-            db()->prepare('DELETE FROM ak_customer_notes WHERE id = :id')->execute(['id' => $noteId]);
-            json_success(['deleted' => true]);
-        }
         if ($id === '') {
             $input = read_admin_json_body();
             $id = require_non_empty($input, 'id', 'Müşteri bulunamadı.');
@@ -92,8 +88,13 @@ try {
     header('Allow: GET, POST, PATCH, DELETE');
     json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
-    if (db()->inTransaction()) {
-        db()->rollBack();
+    log_customer_api_exception($exception, $method);
+    try {
+        if (db()->inTransaction()) {
+            db()->rollBack();
+        }
+    } catch (Throwable $rollbackException) {
+        log_customer_api_exception($rollbackException, $method . ':rollback');
     }
     json_error('Müşteri işlemi tamamlanamadı.', 500);
 }
@@ -157,8 +158,8 @@ function customer_payload(array $input): array
     }
 
     $isCorporate = $customerType === 'Kurumsal';
-    $fullName = nullable_string($input, 'full_name');
-    $companyName = nullable_string($input, 'company_name');
+    $fullName = $isCorporate ? null : nullable_string($input, 'full_name');
+    $companyName = $isCorporate ? nullable_string($input, 'company_name') : null;
     if ($isCorporate && $companyName === null) {
         json_error('Firma Resmi Ünvanı zorunludur.');
     }
@@ -175,8 +176,8 @@ function customer_payload(array $input): array
     }
 
     $taxNumber = nullable_string($input, 'tax_or_identity_number');
-    if ($taxNumber !== null && !preg_match('/^\d{10,11}$/', $taxNumber)) {
-        json_error('T.C. Kimlik / Vergi No yalnızca 10 veya 11 rakam olmalıdır.');
+    if ($taxNumber !== null && !preg_match($isCorporate ? '/^\d{10,11}$/' : '/^\d{11}$/', $taxNumber)) {
+        json_error($isCorporate ? 'Vergi No 10 veya 11 rakam olmalıdır.' : 'T.C. Kimlik No 11 rakam olmalıdır.');
     }
     if ($isCorporate && $taxNumber === null) {
         json_error('Vergi No zorunludur.');
@@ -224,22 +225,31 @@ function replace_customer_projects(string $customerId, array $ids): void
 
 function normalize_customer_phone(string $value): string
 {
-    $digits = preg_replace('/\D+/', '', $value) ?? '';
-    if (strlen($digits) === 12 && str_starts_with($digits, '90')) {
-        $digits = '0' . substr($digits, 2);
-    } elseif (strlen($digits) === 10 && str_starts_with($digits, '5')) {
-        $digits = '0' . $digits;
-    }
-    if (!preg_match('/^05\d{9}$/', $digits)) {
+    $nationalNumber = normalize_customer_mobile_national_number($value);
+    if ($nationalNumber === null) {
         json_error('Telefon 05XXXXXXXXX biçiminde 11 haneli olmalıdır.');
     }
-    return $digits;
+    return '0' . $nationalNumber;
 }
 
 function normalize_customer_whatsapp(string $value): string
 {
-    $phone = normalize_customer_phone($value);
-    return '90' . substr($phone, 1);
+    $nationalNumber = normalize_customer_mobile_national_number($value);
+    if ($nationalNumber === null) {
+        json_error('WhatsApp numarası geçerli bir Türkiye cep telefonu olmalıdır.');
+    }
+    return '90' . $nationalNumber;
+}
+
+function normalize_customer_mobile_national_number(string $value): ?string
+{
+    $digits = preg_replace('/\D+/', '', $value) ?? '';
+    if (strlen($digits) === 12 && substr($digits, 0, 2) === '90') {
+        $digits = substr($digits, 2);
+    } elseif (strlen($digits) === 11 && substr($digits, 0, 1) === '0') {
+        $digits = substr($digits, 1);
+    }
+    return preg_match('/^5\d{9}$/', $digits) ? $digits : null;
 }
 
 function fetch_customer(string $id): ?array
@@ -248,17 +258,134 @@ function fetch_customer(string $id): ?array
     return $rows[0] ?? null;
 }
 
-function fetch_note(string $id): ?array
-{
-    $rows = fetch_all('SELECT * FROM ak_customer_notes WHERE id = :id LIMIT 1', ['id' => $id]);
-    return $rows[0] ?? null;
-}
-
 function fetch_all(string $sql, array $params = []): array
 {
     $stmt = db()->prepare($sql);
     $stmt->execute($params);
     return $stmt->fetchAll() ?: [];
+}
+
+function fetch_project_lookup(bool $includeSlug): array
+{
+    try {
+        if (!table_exists('ak_projects')) {
+            return [];
+        }
+
+        $columns = table_columns('ak_projects');
+        if (!in_array('id', $columns, true) || !in_array('title', $columns, true)) {
+            return [];
+        }
+
+        $select = ['id', 'title'];
+        if ($includeSlug) {
+            $select[] = optional_column_expression($columns, 'slug', 'NULL');
+        }
+
+        $order = [];
+        if (in_array('sort_order', $columns, true)) {
+            $order[] = 'sort_order ASC';
+        }
+        if (in_array('created_at', $columns, true)) {
+            $order[] = 'created_at DESC';
+        }
+        $orderBy = $order === [] ? '' : ' ORDER BY ' . implode(', ', $order);
+
+        return fetch_all('SELECT ' . implode(', ', $select) . ' FROM ak_projects' . $orderBy);
+    } catch (Throwable $exception) {
+        log_customer_api_exception($exception, 'project_lookup');
+        return [];
+    }
+}
+
+function fetch_customer_financial_entries(string $customerId): array
+{
+    if (!table_exists('ak_financial_entries')) {
+        return [];
+    }
+
+    $columns = table_columns('ak_financial_entries');
+    $orderColumns = [];
+    if (in_array('entry_date', $columns, true)) {
+        $orderColumns[] = 'entry_date DESC';
+    }
+    if (in_array('created_at', $columns, true)) {
+        $orderColumns[] = 'created_at DESC';
+    }
+    $orderBy = $orderColumns === [] ? '' : ' ORDER BY ' . implode(', ', $orderColumns);
+
+    return fetch_all(
+        'SELECT * FROM ak_financial_entries WHERE customer_id = :id' . $orderBy,
+        ['id' => $customerId]
+    );
+}
+
+function fetch_customer_financial_entry_summary(): array
+{
+    if (!table_exists('ak_financial_entries')) {
+        return [];
+    }
+
+    $columns = table_columns('ak_financial_entries');
+    $required = ['id', 'customer_id', 'amount', 'direction', 'status'];
+    foreach ($required as $column) {
+        if (!in_array($column, $columns, true)) {
+            return [];
+        }
+    }
+
+    $select = [
+        'id',
+        'customer_id',
+        'amount',
+        optional_column_expression($columns, 'currency_tag', "'TRY'"),
+        optional_column_expression($columns, 'group_tag', "'Resmi'"),
+        'direction',
+        'status',
+        optional_column_expression($columns, 'entry_date', 'NULL'),
+        optional_column_expression($columns, 'due_date', 'NULL'),
+    ];
+
+    return fetch_all(
+        "SELECT " . implode(', ', $select) .
+        " FROM ak_financial_entries" .
+        " WHERE customer_id IS NOT NULL AND direction = 'Gelir' AND status <> 'İptal'"
+    );
+}
+
+function optional_column_expression(array $columns, string $column, string $fallback): string
+{
+    return in_array($column, $columns, true)
+        ? "`{$column}`"
+        : "{$fallback} AS `{$column}`";
+}
+
+function table_exists(string $table): bool
+{
+    $statement = db()->prepare(
+        'SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table LIMIT 1'
+    );
+    $statement->execute(['table' => $table]);
+    return (bool) $statement->fetchColumn();
+}
+
+function table_columns(string $table): array
+{
+    $statement = db()->query("SHOW COLUMNS FROM `{$table}`");
+    return array_map(static fn(array $row): string => (string) $row['Field'], $statement->fetchAll() ?: []);
+}
+
+function log_customer_api_exception(Throwable $exception, string $context): void
+{
+    error_log(sprintf(
+        '[customers.php] context=%s type=%s code=%s message=%s file=%s line=%d',
+        $context,
+        get_class($exception),
+        (string) $exception->getCode(),
+        $exception->getMessage(),
+        basename($exception->getFile()),
+        $exception->getLine()
+    ));
 }
 
 function insert_row(string $table, array $payload): void

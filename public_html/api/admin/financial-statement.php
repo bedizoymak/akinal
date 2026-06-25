@@ -173,27 +173,13 @@ function fetch_statement_entries(string $kind, string $id): array
 
 function fetch_statement_payment_plans(string $kind, string $id): array
 {
-    if (!in_array($kind, ['customer', 'employee', 'expense'], true)) {
+    if ($kind !== 'customer') {
         return [];
     }
 
-    $column = statement_fixed_column($kind);
-    $stmt = db()->prepare("SELECT * FROM ak_payment_plans WHERE `{$column}` = :id ORDER BY due_date ASC");
+    $stmt = db()->prepare('SELECT * FROM ak_payment_plans WHERE customer_id = :id ORDER BY `date` ASC');
     $stmt->execute(['id' => $id]);
-    $plans = $stmt->fetchAll() ?: [];
-    if ($kind !== 'customer') {
-        return $plans;
-    }
-
-    $payments = fetch_statement_payments($kind, $id);
-    return canonical_read_select('financial_statement.customer_payment_plans', $plans, array_map(static function (array $plan): array {
-        $plan['status'] = canonical_read_legacy_status_from_paid(
-            canonical_read_money($plan['amount'] ?? 0),
-            (string) ($plan['due_date'] ?? ''),
-            canonical_read_money($plan['paid_amount'] ?? 0)
-        );
-        return $plan;
-    }, canonical_read_plan_states($plans, $payments)));
+    return $stmt->fetchAll() ?: [];
 }
 
 function fetch_statement_payments(string $kind, string $id): array

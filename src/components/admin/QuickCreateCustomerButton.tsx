@@ -12,9 +12,8 @@ import type { AdminCustomer } from "@/lib/apiTypes";
 import {
   formatTurkishPhone,
   isValidEmail,
-  isValidTaxOrIdentityNumber,
-  normalizeTurkishPhone,
-  normalizeWhatsApp,
+  isValidCustomerTaxOrIdentityNumber,
+  normalizeCustomerContactPayload,
   type CustomerType,
 } from "@/lib/customerMasterData";
 
@@ -65,8 +64,8 @@ export function QuickCreateCustomerButton({ onCreated }: QuickCreateCustomerButt
   async function save() {
     const isCompany = form.customer_type === "Kurumsal";
     const displayName = isCompany ? form.company_name.trim() : form.full_name.trim();
-    const phone = normalizeTurkishPhone(form.phone);
-    const whatsapp = normalizeWhatsApp(form.whatsapp);
+    const normalizedCustomer = normalizeCustomerContactPayload(form.customer_type, form);
+    const { phone, whatsapp } = normalizedCustomer;
     const email = form.email.trim();
     const taxNumber = form.tax_or_identity_number.trim();
 
@@ -76,7 +75,10 @@ export function QuickCreateCustomerButton({ onCreated }: QuickCreateCustomerButt
     }
     if (whatsapp === null) { toast({ title: "WhatsApp numarası geçersiz", variant: "destructive" }); return; }
     if (email && !isValidEmail(email)) { toast({ title: "Geçerli bir e-posta adresi girin", variant: "destructive" }); return; }
-    if (taxNumber && !isValidTaxOrIdentityNumber(taxNumber)) { toast({ title: "T.C. Kimlik / Vergi No yalnızca 10 veya 11 rakam olmalıdır", variant: "destructive" }); return; }
+    if (taxNumber && !isValidCustomerTaxOrIdentityNumber(form.customer_type, taxNumber)) {
+      toast({ title: isCompany ? "Vergi No 10 veya 11 rakam olmalıdır" : "T.C. Kimlik No 11 rakam olmalıdır", variant: "destructive" });
+      return;
+    }
     if (isCompany && !taxNumber) { toast({ title: "Vergi No zorunludur", variant: "destructive" }); return; }
     if (isCompany && !form.address.trim()) { toast({ title: "Adres zorunludur", variant: "destructive" }); return; }
     if (projectIds.length === 0) { toast({ title: "En az bir ilgili proje seçmelisiniz", variant: "destructive" }); return; }
@@ -84,11 +86,7 @@ export function QuickCreateCustomerButton({ onCreated }: QuickCreateCustomerButt
     setSaving(true);
     try {
       const customer = await createAdminCustomer({
-        customer_type: form.customer_type,
-        full_name: isCompany ? "" : displayName,
-        company_name: isCompany ? displayName : "",
-        phone,
-        whatsapp,
+        ...normalizedCustomer,
         email,
         tax_or_identity_number: taxNumber,
         address: form.address.trim(),
@@ -124,9 +122,9 @@ export function QuickCreateCustomerButton({ onCreated }: QuickCreateCustomerButt
           </DialogHeader>
           <div className="grid gap-3">
             <div>
-              <Label>Müşteri Türü</Label>
-              <Select value={form.customer_type} onValueChange={(value) => setForm((current) => ({ ...current, customer_type: value as CustomerType }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label htmlFor="quick-customer-type">Müşteri Türü</Label>
+              <Select name="customer_type" value={form.customer_type} onValueChange={(value) => setForm((current) => ({ ...current, customer_type: value as CustomerType, full_name: value === "Bireysel" ? current.full_name : "", company_name: value === "Kurumsal" ? current.company_name : "" }))}>
+                <SelectTrigger id="quick-customer-type"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Bireysel">Bireysel</SelectItem>
                   <SelectItem value="Kurumsal">Kurumsal</SelectItem>
@@ -134,8 +132,10 @@ export function QuickCreateCustomerButton({ onCreated }: QuickCreateCustomerButt
               </Select>
             </div>
             <div>
-              <Label>{form.customer_type === "Kurumsal" ? "Firma Resmi Ünvanı *" : "Ad Soyad *"}</Label>
+              <Label htmlFor="quick-customer-name">{form.customer_type === "Kurumsal" ? "Firma Resmi Ünvanı *" : "Ad Soyad *"}</Label>
               <Input
+                id="quick-customer-name"
+                name={form.customer_type === "Kurumsal" ? "company_name" : "full_name"}
                 value={form.customer_type === "Kurumsal" ? form.company_name : form.full_name}
                 onChange={(event) => {
                   const value = event.target.value;
@@ -145,13 +145,15 @@ export function QuickCreateCustomerButton({ onCreated }: QuickCreateCustomerButt
             </div>
             {form.customer_type === "Kurumsal" && (
               <div>
-                <Label>Yetkili Kişi</Label>
-                <Input disabled placeholder="Veritabanı alanı henüz tanımlı değil" />
+                <Label htmlFor="quick-customer-contact-person">Yetkili Kişi</Label>
+                <Input id="quick-customer-contact-person" name="contact_person" disabled placeholder="Veritabanı alanı henüz tanımlı değil" />
               </div>
             )}
             <div>
-              <Label>Telefon *</Label>
+              <Label htmlFor="quick-customer-phone">Telefon *</Label>
               <Input
+                id="quick-customer-phone"
+                name="phone"
                 inputMode="tel"
                 value={form.phone}
                 onChange={(event) => {
@@ -162,8 +164,10 @@ export function QuickCreateCustomerButton({ onCreated }: QuickCreateCustomerButt
               />
             </div>
             <div>
-              <Label>WhatsApp</Label>
+              <Label htmlFor="quick-customer-whatsapp">WhatsApp</Label>
               <Input
+                id="quick-customer-whatsapp"
+                name="whatsapp"
                 inputMode="tel"
                 value={form.whatsapp}
                 onChange={(event) => { setWhatsappEdited(true); setForm((current) => ({ ...current, whatsapp: event.target.value })); }}
@@ -171,16 +175,16 @@ export function QuickCreateCustomerButton({ onCreated }: QuickCreateCustomerButt
               />
             </div>
             <div>
-              <Label>E-posta</Label>
-              <Input type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} />
+              <Label htmlFor="quick-customer-email">E-posta</Label>
+              <Input id="quick-customer-email" name="email" type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} />
             </div>
             <div>
-              <Label>T.C. Kimlik / Vergi No{form.customer_type === "Kurumsal" ? " *" : ""}</Label>
-              <Input inputMode="numeric" maxLength={11} value={form.tax_or_identity_number} onChange={(event) => setForm((current) => ({ ...current, tax_or_identity_number: event.target.value.replace(/\D/g, "") }))} />
+              <Label htmlFor="quick-customer-tax-number">T.C. Kimlik / Vergi No{form.customer_type === "Kurumsal" ? " *" : ""}</Label>
+              <Input id="quick-customer-tax-number" name="tax_or_identity_number" inputMode="numeric" maxLength={11} value={form.tax_or_identity_number} onChange={(event) => setForm((current) => ({ ...current, tax_or_identity_number: event.target.value.replace(/\D/g, "") }))} />
             </div>
             <div>
-              <Label>Adres{form.customer_type === "Kurumsal" ? " *" : ""}</Label>
-              <Input value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} />
+              <Label htmlFor="quick-customer-address">Adres{form.customer_type === "Kurumsal" ? " *" : ""}</Label>
+              <Input id="quick-customer-address" name="address" value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} />
             </div>
             <div>
               <Label>İlgili Projeler *</Label>
@@ -189,6 +193,9 @@ export function QuickCreateCustomerButton({ onCreated }: QuickCreateCustomerButt
                 {projects.map((project) => (
                   <label key={project.id} className="flex items-center gap-2 text-sm">
                     <Checkbox
+                      id={`quick-customer-project-${project.id}`}
+                      name="project_ids"
+                      value={project.id}
                       checked={projectIds.includes(project.id)}
                       onCheckedChange={(checked) => setProjectIds((current) => checked ? [...current, project.id] : current.filter((id) => id !== project.id))}
                     />

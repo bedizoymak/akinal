@@ -430,13 +430,13 @@ export interface AdminCustomerProjectLink {
 export interface AdminPaymentPlan {
   id: string;
   customer_id: string | null;
-  employee_id?: string | null;
-  expense_card_id?: string | null;
   project_id: string | null;
   title: string | null;
   description: string | null;
+  type?: string | null;
   amount: number | string;
   paid_amount?: number | string | null;
+  currency?: string | null;
   payment_method?: string | null;
   transaction_reference?: string | null;
   card_note?: string | null;
@@ -445,7 +445,8 @@ export interface AdminPaymentPlan {
   bank_name?: string | null;
   promissory_maturity_date?: string | null;
   account_type?: "resmi" | "gayri_resmi" | string | null;
-  due_date: string | null;
+  date: string | null;
+  due_date?: string | null;
   status: string | null;
   notes?: string | null;
   created_at?: string | null;

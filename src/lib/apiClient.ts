@@ -474,6 +474,10 @@ export async function deleteAdminCustomer(id: string): Promise<void> {
   });
 }
 
+export async function getAdminPaymentPlans(): Promise<{ payment_plans: AdminPaymentPlan[]; customers: any[]; projects: any[] }> {
+  return apiRequest("/api/admin/payment-plans.php", { credentials: "include" });
+}
+
 export async function createAdminPaymentPlan(payload: Partial<AdminPaymentPlan>): Promise<AdminPaymentPlan> {
   const data = await apiRequest<{ payment_plan: AdminPaymentPlan }>("/api/admin/payment-plans.php", {
     method: "POST",

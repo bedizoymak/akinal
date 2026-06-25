@@ -699,11 +699,6 @@ function SummaryCards({ kind, summary }: { kind: FinancialStatementKind; summary
         value={<MoneyLines totals={isCustomer ? summary.plannedIncome : summary.plannedExpense} tone="warning" />}
         description="Planlanan hareketler"
       />
-      <AdminMetricCard
-        label={isCustomer ? "Kalan Alacak" : isEmployee ? "Kalan Ödeme" : "Kalan Borç"}
-        value={<MoneyLines totals={isCustomer ? summary.remainingIncome : summary.remainingExpense} />}
-        description="Planlanan eksi gerçekleşen"
-      />
       <AdminMetricCard label="Toplam Resmi Tutar" value={<MoneyLines totals={summary.officialBalance} />} description="Resmi kayıt bakiyesi" />
       <AdminMetricCard label="Toplam Gayri Resmi Tutar" value={<MoneyLines totals={summary.unofficialBalance} />} description="Gayri resmi kayıt bakiyesi" />
       {CURRENCIES.map((currency) => (
@@ -1239,10 +1234,9 @@ export default function FinancialStatementPage({ kind, entityId }: FinancialStat
               </TabsList>
               {planAccountData.map((account) => (
                 <TabsContent key={account.tab} value={account.tab} className="mt-0 space-y-5">
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <AdminMetricCard label="Toplam Alacak" value={formatMoney(account.balance, "TRY")} description="Bekleyen, kısmi ödenen ve vadesi geçen kalan tutar" />
                     <AdminMetricCard label={kind === "employee" ? "Ödenen" : "Ödenen Tutar"} value={formatMoney(account.paid, "TRY")} description="Ödenmiş kayıtlar" />
-                    <AdminMetricCard label={kind === "employee" ? "Kalan Ödeme" : "Kalan Borç"} value={`${formatMoney(account.paid, "TRY")} / ${formatMoney(account.totalAmount, "TRY")}`} description="Ödenen / toplam ödeme kaydı" />
                     <AdminMetricCard label="Vadesi Geçen Tutar" value={formatMoney(account.overdue, "TRY")} description="Geciken unpaid tutar" />
                     <AdminMetricCard label="Yaklaşan Ödeme" value={formatMoney(account.upcoming, "TRY")} description="En yakın gelecek ödeme" />
                   </div>

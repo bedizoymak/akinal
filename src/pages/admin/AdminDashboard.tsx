@@ -619,7 +619,7 @@ export default function AdminDashboard() {
             </div>
           </AdminSection>
 
-          <AdminSection title="Cashflow Komuta Merkezi" description="Alacak, borç, risk ve maliyetleri tek yönetici görünümünde takip edin." contentClassName="space-y-5">
+          <AdminSection title="Nakit Akışı Komuta Merkezi" description="Alacak, borç, risk ve maliyetleri tek yönetici görünümünde takip edin." contentClassName="space-y-5">
             <div className="grid w-full max-w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <AdminMetricCard label="Güncel Alacak" value={formatDashboardTRY(Number(dashboard.cashflowCommandCenter.current_receivables || 0))} icon={Wallet} tone="success" />
               <AdminMetricCard label="Güncel Borç" value={formatDashboardTRY(Number(dashboard.cashflowCommandCenter.current_payables || 0))} icon={Receipt} tone="danger" />
@@ -674,7 +674,7 @@ export default function AdminDashboard() {
             </div>
           </AdminSection>
 
-          <AdminSection title="Cashflow Action Center" description="Bugün karar verilmesi gereken tahsilat, ödeme ve proje finans aksiyonları." contentClassName="space-y-5">
+          <AdminSection title="Nakit Akışı Aksiyon Merkezi" description="Bugün karar verilmesi gereken tahsilat, ödeme ve proje finans aksiyonları." contentClassName="space-y-5">
             <div className="grid w-full max-w-full grid-cols-1 gap-4 xl:grid-cols-3">
               <ActionCenterList title="Kritik Tahsilatlar" items={dashboard.cashflowActionCenter.critical_collections.highest_overdue_customers} valueLabel="Vadesi geçen" />
               <ActionCenterList title="Yüksek Müşteri Bakiyeleri" items={dashboard.cashflowActionCenter.critical_collections.highest_outstanding_balances} valueLabel="Kalan alacak" />

@@ -7,13 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Edit, Mail, MapPin, MessageCircle, Phone, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit, Mail, MapPin, MessageCircle, Phone, Plus } from "lucide-react";
 import { accountType, allocateCollectionsToPlans, customerDisplayName, derivePlanStatus, displayLabel, formatTRY, formatDate, statusBadgeClass, daysUntil, safeNumber, summarizeCustomerLedgerEntries, whatsappLink } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AdminPageHeader } from "@/components/admin/AdminPage";
-import { createAdminCustomerNote, createAdminPaymentPlan, deleteAdminCustomerNote, deleteAdminPaymentPlan, getAdminCustomerDetail, updateAdminPaymentPlan } from "@/lib/apiClient";
+import { createAdminPaymentPlan, deleteAdminPaymentPlan, getAdminCustomerDetail, updateAdminPaymentPlan } from "@/lib/apiClient";
+import { formatTurkishPhone } from "@/lib/customerMasterData";
 
 function Stat({ label, value, color }: any) {
   return (
@@ -83,14 +84,11 @@ export default function AdminCustomerDetail() {
   const [plans, setPlans] = useState<any[]>([]);
   const [pays, setPays] = useState<any[]>([]);
   const [financialEntries, setFinancialEntries] = useState<any[]>([]);
-  const [notes, setNotes] = useState<any[]>([]);
-  const [docs, setDocs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [newNote, setNewNote] = useState("");
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
-  const [planForm, setPlanForm] = useState<any>({ account_type: "resmi", project_id: "", title: "", description: "", amount: "", paid_amount: "", due_date: "", status: "Bekliyor", notes: "", ...defaultPaymentMeta });
+  const [planForm, setPlanForm] = useState<any>({ account_type: "resmi", project_id: "", title: "", description: "", type: "Diğer", amount: "", paid_amount: "", currency: "TRY", date: "", notes: "", ...defaultPaymentMeta });
   const { toast } = useToast();
   const today = new Date().toISOString().slice(0, 10);
   const refreshCustomerDetail = async () => {
@@ -118,8 +116,6 @@ export default function AdminCustomerDetail() {
       setPlans(data.payment_plans || []);
       setPays(data.payments || []);
       setFinancialEntries(data.financial_entries || []);
-      setNotes(data.notes || []);
-      setDocs(data.documents || []);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Lütfen tekrar deneyin.";
       setLoadError(message);
@@ -244,16 +240,6 @@ export default function AdminCustomerDetail() {
     };
   }, [accountSummaries]);
 
-  async function addNote() {
-    if (!id || !newNote.trim()) return;
-    await createAdminCustomerNote(id, newNote.trim());
-    setNewNote(""); toast({ title: "Not eklendi" }); load();
-  }
-  async function deleteNote(nid: string) {
-    if (!confirm("Bu müşteri notunu silmek istediğinize emin misiniz?")) return;
-    await deleteAdminCustomerNote(nid);
-    load();
-  }
   function openNewPayment(account: "resmi" | "gayri_resmi") {
     setEditingPlanId(null);
     setPlanForm({ account_type: account, project_id: "", title: "", description: "", amount: "", paid_amount: "", due_date: "", status: "Bekliyor", notes: "", ...defaultPaymentMeta });
@@ -266,10 +252,11 @@ export default function AdminCustomerDetail() {
       project_id: plan.project_id || "",
       title: plan.title || "",
       description: plan.description || "",
+      type: plan.type || "Diğer",
       amount: String(plan.amount || ""),
       paid_amount: String(plan.paid_amount || ""),
-      due_date: plan.due_date || "",
-      status: plan.status || "Bekliyor",
+      currency: plan.currency || "TRY",
+      date: plan.date || plan.due_date || "",
       notes: plan.notes || "",
       payment_method: plan.payment_method || "Nakit",
       transaction_reference: plan.transaction_reference || "",
@@ -282,16 +269,12 @@ export default function AdminCustomerDetail() {
     setPlanDialogOpen(true);
   }
   async function savePaymentPlan() {
-    if (!id || !planForm.title || !planForm.amount || !planForm.due_date) {
-      toast({ title: "Başlık, tutar ve vade tarihi zorunludur", variant: "destructive" });
+    if (!id || !planForm.title || !planForm.amount || !planForm.date) {
+      toast({ title: "Başlık, tutar ve tarih zorunludur", variant: "destructive" });
       return;
     }
     const amount = Number(planForm.amount);
     const paidAmount = Number(planForm.paid_amount || 0);
-    if (planForm.status === "Kısmi Ödendi" && (!(paidAmount > 0) || !(paidAmount < amount))) {
-      toast({ title: "Ödenen Tutar, 0'dan büyük ve toplam tutardan küçük olmalıdır", variant: "destructive" });
-      return;
-    }
     if (planForm.payment_method === "Çek" && !planForm.cheque_maturity_date) {
       toast({ title: "Çek vade tarihi zorunludur", variant: "destructive" });
       return;
@@ -305,7 +288,7 @@ export default function AdminCustomerDetail() {
       customer_id: id,
       project_id: planForm.project_id || null,
       amount,
-      paid_amount: planForm.status === "Kısmi Ödendi" ? paidAmount : 0,
+      paid_amount: paidAmount,
     };
     if (editingPlanId) {
       await updateAdminPaymentPlan({ ...payload, id: editingPlanId });
@@ -361,7 +344,7 @@ export default function AdminCustomerDetail() {
         <div className="bg-card border border-border rounded-md p-5 space-y-3">
           <h3 className="font-semibold">İletişim Bilgileri</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /> {customer.phone || "-"}</div>
+            <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /> {customer.phone ? formatTurkishPhone(customer.phone) : "-"}</div>
             <div className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-muted-foreground" /> {customer.whatsapp || "-"}</div>
             <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /> {customer.email || "-"}</div>
             <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /> {[customer.address, customer.district, customer.city].filter(Boolean).join(", ") || "-"}</div>
@@ -522,34 +505,6 @@ export default function AdminCustomerDetail() {
                     ) : <div className="text-sm text-muted-foreground py-12 text-center">Bu müşteri için ödeme verisi bulunmuyor.</div>}
                   </div>
 
-                  <div className="bg-card border border-border rounded-md p-4">
-                    <Textarea placeholder={`${account.label} notu...`} value={newNote} onChange={(e) => setNewNote(e.target.value)} rows={3} />
-                    <Button onClick={addNote} className="mt-2 bg-accent hover:bg-accent-glow text-accent-foreground"><Plus className="h-4 w-4 mr-1" /> Not Ekle</Button>
-                  </div>
-                  <div className="space-y-2">
-                    {notes.map((n) => (
-                      <div key={n.id} className="bg-card border border-border rounded-md p-3 flex justify-between gap-3">
-                        <div><div className="text-sm whitespace-pre-wrap">{n.note}</div><div className="text-xs text-muted-foreground mt-1">{formatDate(n.created_at)}</div></div>
-                        <Button size="sm" variant="ghost" onClick={() => deleteNote(n.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                      </div>
-                    ))}
-                    {notes.length === 0 && <div className="text-sm text-muted-foreground text-center py-6">Henüz müşteri notu eklenmemiş.</div>}
-                  </div>
-
-                  <div className="bg-card border border-border rounded-md overflow-x-auto">
-                    <table className="min-w-[420px] w-full text-sm">
-                      <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Belge</th><th className="p-3 text-right">İşlem</th></tr></thead>
-                      <tbody>
-                        {docs.map((d) => (
-                          <tr key={d.id} className="border-t border-border">
-                            <td className="p-3"><div>{d.title}</div><div className="text-xs text-muted-foreground">{d.document_type} · {formatDate(d.created_at)}</div></td>
-                            <td className="p-3 text-right"><a href={d.file_url} target="_blank" rel="noreferrer" className="text-accent hover:underline">Görüntüle</a></td>
-                          </tr>
-                        ))}
-                        {docs.length === 0 && <tr><td colSpan={2} className="p-6 text-center text-muted-foreground">Bu müşteri için belge kaydı bulunmuyor.</td></tr>}
-                      </tbody>
-                    </table>
-                  </div>
                 </div>
               </div>
             </TabsContent>
@@ -575,11 +530,17 @@ export default function AdminCustomerDetail() {
             <div><Label>Başlık *</Label><Input value={planForm.title} onChange={(event) => setPlanForm((form: any) => ({ ...form, title: event.target.value }))} /></div>
             <div><Label>Tutar *</Label><Input type="number" step="0.01" value={planForm.amount} onChange={(event) => setPlanForm((form: any) => ({ ...form, amount: event.target.value }))} /></div>
             {planForm.status === "Kısmi Ödendi" && <div><Label>Ödenen Tutar *</Label><Input type="number" step="0.01" value={planForm.paid_amount} onChange={(event) => setPlanForm((form: any) => ({ ...form, paid_amount: event.target.value }))} /></div>}
-            <div><Label>Vade Tarihi *</Label><Input type="date" value={planForm.due_date} onChange={(event) => setPlanForm((form: any) => ({ ...form, due_date: event.target.value }))} /></div>
-            <div><Label>Durum</Label>
-              <Select value={planForm.status || "Bekliyor"} onValueChange={(value) => setPlanForm((form: any) => ({ ...form, status: value }))}>
+            <div><Label>Tarih *</Label><Input type="date" value={planForm.date} onChange={(event) => setPlanForm((form: any) => ({ ...form, date: event.target.value }))} /></div>
+            <div><Label>Tür</Label>
+              <Select value={planForm.type || "Diğer"} onValueChange={(value) => setPlanForm((form: any) => ({ ...form, type: value }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{["Bekliyor", "Kısmi Ödendi", "Ödendi", "Vadesi Geçti"].map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
+                <SelectContent>{["Kapora", "Taksit", "Hakediş", "Diğer"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Para Birimi</Label>
+              <Select value={planForm.currency || "TRY"} onValueChange={(value) => setPlanForm((form: any) => ({ ...form, currency: value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{["TRY", "USD", "EUR", "XAU_GRAM"].map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>

@@ -45,6 +45,7 @@ const NAV_GROUPS = [
     title: "Cari ve Tahsilat",
     items: [
       { to: "/admin/musteriler", label: "Müşteriler", description: "Cari kayıtlar", icon: Users },
+      { to: "/admin/gelenler", label: "Gelenler", description: "Tahsilat kalemleri", icon: Wallet },
       { to: "/admin/tahsilatlar", label: "Tahsilatlar", description: "Gelen ödemeler", icon: Wallet },
     ],
   },
@@ -100,6 +101,7 @@ const PAGE_META: PageMeta[] = [
   { path: "/admin/musteriler", title: "Müşteriler", group: "Cari ve Tahsilat" },
   { path: "/admin/personeller", title: "Personeller", group: "Personel" },
   { path: "/admin/finans-dashboard", title: "Finans Özeti", group: "Finans" },
+  { path: "/admin/gelenler", title: "Gelenler", group: "Cari ve Tahsilat" },
   { path: "/admin/tahsilatlar", title: "Tahsilatlar", group: "Cari ve Tahsilat" },
   { path: "/admin/giderler", title: "Giderler", group: "Finans" },
   { path: "/admin/gider-kartlari", title: "Gider Kalemleri", group: "Finans" },

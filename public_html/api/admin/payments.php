@@ -10,7 +10,7 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 try {
     if ($method === 'GET') {
-        $plans = fetch_all('SELECT id, title, customer_id, project_id, amount, paid_amount, account_type, due_date, status FROM ak_payment_plans ORDER BY due_date ASC');
+        $plans = fetch_all('SELECT id, title, customer_id, project_id, amount, paid_amount, account_type, `date` AS due_date, status FROM ak_payment_plans WHERE customer_id IS NOT NULL ORDER BY `date` ASC');
         $payments = fetch_all('SELECT customer_id, payment_plan_id, amount, account_type FROM ak_payments WHERE customer_id IS NOT NULL');
         json_success([
             'payments' => fetch_all('SELECT * FROM ak_payments ORDER BY payment_date DESC'),
@@ -125,7 +125,7 @@ function sync_customer_account_plan_statuses(string $customerId, string $account
 {
     if ($customerId === '') return;
     $plans = fetch_all(
-        'SELECT id, amount, paid_amount, due_date, status FROM ak_payment_plans WHERE customer_id = :customer_id AND account_type = :account_type ORDER BY due_date ASC',
+        'SELECT id, amount, paid_amount, `date` AS due_date, status FROM ak_payment_plans WHERE customer_id = :customer_id AND account_type = :account_type ORDER BY `date` ASC',
         ['customer_id' => $customerId, 'account_type' => $accountType]
     );
     $payments = fetch_all(

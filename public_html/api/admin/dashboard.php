@@ -60,7 +60,7 @@ try {
           pp.title,
           pp.amount,
           pp.paid_amount,
-          pp.due_date,
+          pp.`date`,
           pp.status,
           pp.customer_id,
           pp.project_id,
@@ -71,7 +71,7 @@ try {
         LEFT JOIN ak_customers c ON c.id = pp.customer_id
         LEFT JOIN ak_projects pr ON pr.id = pp.project_id
         WHERE pp.customer_id IS NOT NULL
-        ORDER BY pp.customer_id ASC, pp.account_type ASC, pp.due_date ASC
+        ORDER BY pp.customer_id ASC, pp.account_type ASC, pp.`date` ASC
     ")->fetchAll();
 
     $customerPayments = $pdo->query("
@@ -675,24 +675,23 @@ function fetch_financial_drilldowns(PDO $pdo): array
                 LIMIT 8
             "),
             'pending_payments' => fetch_drilldown_rows($pdo, "
-                SELECT pp.id, COALESCE(c.company_name, c.full_name, 'Müşteri') AS owner_name, pp.title AS label, GREATEST(pp.amount - pp.paid_amount, 0) AS amount, pp.due_date AS row_date, 'Bekleyen' AS row_type
+                SELECT pp.id, COALESCE(c.company_name, c.full_name, 'Müşteri') AS owner_name, pp.title AS label, GREATEST(pp.amount - pp.paid_amount, 0) AS amount, pp.`date` AS row_date, 'Bekleyen' AS row_type
                 FROM ak_payment_plans pp
                 LEFT JOIN ak_customers c ON c.id = pp.customer_id
                 WHERE pp.customer_id IS NOT NULL
-                  AND pp.status <> 'İptal'
+                  AND pp.status NOT IN ('Ödendi','Fazla Ödendi')
                   AND GREATEST(pp.amount - pp.paid_amount, 0) > 0
                 ORDER BY row_date ASC
                 LIMIT 8
             "),
             'overdue_payments' => fetch_drilldown_rows($pdo, "
-                SELECT pp.id, COALESCE(c.company_name, c.full_name, 'Müşteri') AS owner_name, pp.title AS label, GREATEST(pp.amount - pp.paid_amount, 0) AS amount, pp.due_date AS row_date, 'Vadesi Geçti' AS row_type
+                SELECT pp.id, COALESCE(c.company_name, c.full_name, 'Müşteri') AS owner_name, pp.title AS label, GREATEST(pp.amount - pp.paid_amount, 0) AS amount, pp.`date` AS row_date, 'Gecikmiş' AS row_type
                 FROM ak_payment_plans pp
                 LEFT JOIN ak_customers c ON c.id = pp.customer_id
                 WHERE pp.customer_id IS NOT NULL
-                  AND pp.status <> 'İptal'
-                  AND pp.due_date < CURDATE()
+                  AND pp.`date` < CURDATE()
                   AND GREATEST(pp.amount - pp.paid_amount, 0) > 0
-                ORDER BY pp.due_date ASC
+                ORDER BY pp.`date` ASC
                 LIMIT 8
             "),
         ],
@@ -1029,11 +1028,11 @@ function fetch_combined_realized_cash_position(PDO $pdo): float
 function fetch_receivable_obligations(PDO $pdo): array
 {
     $plans = canonical_read_all($pdo, "
-        SELECT id, title, amount, paid_amount, due_date, status, customer_id, project_id, account_type
+        SELECT id, title, amount, paid_amount, `date`, status, customer_id, project_id, account_type
         FROM ak_payment_plans
         WHERE customer_id IS NOT NULL
-          AND status <> 'İptal'
-        ORDER BY customer_id ASC, account_type ASC, due_date ASC
+          AND status NOT IN ('Ödendi','Fazla Ödendi')
+        ORDER BY customer_id ASC, account_type ASC, `date` ASC
     ");
     $payments = canonical_read_all($pdo, "
         SELECT customer_id, payment_plan_id, amount, account_type
@@ -1046,7 +1045,7 @@ function fetch_receivable_obligations(PDO $pdo): array
         'amount' => canonical_read_money($plan['amount'] ?? 0),
         'paid_amount' => canonical_read_money($plan['paid_amount'] ?? 0),
         'remaining_amount' => canonical_read_money($plan['remaining_amount'] ?? 0),
-        'due_date' => (string) ($plan['due_date'] ?? ''),
+        'due_date' => (string) ($plan['date'] ?? ''),
         'project_id' => $plan['project_id'] ?? null,
         'account_type' => (string) ($plan['account_type'] ?? 'resmi'),
     ], canonical_read_customer_plan_buckets($plans, $payments)['states'] ?? []);
@@ -1099,37 +1098,29 @@ function sum_entry_balance_by_group(PDO $pdo, string $groupTag): float
 function fetch_payable_obligations(PDO $pdo): array
 {
     $plans = canonical_read_all($pdo, "
-        SELECT pp.id, pp.title, pp.amount, pp.paid_amount, pp.due_date, pp.status, pp.project_id, pp.employee_id, pp.expense_card_id, pp.account_type,
-          emp.full_name AS employee_name,
-          ec.name AS expense_card_name,
-          ec.category AS expense_card_category
+        SELECT pp.id, pp.title, pp.amount, pp.paid_amount, pp.`date`, pp.status, pp.project_id, pp.account_type
         FROM ak_payment_plans pp
-        LEFT JOIN ak_employees emp ON emp.id = pp.employee_id
-        LEFT JOIN ak_expense_cards ec ON ec.id = pp.expense_card_id
         WHERE pp.customer_id IS NULL
-          AND pp.status <> 'İptal'
     ");
     $obligations = [];
     $planSignatures = [];
     foreach ($plans as $plan) {
-        $ownerType = payable_owner_type($plan);
-        $ownerName = $ownerType === 'personnel'
-            ? (string) ($plan['employee_name'] ?? 'Personel')
-            : (string) ($plan['expense_card_name'] ?? 'Gider');
+        $ownerType = 'other';
+        $ownerName = 'Diğer';
         $row = [
             'id' => 'plan-' . (string) ($plan['id'] ?? ''),
             'source_type' => 'payment_plan',
             'title' => (string) ($plan['title'] ?? 'Ödeme planı'),
             'amount' => canonical_read_money($plan['amount'] ?? 0),
             'paid_amount' => canonical_read_money($plan['paid_amount'] ?? 0),
-            'due_date' => (string) ($plan['due_date'] ?? ''),
+            'due_date' => (string) ($plan['date'] ?? ''),
             'project_id' => $plan['project_id'] ?? null,
-            'employee_id' => $plan['employee_id'] ?? null,
-            'expense_card_id' => $plan['expense_card_id'] ?? null,
+            'employee_id' => null,
+            'expense_card_id' => null,
             'account_type' => (string) ($plan['account_type'] ?? 'resmi'),
             'owner_type' => $ownerType,
             'owner_name' => $ownerName,
-            'expense_card_category' => $plan['expense_card_category'] ?? null,
+            'expense_card_category' => null,
         ];
         $planSignatures[payable_obligation_signature($row)] = true;
         $obligations[] = $row;
@@ -1205,10 +1196,10 @@ function payable_obligation_remaining(array $row): float
 function fetch_customer_financial_cards(PDO $pdo, ?int $limit = 6): array
 {
     $plans = canonical_read_all($pdo, "
-        SELECT id, title, amount, paid_amount, due_date, status, customer_id, project_id, account_type
+        SELECT id, title, amount, paid_amount, `date`, status, customer_id, project_id, account_type
         FROM ak_payment_plans
         WHERE customer_id IS NOT NULL
-        ORDER BY customer_id ASC, account_type ASC, due_date ASC
+        ORDER BY customer_id ASC, account_type ASC, `date` ASC
     ");
     $payments = canonical_read_all($pdo, "
         SELECT customer_id, payment_plan_id, amount, account_type, payment_date
@@ -1340,10 +1331,10 @@ function fetch_project_financial_cards(PDO $pdo, ?int $limit = 6): array
     }
 
     $plans = canonical_read_all($pdo, "
-        SELECT id, title, amount, paid_amount, due_date, status, customer_id, project_id, account_type
+        SELECT id, title, amount, paid_amount, `date` AS due_date, status, customer_id, project_id, account_type
         FROM ak_payment_plans
         WHERE project_id IS NOT NULL
-        ORDER BY customer_id ASC, account_type ASC, due_date ASC
+        ORDER BY customer_id ASC, account_type ASC, `date` ASC
     ");
     $payments = canonical_read_all($pdo, "
         SELECT customer_id, payment_plan_id, amount, account_type

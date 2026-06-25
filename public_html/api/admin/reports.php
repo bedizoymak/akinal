@@ -10,7 +10,7 @@ require_method('GET');
 try {
     json_success([
         'customers' => fetch_all_reports('SELECT * FROM ak_customers ORDER BY created_at DESC'),
-        'payment_plans' => fetch_all_reports('SELECT * FROM ak_payment_plans ORDER BY due_date ASC'),
+        'payment_plans' => fetch_all_reports('SELECT * FROM ak_payment_plans ORDER BY `date` ASC'),
         'payments' => fetch_all_reports('SELECT * FROM ak_payments ORDER BY payment_date DESC'),
         'expenses' => fetch_all_reports('SELECT * FROM ak_expenses ORDER BY expense_date DESC'),
         'financial_entries' => fetch_all_reports('SELECT * FROM ak_financial_entries ORDER BY entry_date DESC, created_at DESC'),
