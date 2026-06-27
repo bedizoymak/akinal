@@ -37,6 +37,7 @@ const empty = {
   apartment_count: "", floor_count: "", block_count: "",
   cover_image_url: "", is_featured: false, is_published: false, sort_order: 0,
   seo_title: "", seo_description: "",
+  contract_total_try: null as number | null,
 };
 
 function SearchableLocationSelect({
@@ -402,6 +403,27 @@ export default function AdminProjectEdit() {
             <div className="flex items-center justify-between"><Label>Yayında</Label><Switch checked={data.is_published} onCheckedChange={(v) => update("is_published", v)} /></div>
             <div className="flex items-center justify-between"><Label>Öne Çıkan</Label><Switch checked={data.is_featured} onCheckedChange={(v) => update("is_featured", v)} /></div>
             <div><Label>Sıralama</Label><Input type="number" value={data.sort_order || 0} onChange={(e) => update("sort_order", Number(e.target.value))} /></div>
+          </section>
+
+          <section className="p-6 bg-card border border-border rounded-md space-y-4">
+            <h2 className="font-display text-lg font-bold">Finansal</h2>
+            <div>
+              <Label>Sözleşme Toplam Bedeli</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={data.contract_total_try != null ? String(data.contract_total_try) : ""}
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  if (v === "") { update("contract_total_try", null); return; }
+                  const n = parseFloat(v);
+                  update("contract_total_try", isNaN(n) ? null : n);
+                }}
+                placeholder="örn. 12500000"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">TL cinsinden. Boş bırakılabilir.</p>
+            </div>
           </section>
 
           <section className="p-6 bg-card border border-border rounded-md space-y-4">

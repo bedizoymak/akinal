@@ -103,6 +103,7 @@ CREATE TABLE IF NOT EXISTS ak_projects (
   sort_order INT NOT NULL DEFAULT 0,
   seo_title VARCHAR(255) NULL,
   seo_description TEXT NULL,
+  contract_total_try DECIMAL(14,2) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_projects_slug (slug),

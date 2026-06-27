@@ -74,6 +74,7 @@ export default function AdminProjectFinance() {
   const project = data?.project;
   const rows = data?.rows ?? [];
   const summary = data?.summary;
+  const contractTotal = project?.contract_total_try != null ? Number(project.contract_total_try) : null;
   const incomeRows = rows.filter((r) => r.direction === "income");
   const expenseRows = rows.filter((r) => r.direction === "expense");
 
@@ -88,6 +89,13 @@ export default function AdminProjectFinance() {
           </Button>
         }
       />
+
+      {contractTotal != null && (
+        <div className="rounded-md border border-border bg-card p-4 shadow-card-soft max-w-xs">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Sözleşme Bedeli</div>
+          <div className="mt-2 break-words text-xl font-extrabold leading-tight tabular-nums text-foreground">{fmtTRY(contractTotal)}</div>
+        </div>
+      )}
 
       {summary && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">

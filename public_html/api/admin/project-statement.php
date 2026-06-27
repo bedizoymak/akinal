@@ -14,10 +14,13 @@ if ($projectId === '') {
 
 try {
     // Verify project exists
-    $project = db()->prepare('SELECT id, title FROM ak_projects WHERE id = :id LIMIT 1');
+    $project = db()->prepare('SELECT id, title, contract_total_try FROM ak_projects WHERE id = :id LIMIT 1');
     $project->execute(['id' => $projectId]);
     $projectRow = $project->fetch();
     if (!$projectRow) json_error('Proje bulunamadı.', 404);
+    $projectRow['contract_total_try'] = $projectRow['contract_total_try'] !== null
+        ? (float) $projectRow['contract_total_try']
+        : null;
 
     $rows = fetch_project_statement_rows($projectId);
     $summary = compute_statement_summary($rows);

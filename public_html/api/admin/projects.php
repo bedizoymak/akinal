@@ -29,6 +29,8 @@ $projectFields = [
     'seo_description',
 ];
 
+$decimalProjectFields = ['contract_total_try'];
+
 try {
     if ($method === 'GET') {
         $id = trim((string) ($_GET['id'] ?? ''));
@@ -50,6 +52,7 @@ try {
         $payload['is_featured'] = normalize_bool($input['is_featured'] ?? false);
         $payload['is_published'] = normalize_bool($input['is_published'] ?? false);
         $payload['sort_order'] = (int) ($input['sort_order'] ?? 0);
+        $payload['contract_total_try'] = nullable_decimal($input['contract_total_try'] ?? null);
 
         $columns = array_keys($payload);
         $sql = 'INSERT INTO ak_projects (`' . implode('`, `', $columns) . '`) VALUES (:' . implode(', :', $columns) . ')';
@@ -85,6 +88,9 @@ try {
         if (array_key_exists('sort_order', $input)) {
             $payload['sort_order'] = (int) $input['sort_order'];
         }
+        if (array_key_exists('contract_total_try', $input)) {
+            $payload['contract_total_try'] = nullable_decimal($input['contract_total_try']);
+        }
 
         if ($payload === []) {
             json_error('Güncellenecek proje alanı bulunamadı.');
@@ -119,6 +125,15 @@ try {
     json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
     json_error('Proje işlemi tamamlanamadı.', 500);
+}
+
+function nullable_decimal(mixed $value): ?float
+{
+    if ($value === null || $value === '' || $value === false) {
+        return null;
+    }
+    $f = (float) $value;
+    return is_nan($f) || is_infinite($f) ? null : round($f, 2);
 }
 
 function project_payload(array $input, array $fields): array

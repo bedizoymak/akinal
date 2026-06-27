@@ -45,6 +45,7 @@ export interface PublicProject {
   sort_order: number | null;
   seo_title?: string | null;
   seo_description?: string | null;
+  contract_total_try?: number | string | null;
   created_at: string;
   updated_at?: string | null;
 }
@@ -925,7 +926,7 @@ export interface ProjectStatementSummary {
 }
 
 export interface ProjectStatementResponse {
-  project: { id: string; title: string };
+  project: { id: string; title: string; contract_total_try?: number | null };
   rows: ProjectStatementRow[];
   summary: ProjectStatementSummary;
 }
