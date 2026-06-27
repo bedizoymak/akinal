@@ -1,6 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-dom";
+
+function FinancRedirect({ base }: { base: string }) {
+  const { id } = useParams();
+  return <Navigate to={`/admin/${base}/${id ?? ''}`} replace />;
+}
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -46,6 +51,11 @@ const AdminProjectExpenses = lazy(() => import("./pages/admin/AdminProjectExpens
 const AdminNotifications = lazy(() => import("./pages/admin/AdminNotifications"));
 const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
 const AdminSqlEditor = lazy(() => import("./pages/admin/AdminSqlEditor"));
+const AdminSuppliers = lazy(() => import("./pages/admin/AdminSuppliers"));
+const AdminSupplierEdit = lazy(() => import("./pages/admin/AdminSupplierEdit"));
+const AdminSupplierDetail = lazy(() => import("./pages/admin/AdminSupplierDetail"));
+const AdminGelenler = lazy(() => import("./pages/admin/AdminGelenler"));
+const AdminGidenler = lazy(() => import("./pages/admin/AdminGidenler"));
 
 const queryClient = new QueryClient();
 
@@ -71,18 +81,23 @@ const App = () => (
                   <Route path="musteriler/yeni" element={<AdminCustomerEdit />} />
                   <Route path="musteriler/:id" element={<AdminCustomerDetail />} />
                   <Route path="musteriler/:id/duzenle" element={<AdminCustomerEdit />} />
-                  <Route path="musteriler/:id/finans" element={<AdminCustomerFinance />} />
+                  <Route path="musteriler/:id/finans" element={<FinancRedirect base="musteriler" />} />
                   <Route path="personeller" element={<AdminEmployees />} />
-                  <Route path="personeller/:id/finans" element={<AdminEmployeeFinance />} />
+                  <Route path="personeller/:id/finans" element={<FinancRedirect base="personeller" />} />
                   <Route path="personeller/:id/tahsisat" element={<AdminEmployeeAllocations />} />
                   <Route path="personeller/:id" element={<AdminEmployeeDetail />} />
                   <Route path="odeme-planlari" element={<Navigate to="/admin/musteriler" replace />} />
-                  <Route path="gelenler" element={<AdminPaymentPlans />} />
-                  <Route path="tahsilatlar" element={<AdminCollections />} />
-                  <Route path="giderler" element={<AdminExpenses />} />
+                  <Route path="tedarikciler" element={<AdminSuppliers />} />
+                  <Route path="tedarikciler/yeni" element={<AdminSupplierEdit />} />
+                  <Route path="tedarikciler/:id" element={<AdminSupplierDetail />} />
+                  <Route path="tedarikciler/:id/duzenle" element={<AdminSupplierEdit />} />
+                  <Route path="gelenler" element={<AdminGelenler />} />
+                  <Route path="gidenler" element={<AdminGidenler />} />
+                  <Route path="tahsilatlar" element={<Navigate to="/admin/gelenler" replace />} />
+                  <Route path="giderler" element={<Navigate to="/admin/gidenler" replace />} />
                   <Route path="gider-kartlari" element={<AdminExpenseCards />} />
                   <Route path="gider-kartlari/:id/finans" element={<AdminExpenseCardFinance />} />
-                  <Route path="finans-dashboard" element={<AdminFinance />} />
+                  <Route path="finans-dashboard" element={<Navigate to="/admin" replace />} />
                   <Route path="medya" element={<AdminMedia />} />
                   <Route path="talepler" element={<AdminContacts />} />
                   <Route path="bildirimler" element={<AdminNotifications />} />

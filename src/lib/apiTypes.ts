@@ -487,6 +487,10 @@ export interface AdminExpense {
 export interface AdminExpenseCard {
   id: string;
   name: string;
+  planned_total?: number;
+  paid_total?: number;
+  remaining_total?: number;
+  entry_count?: number;
 }
 
 export interface AkExpenseTransaction {
@@ -776,6 +780,233 @@ export interface AdminSqlEditorResult {
 }
 
 export type ConsentStatus = "accepted" | "rejected" | "managed";
+
+// ── New card-based finance architecture types ──────────────────────────────────
+
+export type SupplierType =
+  | "supplier"
+  | "subcontractor"
+  | "labor_service"
+  | "equipment_rental"
+  | "crane_rental"
+  | "other";
+
+export interface AdminSupplier {
+  id: string;
+  name: string;
+  supplier_type: SupplierType;
+  contact_person: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  tax_no: string | null;
+  address: string | null;
+  city: string | null;
+  district: string | null;
+  notes: string | null;
+  is_active: number | boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CardEntryStatus =
+  | "Planlanan"
+  | "Gecikmiş"
+  | "Kısmi Ödendi"
+  | "Gerçekleşti"
+  | "Fazla Ödendi";
+
+export type CardEntryCurrency = "TRY" | "USD" | "EUR" | "XAU_GRAM";
+export type CardEntryAccountType = "resmi" | "gayri_resmi";
+export type CardEntryPaymentMethod =
+  | "Nakit"
+  | "Banka Havalesi/EFT"
+  | "Kredi Kartı"
+  | "Çek"
+  | "Senet"
+  | "Diğer";
+export type CardEntryRateSource = "api" | "manual" | "default";
+
+export interface CardFinancialEntry {
+  id: string;
+  project_id: string;
+  entry_date: string;
+  title: string;
+  notes: string | null;
+  amount: number;
+  paid_amount: number;
+  remaining_amount?: number;
+  currency: CardEntryCurrency;
+  exchange_rate_to_try: number;
+  exchange_rate_source: CardEntryRateSource;
+  exchange_rate_snapshot_at: string | null;
+  is_exchange_rate_manual: number | boolean;
+  amount_try: number;
+  paid_amount_try: number;
+  remaining_amount_try?: number;
+  account_type: CardEntryAccountType;
+  payment_method: CardEntryPaymentMethod;
+  status: CardEntryStatus;
+  is_overdue: number | boolean;
+  created_at: string;
+  updated_at: string;
+  // Joined fields (may be present depending on query)
+  owner_name?: string;
+  project_title?: string;
+}
+
+export interface CustomerFinancialEntry extends CardFinancialEntry {
+  customer_id: string;
+  source_type?: "customer";
+}
+
+export interface EmployeeFinancialEntry extends CardFinancialEntry {
+  employee_id: string;
+  source_type?: "employee";
+}
+
+export interface SupplierFinancialEntry extends CardFinancialEntry {
+  supplier_id: string;
+  source_type?: "supplier";
+}
+
+export interface ExpenseCardFinancialEntry extends CardFinancialEntry {
+  expense_card_id: string;
+  source_type?: "expense_card";
+}
+
+// Normalized union row from project-statement.php and gidenler.php
+export type CardEntrySourceType = "customer" | "employee" | "supplier" | "expense_card";
+
+export interface ProjectStatementRow {
+  id: string;
+  source_type: CardEntrySourceType;
+  source_label: string;
+  owner_id: string;
+  owner_name: string;
+  project_id: string;
+  project_name: string;
+  entry_date: string;
+  title: string;
+  notes: string | null;
+  direction: "income" | "expense";
+  sign: 1 | -1;
+  amount: number;
+  paid_amount: number;
+  remaining_amount: number;
+  currency: CardEntryCurrency;
+  exchange_rate_to_try: number;
+  exchange_rate_source: CardEntryRateSource;
+  exchange_rate_snapshot_at: string | null;
+  is_exchange_rate_manual: number | boolean;
+  amount_try: number;
+  paid_amount_try: number;
+  remaining_amount_try: number;
+  signed_amount_try: number;
+  signed_paid_amount_try: number;
+  account_type: CardEntryAccountType;
+  payment_method: CardEntryPaymentMethod;
+  status: CardEntryStatus;
+  is_overdue: number | boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectStatementSummary {
+  total_income_planned: number;
+  total_income_paid: number;
+  total_income_remaining: number;
+  total_expense_planned: number;
+  total_expense_paid: number;
+  total_expense_remaining: number;
+  realized_profit: number;
+  planned_profit: number;
+  row_count: number;
+}
+
+export interface ProjectStatementResponse {
+  project: { id: string; title: string };
+  rows: ProjectStatementRow[];
+  summary: ProjectStatementSummary;
+}
+
+export interface GelenlerSummary {
+  total_planned: number;
+  total_paid: number;
+  total_remaining: number;
+  overdue_count: number;
+  row_count: number;
+}
+
+export interface GelenlerResponse {
+  entries: (CustomerFinancialEntry & { source_type: "customer"; source_label: string; owner_name: string; project_title: string })[];
+  summary: GelenlerSummary;
+  projects: { id: string; title: string }[];
+  customers: { id: string; name: string }[];
+}
+
+export interface GidenlerSummary {
+  total_planned: number;
+  total_paid: number;
+  total_remaining: number;
+  by_source_type_paid: { employee: number; supplier: number; expense_card: number };
+  overdue_count: number;
+  row_count: number;
+}
+
+export interface GidenlerEntry extends CardFinancialEntry {
+  owner_id: string;
+  owner_name: string;
+  source_type: "employee" | "supplier" | "expense_card";
+  source_label: string;
+  project_title: string;
+}
+
+export interface GidenlerResponse {
+  entries: GidenlerEntry[];
+  summary: GidenlerSummary;
+  projects: { id: string; title: string }[];
+}
+
+// Payload types for creating/updating entries
+export interface CardFinancialEntryPayload {
+  project_id: string;
+  entry_date: string;
+  title: string;
+  notes?: string | null;
+  amount: number | string;
+  paid_amount?: number | string;
+  currency: CardEntryCurrency;
+  exchange_rate_to_try?: number | string;
+  exchange_rate_source?: CardEntryRateSource;
+  is_exchange_rate_manual?: boolean | number;
+  account_type?: CardEntryAccountType;
+  payment_method?: CardEntryPaymentMethod;
+}
+
+export interface AdminSuppliersResponse {
+  suppliers: AdminSupplier[];
+}
+
+export interface AdminSupplierResponse {
+  supplier: AdminSupplier;
+}
+
+export interface AdminSupplierEntriesResponse {
+  entries: SupplierFinancialEntry[];
+}
+
+export interface AdminCustomerEntriesResponse {
+  entries: CustomerFinancialEntry[];
+}
+
+export interface AdminEmployeeEntriesResponse {
+  entries: EmployeeFinancialEntry[];
+}
+
+export interface AdminExpenseCardEntriesResponse {
+  entries: ExpenseCardFinancialEntry[];
+}
 
 export interface CookieConsentPayload {
   consent_status: ConsentStatus;

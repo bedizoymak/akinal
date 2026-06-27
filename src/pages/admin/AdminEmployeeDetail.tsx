@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ChevronLeft, BarChart3, CalendarDays } from "lucide-react";
+import { ChevronLeft, CalendarDays } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { getAdminEmployees } from "@/lib/apiClient";
+import { getAdminEmployees, getEmployeeFinancialEntries, createEmployeeFinancialEntry, updateEmployeeFinancialEntry, deleteEmployeeFinancialEntry, getAdminProjects } from "@/lib/apiClient";
 import type { AdminEmployee } from "@/lib/apiTypes";
+import { CardStatementTable } from "@/components/admin/finance/CardStatementTable";
+import type { CardEntryFormValues } from "@/components/admin/finance/CardEntryForm";
 import { EmployeeRolesPanel } from "@/components/admin/employees/EmployeeRolesPanel";
 import { CostPeriodsPanel } from "@/components/admin/employees/CostPeriodsPanel";
 import { ProjectAssignmentsPanel } from "@/components/admin/employees/ProjectAssignmentsPanel";
@@ -24,6 +27,33 @@ export default function AdminEmployeeDetail() {
   const [employee, setEmployee] = useState<AdminEmployee | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("roller");
+  const qc = useQueryClient();
+
+  const { data: entries = [] } = useQuery({
+    queryKey: ["employee-financial-entries", id],
+    queryFn: () => getEmployeeFinancialEntries({ employee_id: id! }),
+    enabled: !!id,
+  });
+  const { data: projects = [] } = useQuery({
+    queryKey: ["admin-projects"],
+    queryFn: getAdminProjects,
+  });
+
+  async function handleEntryAdd(values: CardEntryFormValues) {
+    await createEmployeeFinancialEntry({ employee_id: id!, project_id: values.project_id, entry_date: values.entry_date, title: values.title, notes: values.notes || null, amount: values.amount, paid_amount: values.paid_amount, currency: values.currency, exchange_rate_to_try: values.exchange_rate_to_try, is_exchange_rate_manual: values.is_exchange_rate_manual, account_type: values.account_type, payment_method: values.payment_method });
+    await qc.invalidateQueries({ queryKey: ["employee-financial-entries", id] });
+    toast({ title: "Kayıt eklendi." });
+  }
+  async function handleEntryEdit(entryId: string, values: CardEntryFormValues) {
+    await updateEmployeeFinancialEntry({ id: entryId, employee_id: id!, project_id: values.project_id, entry_date: values.entry_date, title: values.title, notes: values.notes || null, amount: values.amount, paid_amount: values.paid_amount, currency: values.currency, exchange_rate_to_try: values.exchange_rate_to_try, is_exchange_rate_manual: values.is_exchange_rate_manual, account_type: values.account_type, payment_method: values.payment_method });
+    await qc.invalidateQueries({ queryKey: ["employee-financial-entries", id] });
+    toast({ title: "Kayıt güncellendi." });
+  }
+  async function handleEntryDelete(entryId: string) {
+    await deleteEmployeeFinancialEntry(entryId);
+    await qc.invalidateQueries({ queryKey: ["employee-financial-entries", id] });
+    toast({ title: "Kayıt silindi." });
+  }
 
   useEffect(() => {
     if (!id) return;
@@ -59,9 +89,6 @@ export default function AdminEmployeeDetail() {
         </div>
         <div className="flex gap-2">
           <Button asChild size="sm" variant="outline">
-            <Link to={`/admin/personeller/${id}/finans`}><BarChart3 className="h-4 w-4 mr-1" /> Finans</Link>
-          </Button>
-          <Button asChild size="sm" variant="outline">
             <Link to={`/admin/personeller/${id}/tahsisat`}><CalendarDays className="h-4 w-4 mr-1" /> Tahsisat</Link>
           </Button>
         </div>
@@ -90,6 +117,19 @@ export default function AdminEmployeeDetail() {
         {tab === "roller" && <EmployeeRolesPanel employeeId={id} />}
         {tab === "maliyetler" && <CostPeriodsPanel employeeId={id} />}
         {tab === "atamalar" && <ProjectAssignmentsPanel employeeId={id} />}
+      </div>
+
+      {/* New card-based financial entries */}
+      <div className="mt-6 rounded-xl border border-border bg-card p-5 shadow-card-soft">
+        <CardStatementTable
+          entries={entries as any}
+          projects={projects.map((p) => ({ id: p.id, title: p.title }))}
+          direction="expense"
+          onAdd={handleEntryAdd}
+          onEdit={handleEntryEdit}
+          onDelete={handleEntryDelete}
+          title="Mali Hareketler"
+        />
       </div>
     </div>
   );

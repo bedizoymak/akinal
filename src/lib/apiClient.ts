@@ -40,6 +40,21 @@ import type {
   ProjectDetailResponse,
   PublicProject,
   SiteSettings,
+  AdminSupplier,
+  AdminSuppliersResponse,
+  AdminSupplierResponse,
+  CustomerFinancialEntry,
+  EmployeeFinancialEntry,
+  SupplierFinancialEntry,
+  ExpenseCardFinancialEntry,
+  AdminCustomerEntriesResponse,
+  AdminEmployeeEntriesResponse,
+  AdminSupplierEntriesResponse,
+  AdminExpenseCardEntriesResponse,
+  CardFinancialEntryPayload,
+  ProjectStatementResponse,
+  GelenlerResponse,
+  GidenlerResponse,
 } from "@/lib/apiTypes";
 
 type ApiResponse<T> = {
@@ -1046,4 +1061,141 @@ export async function deleteEmployeeAllocation(id: string): Promise<void> {
     method: "DELETE",
     credentials: "include",
   });
+}
+
+// ── Suppliers ─────────────────────────────────────────────────────────────────
+
+export async function getAdminSuppliers(params: { q?: string; active_only?: boolean } = {}): Promise<AdminSupplier[]> {
+  const p = new URLSearchParams();
+  if (params.q) p.set("q", params.q);
+  if (params.active_only) p.set("active_only", "1");
+  const data = await apiRequest<AdminSuppliersResponse>(`/api/admin/suppliers.php${p.toString() ? "?" + p.toString() : ""}`, { method: "GET", credentials: "include" });
+  return data.suppliers || [];
+}
+
+export async function getAdminSupplier(id: string): Promise<AdminSupplier> {
+  const data = await apiRequest<AdminSupplierResponse>(`/api/admin/suppliers.php?id=${encodeURIComponent(id)}`, { method: "GET", credentials: "include" });
+  return data.supplier;
+}
+
+export async function createAdminSupplier(payload: Omit<AdminSupplier, "id" | "created_at" | "updated_at">): Promise<AdminSupplier> {
+  const data = await apiRequest<AdminSupplierResponse>("/api/admin/suppliers.php", { method: "POST", credentials: "include", body: JSON.stringify(payload) });
+  return data.supplier;
+}
+
+export async function updateAdminSupplier(payload: Partial<AdminSupplier> & { id: string }): Promise<AdminSupplier> {
+  const data = await apiRequest<AdminSupplierResponse>("/api/admin/suppliers.php", { method: "PATCH", credentials: "include", body: JSON.stringify(payload) });
+  return data.supplier;
+}
+
+export async function deleteAdminSupplier(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/suppliers.php?id=${encodeURIComponent(id)}`, { method: "DELETE", credentials: "include" });
+}
+
+// ── Customer financial entries ─────────────────────────────────────────────────
+
+export async function getCustomerFinancialEntries(params: { customer_id?: string; project_id?: string; id?: string } = {}): Promise<CustomerFinancialEntry[]> {
+  const p = new URLSearchParams(Object.entries(params).filter(([, v]) => v).map(([k, v]) => [k, v as string]));
+  const data = await apiRequest<AdminCustomerEntriesResponse & { entry?: CustomerFinancialEntry }>(`/api/admin/customer-financial-entries.php${p.toString() ? "?" + p.toString() : ""}`, { method: "GET", credentials: "include" });
+  return data.entries || (data.entry ? [data.entry] : []);
+}
+
+export async function createCustomerFinancialEntry(payload: CardFinancialEntryPayload & { customer_id: string }): Promise<CustomerFinancialEntry> {
+  const data = await apiRequest<{ entry: CustomerFinancialEntry }>("/api/admin/customer-financial-entries.php", { method: "POST", credentials: "include", body: JSON.stringify(payload) });
+  return data.entry;
+}
+
+export async function updateCustomerFinancialEntry(payload: Partial<CardFinancialEntryPayload> & { id: string; customer_id: string }): Promise<CustomerFinancialEntry> {
+  const data = await apiRequest<{ entry: CustomerFinancialEntry }>("/api/admin/customer-financial-entries.php", { method: "PATCH", credentials: "include", body: JSON.stringify(payload) });
+  return data.entry;
+}
+
+export async function deleteCustomerFinancialEntry(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/customer-financial-entries.php?id=${encodeURIComponent(id)}`, { method: "DELETE", credentials: "include" });
+}
+
+// ── Employee financial entries ─────────────────────────────────────────────────
+
+export async function getEmployeeFinancialEntries(params: { employee_id?: string; project_id?: string } = {}): Promise<EmployeeFinancialEntry[]> {
+  const p = new URLSearchParams(Object.entries(params).filter(([, v]) => v).map(([k, v]) => [k, v as string]));
+  const data = await apiRequest<AdminEmployeeEntriesResponse>(`/api/admin/employee-financial-entries.php${p.toString() ? "?" + p.toString() : ""}`, { method: "GET", credentials: "include" });
+  return data.entries || [];
+}
+
+export async function createEmployeeFinancialEntry(payload: CardFinancialEntryPayload & { employee_id: string }): Promise<EmployeeFinancialEntry> {
+  const data = await apiRequest<{ entry: EmployeeFinancialEntry }>("/api/admin/employee-financial-entries.php", { method: "POST", credentials: "include", body: JSON.stringify(payload) });
+  return data.entry;
+}
+
+export async function updateEmployeeFinancialEntry(payload: Partial<CardFinancialEntryPayload> & { id: string; employee_id: string }): Promise<EmployeeFinancialEntry> {
+  const data = await apiRequest<{ entry: EmployeeFinancialEntry }>("/api/admin/employee-financial-entries.php", { method: "PATCH", credentials: "include", body: JSON.stringify(payload) });
+  return data.entry;
+}
+
+export async function deleteEmployeeFinancialEntry(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/employee-financial-entries.php?id=${encodeURIComponent(id)}`, { method: "DELETE", credentials: "include" });
+}
+
+// ── Supplier financial entries ─────────────────────────────────────────────────
+
+export async function getSupplierFinancialEntries(params: { supplier_id?: string; project_id?: string } = {}): Promise<SupplierFinancialEntry[]> {
+  const p = new URLSearchParams(Object.entries(params).filter(([, v]) => v).map(([k, v]) => [k, v as string]));
+  const data = await apiRequest<AdminSupplierEntriesResponse>(`/api/admin/supplier-financial-entries.php${p.toString() ? "?" + p.toString() : ""}`, { method: "GET", credentials: "include" });
+  return data.entries || [];
+}
+
+export async function createSupplierFinancialEntry(payload: CardFinancialEntryPayload & { supplier_id: string }): Promise<SupplierFinancialEntry> {
+  const data = await apiRequest<{ entry: SupplierFinancialEntry }>("/api/admin/supplier-financial-entries.php", { method: "POST", credentials: "include", body: JSON.stringify(payload) });
+  return data.entry;
+}
+
+export async function updateSupplierFinancialEntry(payload: Partial<CardFinancialEntryPayload> & { id: string; supplier_id: string }): Promise<SupplierFinancialEntry> {
+  const data = await apiRequest<{ entry: SupplierFinancialEntry }>("/api/admin/supplier-financial-entries.php", { method: "PATCH", credentials: "include", body: JSON.stringify(payload) });
+  return data.entry;
+}
+
+export async function deleteSupplierFinancialEntry(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/supplier-financial-entries.php?id=${encodeURIComponent(id)}`, { method: "DELETE", credentials: "include" });
+}
+
+// ── Expense card financial entries ────────────────────────────────────────────
+
+export async function getExpenseCardFinancialEntries(params: { expense_card_id?: string; project_id?: string } = {}): Promise<ExpenseCardFinancialEntry[]> {
+  const p = new URLSearchParams(Object.entries(params).filter(([, v]) => v).map(([k, v]) => [k, v as string]));
+  const data = await apiRequest<AdminExpenseCardEntriesResponse>(`/api/admin/expense-card-financial-entries.php${p.toString() ? "?" + p.toString() : ""}`, { method: "GET", credentials: "include" });
+  return data.entries || [];
+}
+
+export async function createExpenseCardFinancialEntry(payload: CardFinancialEntryPayload & { expense_card_id: string }): Promise<ExpenseCardFinancialEntry> {
+  const data = await apiRequest<{ entry: ExpenseCardFinancialEntry }>("/api/admin/expense-card-financial-entries.php", { method: "POST", credentials: "include", body: JSON.stringify(payload) });
+  return data.entry;
+}
+
+export async function updateExpenseCardFinancialEntry(payload: Partial<CardFinancialEntryPayload> & { id: string; expense_card_id: string }): Promise<ExpenseCardFinancialEntry> {
+  const data = await apiRequest<{ entry: ExpenseCardFinancialEntry }>("/api/admin/expense-card-financial-entries.php", { method: "PATCH", credentials: "include", body: JSON.stringify(payload) });
+  return data.entry;
+}
+
+export async function deleteExpenseCardFinancialEntry(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/expense-card-financial-entries.php?id=${encodeURIComponent(id)}`, { method: "DELETE", credentials: "include" });
+}
+
+// ── Project statement ──────────────────────────────────────────────────────────
+
+export async function getProjectStatement(projectId: string): Promise<ProjectStatementResponse> {
+  return apiRequest<ProjectStatementResponse>(`/api/admin/project-statement.php?project_id=${encodeURIComponent(projectId)}`, { method: "GET", credentials: "include" });
+}
+
+// ── Gelenler (global income view) ─────────────────────────────────────────────
+
+export async function getGelenler(params: { project_id?: string; customer_id?: string; status?: string; date_from?: string; date_to?: string; q?: string } = {}): Promise<GelenlerResponse> {
+  const p = new URLSearchParams(Object.entries(params).filter(([, v]) => v).map(([k, v]) => [k, v as string]));
+  return apiRequest<GelenlerResponse>(`/api/admin/gelenler.php${p.toString() ? "?" + p.toString() : ""}`, { method: "GET", credentials: "include" });
+}
+
+// ── Gidenler (global expense view) ────────────────────────────────────────────
+
+export async function getGidenler(params: { project_id?: string; source_type?: string; status?: string; date_from?: string; date_to?: string; q?: string } = {}): Promise<GidenlerResponse> {
+  const p = new URLSearchParams(Object.entries(params).filter(([, v]) => v).map(([k, v]) => [k, v as string]));
+  return apiRequest<GidenlerResponse>(`/api/admin/gidenler.php${p.toString() ? "?" + p.toString() : ""}`, { method: "GET", credentials: "include" });
 }

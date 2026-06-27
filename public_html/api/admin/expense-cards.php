@@ -9,18 +9,28 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 try {
     if ($method === 'GET') {
+        $summary_sql = "
+            SELECT
+                ec.id,
+                ec.name,
+                COALESCE(SUM(e.amount_try), 0)                          AS planned_total,
+                COALESCE(SUM(e.paid_amount_try), 0)                     AS paid_total,
+                COALESCE(SUM(e.amount_try) - SUM(e.paid_amount_try), 0) AS remaining_total,
+                COUNT(e.id)                                              AS entry_count
+            FROM ak_expense_cards ec
+            LEFT JOIN ak_expense_card_financial_entries e ON e.expense_card_id = ec.id
+        ";
         $q = trim((string) ($_GET['q'] ?? ''));
         if ($q !== '') {
-            $like = '%' . $q . '%';
             json_success([
                 'expense_items' => ec_fetch_all(
-                    'SELECT id, name FROM ak_expense_cards WHERE name LIKE :like ORDER BY name ASC LIMIT 50',
-                    ['like' => $like]
+                    $summary_sql . ' WHERE ec.name LIKE :like GROUP BY ec.id, ec.name ORDER BY ec.name ASC LIMIT 50',
+                    ['like' => '%' . $q . '%']
                 ),
             ]);
         }
         json_success([
-            'expense_items' => ec_fetch_all('SELECT id, name FROM ak_expense_cards ORDER BY name ASC'),
+            'expense_items' => ec_fetch_all($summary_sql . ' GROUP BY ec.id, ec.name ORDER BY ec.name ASC'),
         ]);
     }
 
@@ -72,6 +82,18 @@ function ec_fetch_all(string $sql, array $params = []): array
 
 function ec_fetch_one(string $id): ?array
 {
-    $rows = ec_fetch_all('SELECT id, name FROM ak_expense_cards WHERE id = :id LIMIT 1', ['id' => $id]);
+    $rows = ec_fetch_all(
+        'SELECT ec.id, ec.name,
+         COALESCE(SUM(e.amount_try), 0)                          AS planned_total,
+         COALESCE(SUM(e.paid_amount_try), 0)                     AS paid_total,
+         COALESCE(SUM(e.amount_try) - SUM(e.paid_amount_try), 0) AS remaining_total,
+         COUNT(e.id)                                              AS entry_count
+         FROM ak_expense_cards ec
+         LEFT JOIN ak_expense_card_financial_entries e ON e.expense_card_id = ec.id
+         WHERE ec.id = :id
+         GROUP BY ec.id, ec.name
+         LIMIT 1',
+        ['id' => $id]
+    );
     return $rows[0] ?? null;
 }

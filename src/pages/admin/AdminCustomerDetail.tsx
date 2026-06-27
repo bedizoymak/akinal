@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { CardStatementTable } from "@/components/admin/finance/CardStatementTable";
+import type { CardEntryFormValues } from "@/components/admin/finance/CardEntryForm";
+import {
+  getCustomerFinancialEntries,
+  createCustomerFinancialEntry,
+  updateCustomerFinancialEntry,
+  deleteCustomerFinancialEntry,
+  getAdminProjects,
+} from "@/lib/apiClient";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -89,8 +99,63 @@ export default function AdminCustomerDetail() {
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [planForm, setPlanForm] = useState<any>({ account_type: "resmi", project_id: "", title: "", description: "", type: "Diğer", amount: "", paid_amount: "", currency: "TRY", date: "", notes: "", ...defaultPaymentMeta });
+  const qc = useQueryClient();
   const { toast } = useToast();
   const today = new Date().toISOString().slice(0, 10);
+
+  const { data: customerEntries = [] } = useQuery({
+    queryKey: ["customer-financial-entries", id],
+    queryFn: () => getCustomerFinancialEntries({ customer_id: id }),
+    enabled: !!id,
+  });
+  const { data: allProjectsForEntries = [] } = useQuery({
+    queryKey: ["admin-projects"],
+    queryFn: getAdminProjects,
+  });
+
+  async function handleEntryAdd(values: CardEntryFormValues) {
+    await createCustomerFinancialEntry({
+      customer_id: id!,
+      project_id: values.project_id,
+      entry_date: values.entry_date,
+      title: values.title,
+      notes: values.notes || null,
+      amount: values.amount,
+      paid_amount: values.paid_amount,
+      currency: values.currency,
+      exchange_rate_to_try: values.exchange_rate_to_try,
+      is_exchange_rate_manual: values.is_exchange_rate_manual,
+      account_type: values.account_type,
+      payment_method: values.payment_method,
+    });
+    await qc.invalidateQueries({ queryKey: ["customer-financial-entries", id] });
+    toast({ title: "Kayıt eklendi." });
+  }
+  async function handleEntryEdit(entryId: string, values: CardEntryFormValues) {
+    await updateCustomerFinancialEntry({
+      id: entryId,
+      customer_id: id!,
+      project_id: values.project_id,
+      entry_date: values.entry_date,
+      title: values.title,
+      notes: values.notes || null,
+      amount: values.amount,
+      paid_amount: values.paid_amount,
+      currency: values.currency,
+      exchange_rate_to_try: values.exchange_rate_to_try,
+      is_exchange_rate_manual: values.is_exchange_rate_manual,
+      account_type: values.account_type,
+      payment_method: values.payment_method,
+    });
+    await qc.invalidateQueries({ queryKey: ["customer-financial-entries", id] });
+    toast({ title: "Kayıt güncellendi." });
+  }
+  async function handleEntryDelete(entryId: string) {
+    await deleteCustomerFinancialEntry(entryId);
+    await qc.invalidateQueries({ queryKey: ["customer-financial-entries", id] });
+    toast({ title: "Kayıt silindi." });
+  }
+
   const refreshCustomerDetail = async () => {
     await load();
   };
@@ -126,10 +191,34 @@ export default function AdminCustomerDetail() {
   }
   useEffect(() => { load(); }, [id]);
 
+  const effectivePlans = useMemo(() => {
+    if ((customerEntries as any[]).length === 0) return plans;
+    return (customerEntries as any[]).map((e) => {
+      const status =
+        e.status === "Gerçekleşti" || e.status === "Fazla Ödendi" ? "Ödendi"
+        : e.status === "Kısmi Ödendi" ? "Kısmi Ödendi"
+        : "Bekliyor";
+      return {
+        id: e.id,
+        account_type: e.account_type,
+        due_date: e.entry_date,
+        title: e.title,
+        description: e.notes || "",
+        payment_method: e.payment_method || "-",
+        amount: Number(e.amount_try ?? 0),
+        paid_amount: Number(e.paid_amount_try ?? 0),
+        status,
+      };
+    });
+  }, [customerEntries, plans]);
+
   const accountSummaries = useMemo(() => {
+    const usingNewEntries = (customerEntries as any[]).length > 0;
+    const sourcePlans = usingNewEntries ? effectivePlans : plans;
+    const sourcePays  = usingNewEntries ? [] : pays;
     return ACCOUNT_TABS.reduce((result, account) => {
-      const accountPlans = plans.filter((plan) => accountType(plan.account_type) === account.value);
-      const accountPays = pays.filter((payment) => accountType(payment.account_type) === account.value);
+      const accountPlans = sourcePlans.filter((plan: any) => accountType(plan.account_type) === account.value);
+      const accountPays = sourcePays.filter((payment: any) => accountType(payment.account_type) === account.value);
       const allocatedPaid = allocateCollectionsToPlans(accountPlans, accountPays);
       const enrichedPlans = accountPlans.map((plan) => {
         const amount = safeNumber(plan.amount);
@@ -183,7 +272,7 @@ export default function AdminCustomerDetail() {
       };
       return result;
     }, {} as Record<string, any>);
-  }, [plans, pays, financialEntries, today]);
+  }, [effectivePlans, customerEntries, plans, pays, financialEntries, today]);
 
   const accountPaymentCharts = useMemo(() => {
     const buildChart = (summary: any, accountLabel: string, colors: { paid: string; remaining: string }) => {
@@ -415,7 +504,8 @@ export default function AdminCustomerDetail() {
         {ACCOUNT_TABS.map((account) => {
           const summary = accountSummaries[account.value] || { totalDue: 0, totalPaid: 0, totalAmount: 0, balance: 0, overdue: 0, upcoming: 0, plans: [], accountSummaryPlans: [], futurePlans: [], chartFuturePlans: [], pays: [] };
           const accountPaymentChart = accountPaymentCharts[account.value] || [];
-          const renderPlanRows = (rows: any[], emptyMessage: string) => (
+          const usingNewEntries = (customerEntries as any[]).length > 0;
+          const renderPlanRows = (rows: any[], emptyMessage: string, onRowClick?: (p: any) => void) => (
             <div className="bg-card border border-border rounded-md overflow-x-auto">
               <table className="min-w-[760px] w-full text-sm">
                 <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Başlık</th><th className="p-3 text-left">Vade</th><th className="p-3 text-left">Ödeme Yöntemi</th><th className="p-3 text-right">Tutar</th><th className="p-3 text-right">Ödenen</th><th className="p-3 text-right">Kalan</th><th className="p-3">Durum</th></tr></thead>
@@ -428,9 +518,9 @@ export default function AdminCustomerDetail() {
                     return (
                       <tr
                         key={p.id}
-                        className="cursor-pointer border-t border-border transition-colors hover:bg-accent/5"
-                        onClick={() => openEditPayment(p)}
-                        title="Ödemeyi düzenle"
+                        className={cn("border-t border-border transition-colors hover:bg-accent/5", onRowClick ? "cursor-pointer" : "")}
+                        onClick={onRowClick ? () => onRowClick(p) : undefined}
+                        title={onRowClick ? "Ödemeyi düzenle" : undefined}
                       >
                         <td className="p-3"><div className="font-medium">{p.title}</div>{p.description && <div className="text-xs text-muted-foreground">{p.description}</div>}</td>
                         <td className="p-3">{formatDate(p.due_date)}</td>
@@ -470,12 +560,12 @@ export default function AdminCustomerDetail() {
 
                   <div>
                     <h3 className="mb-3 font-semibold">Hesap Özeti</h3>
-                    {renderPlanRows(summary.accountSummaryPlans, "Bu hesap türü için hesap özeti kaydı bulunmuyor.")}
+                    {renderPlanRows(summary.accountSummaryPlans, "Bu hesap türü için hesap özeti kaydı bulunmuyor.", usingNewEntries ? undefined : openEditPayment)}
                   </div>
 
                   <div>
                     <h3 className="mb-3 font-semibold">Gelecek Ödemeler</h3>
-                    {renderPlanRows(summary.futurePlans, "Bu hesap türü için gelecek ödeme bulunmuyor.")}
+                    {renderPlanRows(summary.futurePlans, "Bu hesap türü için gelecek ödeme bulunmuyor.", usingNewEntries ? undefined : openEditPayment)}
                   </div>
                 </div>
 
@@ -572,6 +662,7 @@ export default function AdminCustomerDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

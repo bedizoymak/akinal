@@ -18,7 +18,10 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -576,19 +579,6 @@ export default function AdminDashboard() {
         eyebrow="Yönetim Özeti"
         title="Genel Bakış"
         description="Projeler, tahsilatlar, giderler ve net durumu tek ekrandan takip edin."
-        actions={
-          <>
-            <Button asChild className="bg-accent text-accent-foreground hover:bg-accent-glow">
-              <Link to="/admin/projeler/yeni"><Plus className="h-4 w-4" /> Yeni Proje</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link to="/admin/tahsilatlar?yeni=1"><Wallet className="h-4 w-4" /> Tahsilat Ekle</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link to="/admin/raporlar"><BarChart3 className="h-4 w-4" /> Raporları Gör</Link>
-            </Button>
-          </>
-        }
       />
 
       {loading ? (
@@ -604,12 +594,57 @@ export default function AdminDashboard() {
         <>
           <div className="grid w-full max-w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <AdminMetricCard to="/admin/projeler" label="Aktif Projeler" value={dashboard.summary.active_projects} description={`${dashboard.summary.total_projects} toplam proje`} icon={FolderKanban} tone="accent" />
-            <AdminMetricCard to="/admin/tahsilatlar" label="Toplam Tahsilat" value={formatDashboardTRY(dashboard.totalIncome)} description="Gerçekleşen gelen ödemeler" icon={Wallet} tone="success" />
-            <AdminMetricCard to="/admin/giderler" label="Toplam Gider" value={formatDashboardTRY(dashboard.totalExpenses)} description="Yapılan masraflar" icon={Receipt} tone="danger" />
-            <AdminMetricCard to="/admin/finans-dashboard" label="Net Durum" value={formatDashboardTRY(dashboard.netStatus)} description="Gerçekleşen gelir eksi gider" icon={dashboard.netStatus >= 0 ? TrendingUp : TrendingDown} tone={dashboard.netStatus >= 0 ? "success" : "danger"} />
+            <AdminMetricCard to="/admin/gelenler" label="Toplam Tahsilat" value={formatDashboardTRY(dashboard.totalIncome)} description="Gerçekleşen gelen ödemeler" icon={Wallet} tone="success" />
+            <AdminMetricCard to="/admin/gidenler" label="Toplam Gider" value={formatDashboardTRY(dashboard.totalExpenses)} description="Yapılan masraflar" icon={Receipt} tone="danger" />
+            <AdminMetricCard to="/admin/gelenler" label="Net Durum" value={formatDashboardTRY(dashboard.netStatus)} description="Gerçekleşen gelir eksi gider" icon={dashboard.netStatus >= 0 ? TrendingUp : TrendingDown} tone={dashboard.netStatus >= 0 ? "success" : "danger"} />
             <AdminMetricCard to="/admin/musteriler" label="Beklenen Tahsilat" value={formatDashboardTRY(dashboard.expectedPayments)} description="Önümüzdeki 30 gündeki kalan müşteri alacakları" icon={CalendarClock} tone="warning" />
             <AdminMetricCard to="/admin/musteriler" label="Vadesi Geçen Alacak" value={formatDashboardTRY(dashboard.overdueCollections)} description={`${dashboard.overduePlanCount} ödeme kaydı takip bekliyor`} icon={Receipt} tone={dashboard.overdueCollections > 0 ? "danger" : "success"} />
           </div>
+
+          {(() => {
+            const donutData = [
+              { name: "Tahsil Edilen", value: dashboard.totalIncome, color: "hsl(142 48% 28%)" },
+              { name: "Toplam Gider", value: dashboard.totalExpenses, color: "hsl(0 72% 51%)" },
+            ].filter((d) => d.value > 0);
+            return (
+              <div className="rounded-xl border border-border bg-card p-5 shadow-card-soft">
+                <div className="mb-4">
+                  <div className="text-sm font-semibold">Gelir / Gider Dağılımı</div>
+                  <div className="mt-1 text-xs text-muted-foreground">Gerçekleşen toplam tahsilat ve gider oranı</div>
+                </div>
+                {donutData.length === 0 ? (
+                  <div className="py-10 text-center text-sm text-muted-foreground">Henüz finansal veri bulunmuyor.</div>
+                ) : (
+                  <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-center">
+                    <ResponsiveContainer width={200} height={200}>
+                      <PieChart>
+                        <Pie data={donutData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={52} outerRadius={82} paddingAngle={3}>
+                          {donutData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                        </Pie>
+                        <Tooltip formatter={(v: number) => [formatDashboardTRY(Number(v || 0)), ""]} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="w-full max-w-xs space-y-2">
+                      {donutData.map((entry) => (
+                        <div key={entry.name} className="flex items-center gap-2 text-sm">
+                          <span className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: entry.color }} />
+                          <span className="text-muted-foreground">{entry.name}</span>
+                          <span className="ml-auto pl-4 font-bold tabular-nums">{formatDashboardTRY(entry.value)}</span>
+                        </div>
+                      ))}
+                      <div className="border-t border-border pt-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: dashboard.netStatus >= 0 ? "hsl(142 48% 28%)" : "hsl(0 72% 51%)" }} />
+                          <span className="text-muted-foreground">Net Durum</span>
+                          <span className={cn("ml-auto pl-4 font-bold tabular-nums", dashboard.netStatus >= 0 ? "text-emerald-700" : "text-red-600")}>{formatDashboardTRY(dashboard.netStatus)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <AdminSection title="Bu Ayın Özeti" description="İçinde bulunduğumuz ayın gerçekleşen gelir, gider ve net durumu.">
             <div className="grid w-full max-w-full grid-cols-1 gap-4 md:grid-cols-3">
@@ -694,7 +729,7 @@ export default function AdminDashboard() {
             </div>
           </AdminSection>
 
-          <AdminSection title="Management Decision Dashboard" description="Doğrulanmış nakit akışı verilerinden yönetim karar listeleri." contentClassName="space-y-5">
+          <AdminSection title="Yönetim Karar Paneli" description="Doğrulanmış nakit akışı verilerinden yönetim karar listeleri." contentClassName="space-y-5">
             <div className="grid w-full max-w-full grid-cols-1 gap-4 xl:grid-cols-3">
               <ActionCenterList title="En Riskli Müşteriler" items={dashboard.managementDecisionDashboard.top_risky_customers} valueLabel="Riskli alacak" />
               <ActionCenterList title="En Gecikmiş Tahsilatlar" items={dashboard.managementDecisionDashboard.top_overdue_collections} valueLabel="Vadesi geçen" />

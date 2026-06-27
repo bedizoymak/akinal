@@ -1,10 +1,9 @@
 import { Suspense, useMemo, useState } from "react";
 import { NavLink, Outlet, Navigate, useLocation, useNavigate, Link } from "react-router-dom";
 import {
-  BarChart3,
   Bell,
+  Building2,
   ChevronRight,
-  FileBarChart,
   FolderKanban,
   HardHat,
   Home,
@@ -13,11 +12,11 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  Receipt,
   Settings,
   Tags,
+  TrendingDown,
+  TrendingUp,
   Users,
-  Wallet,
 } from "lucide-react";
 import NotificationBell from "@/components/admin/NotificationBell";
 import AdminMarketTicker from "@/components/admin/AdminMarketTicker";
@@ -31,7 +30,8 @@ const NAV_GROUPS = [
     title: "Genel",
     items: [
       { to: "/admin", label: "Genel Bakış", description: "Kısa şirket özeti", icon: LayoutDashboard, end: true },
-      { to: "/admin/finans-dashboard", label: "Finans Özeti", description: "Gelir, gider ve net durum", icon: BarChart3 },
+      { to: "/admin/gelenler", label: "Gelenler", description: "Müşteri tahsilat kalemleri", icon: TrendingUp },
+      { to: "/admin/gidenler", label: "Gidenler", description: "Tüm gider kalemleri", icon: TrendingDown },
     ],
   },
   {
@@ -45,16 +45,13 @@ const NAV_GROUPS = [
     title: "Cari ve Tahsilat",
     items: [
       { to: "/admin/musteriler", label: "Müşteriler", description: "Cari kayıtlar", icon: Users },
-      { to: "/admin/gelenler", label: "Gelenler", description: "Tahsilat kalemleri", icon: Wallet },
-      { to: "/admin/tahsilatlar", label: "Tahsilatlar", description: "Gelen ödemeler", icon: Wallet },
     ],
   },
   {
-    title: "Finans",
+    title: "Tedarik ve Giderler",
     items: [
-      { to: "/admin/giderler", label: "Giderler", description: "Masraf takibi", icon: Receipt },
-      { to: "/admin/gider-kartlari", label: "Gider Kalemleri", description: "Tekrar kullanılabilir gider etiketleri", icon: Tags },
-      { to: "/admin/raporlar", label: "Raporlar", description: "Yönetim raporları", icon: FileBarChart },
+      { to: "/admin/tedarikciler", label: "Tedarikçiler", description: "Tedarikçi ve alt yüklenici kartları", icon: Building2 },
+      { to: "/admin/gider-kartlari", label: "Masraf Kartları", description: "Proje masraf kartları", icon: Tags },
     ],
   },
   {
@@ -102,10 +99,15 @@ const PAGE_META: PageMeta[] = [
   { path: "/admin/personeller", title: "Personeller", group: "Personel" },
   { path: "/admin/finans-dashboard", title: "Finans Özeti", group: "Finans" },
   { path: "/admin/gelenler", title: "Gelenler", group: "Cari ve Tahsilat" },
+  { path: "/admin/gidenler", title: "Gidenler", group: "Tedarik ve Giderler" },
   { path: "/admin/tahsilatlar", title: "Tahsilatlar", group: "Cari ve Tahsilat" },
-  { path: "/admin/giderler", title: "Giderler", group: "Finans" },
-  { path: "/admin/gider-kartlari", title: "Gider Kalemleri", group: "Finans" },
-  { path: "/admin/raporlar", title: "Raporlar", group: "Finans" },
+  { path: "/admin/giderler", title: "Giderler", group: "Tedarik ve Giderler" },
+  { path: "/admin/gider-kartlari", title: "Masraf Kartları", group: "Tedarik ve Giderler" },
+  { path: "/admin/raporlar", title: "Raporlar", group: "Raporlar" },
+  { path: "/admin/tedarikciler/yeni", title: "Yeni Tedarikçi", group: "Tedarik ve Giderler" },
+  { path: "/admin/tedarikciler/:id/duzenle", title: "Tedarikçi Düzenle", group: "Tedarik ve Giderler", match: (pathname) => /^\/admin\/tedarikciler\/[^/]+\/duzenle$/.test(pathname) },
+  { path: "/admin/tedarikciler/:id", title: "Tedarikçi Detayı", group: "Tedarik ve Giderler", match: (pathname) => /^\/admin\/tedarikciler\/[^/]+$/.test(pathname) },
+  { path: "/admin/tedarikciler", title: "Tedarikçiler", group: "Tedarik ve Giderler" },
   { path: "/admin/medya", title: "Medya", group: "Proje Yönetimi" },
   { path: "/admin/talepler", title: "İletişim Talepleri", group: "Operasyon" },
   { path: "/admin/bildirimler", title: "Bildirimler", group: "Operasyon" },

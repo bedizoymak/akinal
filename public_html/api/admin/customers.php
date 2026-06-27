@@ -16,7 +16,7 @@ try {
                 'customer' => $customer,
                 'links' => fetch_all('SELECT project_id FROM ak_customer_projects WHERE customer_id = :id', ['id' => $id]),
                 'projects' => fetch_project_lookup(true),
-                'payment_plans' => fetch_all('SELECT * FROM ak_payment_plans WHERE customer_id = :id ORDER BY `date` ASC', ['id' => $id]),
+                'payment_plans' => fetch_all('SELECT * FROM ak_payment_plans WHERE customer_id = :id ORDER BY due_date ASC', ['id' => $id]),
                 'payments' => fetch_all('SELECT * FROM ak_payments WHERE customer_id = :id ORDER BY payment_date DESC', ['id' => $id]),
                 'financial_entries' => fetch_customer_financial_entries($id),
             ]);
@@ -37,7 +37,7 @@ try {
         $projects = fetch_project_lookup(false);
         json_success([
             'customers' => $customers,
-            'payment_plans' => fetch_all('SELECT id, customer_id, amount, paid_amount, currency, account_type, `date`, `date` AS due_date, status, type FROM ak_payment_plans WHERE customer_id IS NOT NULL'),
+            'payment_plans' => fetch_all('SELECT id, customer_id, amount, paid_amount, payment_method, account_type, due_date, status FROM ak_payment_plans WHERE customer_id IS NOT NULL'),
             'payments' => fetch_all('SELECT customer_id, payment_plan_id, amount, account_type FROM ak_payments'),
             'financial_entries' => fetch_customer_financial_entry_summary(),
             'customer_projects' => fetch_all('SELECT customer_id, project_id FROM ak_customer_projects'),
@@ -300,57 +300,73 @@ function fetch_project_lookup(bool $includeSlug): array
 
 function fetch_customer_financial_entries(string $customerId): array
 {
-    if (!table_exists('ak_financial_entries')) {
+    if (!table_exists('ak_customer_financial_entries')) {
         return [];
     }
-
-    $columns = table_columns('ak_financial_entries');
-    $orderColumns = [];
-    if (in_array('entry_date', $columns, true)) {
-        $orderColumns[] = 'entry_date DESC';
-    }
-    if (in_array('created_at', $columns, true)) {
-        $orderColumns[] = 'created_at DESC';
-    }
-    $orderBy = $orderColumns === [] ? '' : ' ORDER BY ' . implode(', ', $orderColumns);
-
-    return fetch_all(
-        'SELECT * FROM ak_financial_entries WHERE customer_id = :id' . $orderBy,
+    $rows = fetch_all(
+        "SELECT id, customer_id, amount_try, paid_amount_try, account_type, entry_date
+         FROM ak_customer_financial_entries
+         WHERE customer_id = :id AND status <> 'İptal'
+         ORDER BY entry_date DESC",
         ['id' => $customerId]
     );
+    return map_cfe_entries_to_legacy($rows);
 }
 
 function fetch_customer_financial_entry_summary(): array
 {
-    if (!table_exists('ak_financial_entries')) {
+    if (!table_exists('ak_customer_financial_entries')) {
         return [];
     }
+    $rows = fetch_all(
+        "SELECT id, customer_id, amount_try, paid_amount_try, account_type, entry_date
+         FROM ak_customer_financial_entries
+         WHERE status <> 'İptal'"
+    );
+    return map_cfe_entries_to_legacy($rows);
+}
 
-    $columns = table_columns('ak_financial_entries');
-    $required = ['id', 'customer_id', 'amount', 'direction', 'status'];
-    foreach ($required as $column) {
-        if (!in_array($column, $columns, true)) {
-            return [];
+/**
+ * Maps ak_customer_financial_entries rows to the shape expected by summarizeCustomerLedgerEntries.
+ * Two synthetic rows per entry:
+ *   "Planlandı" row  → amount_try   → accumulates into ledgerSummary.planned (Planlanan Alacak)
+ *   "Gerçekleşti" row → paid_amount_try → accumulates into ledgerSummary.paid (Tahsil Edilen)
+ * So: remaining = planned - paid = amount_try - paid_amount_try (Kalan Bakiye)
+ */
+function map_cfe_entries_to_legacy(array $rows): array
+{
+    $result = [];
+    foreach ($rows as $row) {
+        $groupTag = ($row['account_type'] ?? 'resmi') === 'resmi' ? 'Resmi' : 'Gayri Resmi';
+        $amtTry   = (float) ($row['amount_try'] ?? 0);
+        $paidTry  = (float) ($row['paid_amount_try'] ?? 0);
+        $date     = $row['entry_date'] ?? null;
+        $result[] = [
+            'id'           => $row['id'] . ':p',
+            'customer_id'  => $row['customer_id'],
+            'amount'       => $amtTry,
+            'direction'    => 'Gelir',
+            'status'       => 'Planlandı',
+            'currency_tag' => 'TRY',
+            'group_tag'    => $groupTag,
+            'entry_date'   => $date,
+            'due_date'     => $date,
+        ];
+        if ($paidTry > 0.0) {
+            $result[] = [
+                'id'           => $row['id'] . ':r',
+                'customer_id'  => $row['customer_id'],
+                'amount'       => $paidTry,
+                'direction'    => 'Gelir',
+                'status'       => 'Gerçekleşti',
+                'currency_tag' => 'TRY',
+                'group_tag'    => $groupTag,
+                'entry_date'   => $date,
+                'due_date'     => $date,
+            ];
         }
     }
-
-    $select = [
-        'id',
-        'customer_id',
-        'amount',
-        optional_column_expression($columns, 'currency_tag', "'TRY'"),
-        optional_column_expression($columns, 'group_tag', "'Resmi'"),
-        'direction',
-        'status',
-        optional_column_expression($columns, 'entry_date', 'NULL'),
-        optional_column_expression($columns, 'due_date', 'NULL'),
-    ];
-
-    return fetch_all(
-        "SELECT " . implode(', ', $select) .
-        " FROM ak_financial_entries" .
-        " WHERE customer_id IS NOT NULL AND direction = 'Gelir' AND status <> 'İptal'"
-    );
+    return $result;
 }
 
 function optional_column_expression(array $columns, string $column, string $fallback): string

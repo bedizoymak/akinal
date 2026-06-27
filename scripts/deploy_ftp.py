@@ -1,6 +1,7 @@
 from ftplib import FTP
 from pathlib import Path
-import os
+import os, sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 ROOT = Path(__file__).resolve().parents[1]
 

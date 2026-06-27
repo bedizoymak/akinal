@@ -173,7 +173,6 @@ export default function AdminCustomers() {
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button asChild size="sm" variant="outline"><Link to={`/admin/musteriler/${c.id}`}><Eye className="h-4 w-4" /> Görüntüle</Link></Button>
                 <Button asChild size="sm" variant="outline"><Link to={`/admin/musteriler/${c.id}/duzenle`}><Edit className="h-4 w-4" /> Düzenle</Link></Button>
-                <Button asChild size="sm" variant="outline"><Link to={`/admin/musteriler/${c.id}/finans`}><FileText className="h-4 w-4" /> Finans</Link></Button>
                 <Button size="sm" variant="ghost" onClick={() => remove(c.id, customerDisplayName(c))}><Trash2 className="h-4 w-4 text-destructive" /> Sil</Button>
               </div>
             </div>
@@ -213,7 +212,6 @@ export default function AdminCustomers() {
                   <td className={cn("p-3 text-right font-bold", c.balance > 0 ? "text-red-600" : "text-emerald-700")}>{formatTRY(c.balance)}</td>
                   <td className="p-3">
                     <div className="flex justify-end gap-1" onClick={(event) => event.stopPropagation()}>
-                      <Button asChild size="sm" variant="outline"><Link to={`/admin/musteriler/${c.id}/finans`}><FileText className="h-4 w-4" /> Finans</Link></Button>
                       <Button asChild size="sm" variant="ghost" title="Görüntüle"><Link to={`/admin/musteriler/${c.id}`}><Eye className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Görüntüle</span></Link></Button>
                       <Button asChild size="sm" variant="ghost" title="Düzenle"><Link to={`/admin/musteriler/${c.id}/duzenle`}><Edit className="h-4 w-4" /><span className="sr-only xl:not-sr-only xl:ml-1">Düzenle</span></Link></Button>
                       <Button size="sm" variant="ghost" title="Sil" onClick={() => remove(c.id, customerDisplayName(c))}><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only xl:not-sr-only xl:ml-1">Sil</span></Button>
