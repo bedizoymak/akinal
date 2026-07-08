@@ -9,22 +9,174 @@ import {
   updateCustomerFinancialEntry,
   deleteCustomerFinancialEntry,
   getAdminProjects,
+  getGovernmentProgressPayments,
+  createGovernmentProgressPayment,
+  updateGovernmentProgressPayment,
+  deleteGovernmentProgressPayment,
 } from "@/lib/apiClient";
+import type { GovernmentProgressPayment, GovernmentPaymentStage, GovernmentProgressPaymentPayload } from "@/lib/apiTypes";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Edit, Mail, MapPin, MessageCircle, Phone, Plus } from "lucide-react";
-import { accountType, allocateCollectionsToPlans, customerDisplayName, derivePlanStatus, displayLabel, formatTRY, formatDate, statusBadgeClass, daysUntil, safeNumber, summarizeCustomerLedgerEntries, whatsappLink } from "@/lib/finance";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Edit, Mail, MapPin, MessageCircle, Phone, Plus, Trash2 } from "lucide-react";
+import { accountType, allocateCollectionsToPlans, customerDisplayName, derivePlanStatus, displayLabel, formatTRY, daysUntil, safeNumber, summarizeCustomerLedgerEntries, whatsappLink } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AdminPageHeader } from "@/components/admin/AdminPage";
-import { createAdminPaymentPlan, deleteAdminPaymentPlan, getAdminCustomerDetail, updateAdminPaymentPlan } from "@/lib/apiClient";
+import { getAdminCustomerDetail } from "@/lib/apiClient";
 import { formatTurkishPhone } from "@/lib/customerMasterData";
+
+// ── Government Progress Payment helpers ───────────────────────────────────────
+
+const GPP_STAGES: GovernmentPaymentStage[] = ["Su Basmanı", "Kaba İnşaat", "İnce İnşaat", "İskan", "Belirtilmemiş"];
+const GPP_STAGE_LABELS: Record<string, string> = {
+  "Su Basmanı": "Su Basmanı (%30)",
+  "Kaba İnşaat": "Kaba İnşaat (%30)",
+  "İnce İnşaat": "İnce İnşaat (%30)",
+  "İskan": "İskan (%10)",
+  "Belirtilmemiş": "Belirtilmemiş",
+};
+const GPP_STATUS_LABELS: Record<string, string> = {
+  planned: "Planlandı",
+  partial: "Kısmi Ödendi",
+  paid: "Ödendi",
+  cancelled: "İptal",
+};
+const GPP_STATUS_COLOR: Record<string, string> = {
+  planned: "text-amber-600 bg-amber-50 border-amber-200",
+  partial: "text-blue-600 bg-blue-50 border-blue-200",
+  paid: "text-emerald-700 bg-emerald-50 border-emerald-200",
+  cancelled: "text-gray-500 bg-gray-50 border-gray-200",
+};
+
+type GppFormState = {
+  title: string;
+  stage: GovernmentPaymentStage;
+  planned_amount_try: string;
+  paid_amount_try: string;
+  due_date: string;
+  paid_date: string;
+  notes: string;
+  project_id: string;
+};
+
+const GppFormEmpty = (projectId = ""): GppFormState => ({
+  title: "",
+  stage: "Belirtilmemiş",
+  planned_amount_try: "",
+  paid_amount_try: "0",
+  due_date: "",
+  paid_date: "",
+  notes: "",
+  project_id: projectId,
+});
+
+function GppDialog({
+  open,
+  onClose,
+  onSave,
+  initial,
+  projects,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSave: (form: GppFormState) => Promise<void>;
+  initial: GppFormState;
+  projects: { id: string; title: string }[];
+}) {
+  const [form, setForm] = useState<GppFormState>(initial);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { if (open) setForm(initial); }, [open, initial]);
+  const set = (k: keyof GppFormState, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try { await onSave(form); onClose(); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Hakediş Kaydı</DialogTitle></DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          <div className="space-y-1">
+            <Label>Başlık *</Label>
+            <Input value={form.title} onChange={(e) => set("title", e.target.value)} required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Aşama</Label>
+              <Select value={form.stage} onValueChange={(v) => set("stage", v as GovernmentPaymentStage)}>
+                <SelectTrigger><SelectValue placeholder="Aşama seçin" /></SelectTrigger>
+                <SelectContent>
+                  {GPP_STAGES.map((s) => <SelectItem key={s} value={s}>{GPP_STAGE_LABELS[s]}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Proje</Label>
+              <Select value={form.project_id} onValueChange={(v) => set("project_id", v)}>
+                <SelectTrigger><SelectValue placeholder="Proje (opsiyonel)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">—</SelectItem>
+                  {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Planlanan Tutar (TL) *</Label>
+              <Input type="number" min="0" step="0.01" value={form.planned_amount_try} onChange={(e) => set("planned_amount_try", e.target.value)} required />
+            </div>
+            <div className="space-y-1">
+              <Label>Ödenen Tutar (TL)</Label>
+              <Input type="number" min="0" step="0.01" value={form.paid_amount_try} onChange={(e) => set("paid_amount_try", e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Vade Tarihi</Label>
+              <Input type="date" value={form.due_date} onChange={(e) => set("due_date", e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Ödeme Tarihi</Label>
+              <Input type="date" value={form.paid_date} onChange={(e) => set("paid_date", e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Notlar</Label>
+            <Input value={form.notes} onChange={(e) => set("notes", e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>İptal</Button>
+            <Button type="submit" disabled={saving}>{saving ? "Kaydediliyor..." : "Kaydet"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function GppFormToPayload(form: GppFormState, customerId: string): GovernmentProgressPaymentPayload {
+  return {
+    customer_id: customerId,
+    project_id: form.project_id && form.project_id !== "__none" ? form.project_id : null,
+    title: form.title,
+    stage: form.stage,
+    planned_amount_try: parseFloat(form.planned_amount_try) || 0,
+    paid_amount_try: parseFloat(form.paid_amount_try) || 0,
+    due_date: form.due_date || null,
+    paid_date: form.paid_date || null,
+    notes: form.notes || null,
+  };
+}
 
 function Stat({ label, value, color }: any) {
   return (
@@ -39,23 +191,14 @@ const ACCOUNT_TABS = [
   { value: "resmi", label: "Resmi Hesap" },
   { value: "gayri_resmi", label: "Gayri Resmi Hesap" },
 ] as const;
-const PAYMENT_METHODS = ["Nakit", "Banka Havalesi / EFT", "Kredi Kartı", "Çek", "Senet"] as const;
-const defaultPaymentMeta = { payment_method: "Nakit", transaction_reference: "", card_note: "", cheque_maturity_date: "", cheque_no: "", bank_name: "", promissory_maturity_date: "" };
+
+const ALL_TABS = [...ACCOUNT_TABS, { value: "hakedisler", label: "Hakedişler" }] as const;
 
 function percentLabel(value: number, total: number): string {
   if (total <= 0) return "%0";
   return `%${((value / total) * 100).toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
 }
 
-function maturityBadge(plan: any): string | null {
-  if (plan.payment_method === "Çek" && plan.cheque_maturity_date) {
-    return plan.cheque_maturity_date > new Date().toISOString().slice(0, 10) ? `Çek Beklemede · ${formatDate(plan.cheque_maturity_date)}` : `Çek · ${formatDate(plan.cheque_maturity_date)}`;
-  }
-  if (plan.payment_method === "Senet" && plan.promissory_maturity_date) {
-    return plan.promissory_maturity_date > new Date().toISOString().slice(0, 10) ? `Senet Beklemede · ${formatDate(plan.promissory_maturity_date)}` : `Senet · ${formatDate(plan.promissory_maturity_date)}`;
-  }
-  return null;
-}
 
 function renderChartCallout(props: any) {
   const { cx, cy, midAngle, outerRadius, value, payload } = props;
@@ -96,9 +239,6 @@ export default function AdminCustomerDetail() {
   const [financialEntries, setFinancialEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [planDialogOpen, setPlanDialogOpen] = useState(false);
-  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
-  const [planForm, setPlanForm] = useState<any>({ account_type: "resmi", project_id: "", title: "", description: "", type: "Diğer", amount: "", paid_amount: "", currency: "TRY", date: "", notes: "", ...defaultPaymentMeta });
   const qc = useQueryClient();
   const { toast } = useToast();
   const today = new Date().toISOString().slice(0, 10);
@@ -112,6 +252,54 @@ export default function AdminCustomerDetail() {
     queryKey: ["admin-projects"],
     queryFn: getAdminProjects,
   });
+  const { data: govtPayments = [], refetch: refetchGovt } = useQuery({
+    queryKey: ["government-progress-payments", id],
+    queryFn: () => getGovernmentProgressPayments({ customer_id: id }),
+    enabled: !!id,
+  });
+
+  const [gppDialogOpen, setGppDialogOpen] = useState(false);
+  const [gppEditing, setGppEditing] = useState<GovernmentProgressPayment | null>(null);
+  const gppInitial = useMemo(
+    () => gppEditing
+      ? {
+          title: gppEditing.title,
+          stage: gppEditing.stage,
+          planned_amount_try: String(gppEditing.planned_amount_try),
+          paid_amount_try: String(gppEditing.paid_amount_try),
+          due_date: gppEditing.due_date || "",
+          paid_date: gppEditing.paid_date || "",
+          notes: gppEditing.notes || "",
+          project_id: gppEditing.project_id || "",
+        }
+      : GppFormEmpty(projects[0]?.id || ""),
+    [gppEditing, projects]
+  );
+
+  async function handleGppSave(form: GppFormState) {
+    const payload = GppFormToPayload(form, id!);
+    if (gppEditing) {
+      await updateGovernmentProgressPayment({ id: gppEditing.id, ...payload });
+      toast({ title: "Hakediş güncellendi." });
+    } else {
+      await createGovernmentProgressPayment(payload);
+      toast({ title: "Hakediş eklendi." });
+    }
+    await refetchGovt();
+  }
+
+  async function handleGppDelete(gpp: GovernmentProgressPayment) {
+    if (!confirm(`"${gpp.title}" hakediş kaydını silmek istiyor musunuz?`)) return;
+    await deleteGovernmentProgressPayment(gpp.id);
+    toast({ title: "Hakediş silindi." });
+    await refetchGovt();
+  }
+
+  const gppSummary = useMemo(() => {
+    const planned = (govtPayments as GovernmentProgressPayment[]).reduce((s, g) => s + (Number(g.planned_amount_try) || 0), 0);
+    const paid    = (govtPayments as GovernmentProgressPayment[]).reduce((s, g) => s + (Number(g.paid_amount_try) || 0), 0);
+    return { planned, paid, remaining: Math.max(0, planned - paid) };
+  }, [govtPayments]);
 
   async function handleEntryAdd(values: CardEntryFormValues) {
     await createCustomerFinancialEntry({
@@ -156,13 +344,6 @@ export default function AdminCustomerDetail() {
     toast({ title: "Kayıt silindi." });
   }
 
-  const refreshCustomerDetail = async () => {
-    await load();
-  };
-  const clearAccountLocalFinance = (account: "resmi" | "gayri_resmi") => {
-    setPlans((current) => current.filter((plan) => accountType(plan.account_type) !== account));
-    setPays((current) => current.filter((payment) => accountType(payment.account_type) !== account));
-  };
 
   async function load() {
     if (!id) return;
@@ -316,7 +497,34 @@ export default function AdminCustomerDetail() {
     const balance = summaries.reduce((sum, summary) => sum + safeNumber(summary.balance), 0);
     const overdue = summaries.reduce((sum, summary) => sum + safeNumber(summary.overdue), 0);
     const upcoming = summaries.reduce((sum, summary) => sum + safeNumber(summary.upcoming), 0);
-    const remainingReceivable = Math.max(0, balance - overdue);
+    const remainingReceivable = Math.max(0, totalDue - totalPaid);
+
+    // Recompute chart segments from raw entries so paid rows are never counted as overdue.
+    // A row is overdue only if it has remaining > 0 AND due_date is strictly before today.
+    const entries = customerEntries as any[];
+    let chartCollected = 0;
+    let chartOverdue = 0;
+    let chartNotYetDue = 0;
+    if (entries.length > 0) {
+      for (const e of entries) {
+        const planned = safeNumber(e.amount_try);
+        const paid = safeNumber(e.paid_amount_try);
+        const remaining = Math.max(0, planned - paid);
+        const due = String(e.entry_date || "");
+        chartCollected += paid;
+        if (remaining > 0 && due < today) {
+          chartOverdue += remaining;
+        } else if (remaining > 0) {
+          chartNotYetDue += remaining;
+        }
+      }
+    } else {
+      chartCollected = totalPaid;
+      const overdueSegment = Math.min(overdue, remainingReceivable);
+      chartOverdue = overdueSegment;
+      chartNotYetDue = Math.max(0, remainingReceivable - overdueSegment);
+    }
+
     return {
       totalDue,
       totalPaid,
@@ -325,89 +533,10 @@ export default function AdminCustomerDetail() {
       overdue,
       upcoming,
       remainingReceivable,
-      chart: [{ name: "Genel", paid: totalPaid, overdue, remaining: remainingReceivable }],
+      chart: [{ name: "Genel", paid: chartCollected, overdue: chartOverdue, remaining: chartNotYetDue }],
     };
-  }, [accountSummaries]);
+  }, [accountSummaries, customerEntries, today]);
 
-  function openNewPayment(account: "resmi" | "gayri_resmi") {
-    setEditingPlanId(null);
-    setPlanForm({ account_type: account, project_id: "", title: "", description: "", amount: "", paid_amount: "", due_date: "", status: "Bekliyor", notes: "", ...defaultPaymentMeta });
-    setPlanDialogOpen(true);
-  }
-  function openEditPayment(plan: any) {
-    setEditingPlanId(plan.id);
-    setPlanForm({
-      account_type: accountType(plan.account_type),
-      project_id: plan.project_id || "",
-      title: plan.title || "",
-      description: plan.description || "",
-      type: plan.type || "Diğer",
-      amount: String(plan.amount || ""),
-      paid_amount: String(plan.paid_amount || ""),
-      currency: plan.currency || "TRY",
-      date: plan.date || plan.due_date || "",
-      notes: plan.notes || "",
-      payment_method: plan.payment_method || "Nakit",
-      transaction_reference: plan.transaction_reference || "",
-      card_note: plan.card_note || "",
-      cheque_maturity_date: plan.cheque_maturity_date || "",
-      cheque_no: plan.cheque_no || "",
-      bank_name: plan.bank_name || "",
-      promissory_maturity_date: plan.promissory_maturity_date || "",
-    });
-    setPlanDialogOpen(true);
-  }
-  async function savePaymentPlan() {
-    if (!id || !planForm.title || !planForm.amount || !planForm.date) {
-      toast({ title: "Başlık, tutar ve tarih zorunludur", variant: "destructive" });
-      return;
-    }
-    const amount = Number(planForm.amount);
-    const paidAmount = Number(planForm.paid_amount || 0);
-    if (planForm.payment_method === "Çek" && !planForm.cheque_maturity_date) {
-      toast({ title: "Çek vade tarihi zorunludur", variant: "destructive" });
-      return;
-    }
-    if (planForm.payment_method === "Senet" && !planForm.promissory_maturity_date) {
-      toast({ title: "Senet vade tarihi zorunludur", variant: "destructive" });
-      return;
-    }
-    const payload = {
-      ...planForm,
-      customer_id: id,
-      project_id: planForm.project_id || null,
-      amount,
-      paid_amount: paidAmount,
-    };
-    if (editingPlanId) {
-      await updateAdminPaymentPlan({ ...payload, id: editingPlanId });
-      toast({ title: "Ödeme güncellendi" });
-    } else {
-      await createAdminPaymentPlan(payload);
-      toast({ title: "Ödeme eklendi" });
-    }
-    setPlanDialogOpen(false);
-    clearAccountLocalFinance(accountType(planForm.account_type));
-    await refreshCustomerDetail();
-  }
-  async function deletePaymentPlanFromModal() {
-    if (!editingPlanId) return;
-    if (!confirm("Bu ödeme kaydını silmek istediğinize emin misiniz?")) return;
-    try {
-      await deleteAdminPaymentPlan(editingPlanId);
-      toast({ title: "Ödeme kaydı silindi" });
-      setPlanDialogOpen(false);
-      setEditingPlanId(null);
-      clearAccountLocalFinance(accountType(planForm.account_type));
-      await refreshCustomerDetail();
-    } catch (error) {
-      toast({
-        title: "Ödeme kaydı silinemedi",
-        description: error instanceof Error ? error.message : "Kayıt başka bir yerde kullanılıyor olabilir. Lütfen bağlantılı kayıtları kontrol edin.",
-        variant: "destructive",
-      });
-    }
-  }
 
   if (loading) return <div className="rounded-md border border-border bg-card py-12 text-center text-sm text-muted-foreground shadow-card-soft">Müşteri bilgileri hazırlanıyor...</div>;
   if (loadError || !customer) return <div className="rounded-md border border-border bg-card py-12 text-center text-sm text-muted-foreground shadow-card-soft">{loadError || "Müşteri kaydı bulunamadı."}</div>;
@@ -471,7 +600,7 @@ export default function AdminCustomerDetail() {
               <BarChart data={combinedAccountSummary.chart} layout="vertical" margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
                 <XAxis type="number" hide domain={[0, "dataMax"]} />
                 <YAxis type="category" dataKey="name" hide />
-                <Tooltip formatter={(value: any, name: any) => [formatTRY(value), name === "paid" ? "Tahsil Edilen" : name === "overdue" ? "Vadesi Geçen" : "Kalan Alacak"]} />
+                <Tooltip formatter={(value: any, name: any) => [formatTRY(value as number), name === "paid" ? "Tahsil Edilen" : name === "overdue" ? "Vadesi Geçen" : "Ödemesi Gelmemiş"]} />
                 <Bar dataKey="paid" stackId="summary" fill="#15803d" radius={[6, 0, 0, 6]} />
                 <Bar dataKey="overdue" stackId="summary" fill="#dc2626" />
                 <Bar dataKey="remaining" stackId="summary" fill="#2563eb" radius={[0, 6, 6, 0]} />
@@ -483,20 +612,25 @@ export default function AdminCustomerDetail() {
           <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-emerald-700" /> Tahsil Edilen</span>
             <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-red-600" /> Vadesi Geçen</span>
-            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-blue-600" /> Kalan Alacak</span>
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-blue-600" /> Ödemesi Gelmemiş</span>
           </div>
         </div>
       </section>
 
       <Tabs defaultValue="resmi">
         <TabsList className="flex flex-wrap">
-          {ACCOUNT_TABS.map((account) => (
+          {ALL_TABS.map((tab) => (
             <TabsTrigger
-              key={account.value}
-              value={account.value}
+              key={tab.value}
+              value={tab.value}
               className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-sm"
             >
-              {account.label}
+              {tab.label}
+              {tab.value === "hakedisler" && (govtPayments as GovernmentProgressPayment[]).length > 0 && (
+                <span className="ml-1.5 rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold">
+                  {(govtPayments as GovernmentProgressPayment[]).length}
+                </span>
+              )}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -504,42 +638,6 @@ export default function AdminCustomerDetail() {
         {ACCOUNT_TABS.map((account) => {
           const summary = accountSummaries[account.value] || { totalDue: 0, totalPaid: 0, totalAmount: 0, balance: 0, overdue: 0, upcoming: 0, plans: [], accountSummaryPlans: [], futurePlans: [], chartFuturePlans: [], pays: [] };
           const accountPaymentChart = accountPaymentCharts[account.value] || [];
-          const usingNewEntries = (customerEntries as any[]).length > 0;
-          const renderPlanRows = (rows: any[], emptyMessage: string, onRowClick?: (p: any) => void) => (
-            <div className="bg-card border border-border rounded-md overflow-x-auto">
-              <table className="min-w-[760px] w-full text-sm">
-                <thead className="bg-muted/50 text-xs uppercase text-muted-foreground"><tr><th className="p-3 text-left">Başlık</th><th className="p-3 text-left">Vade</th><th className="p-3 text-left">Ödeme Yöntemi</th><th className="p-3 text-right">Tutar</th><th className="p-3 text-right">Ödenen</th><th className="p-3 text-right">Kalan</th><th className="p-3">Durum</th></tr></thead>
-                <tbody>
-                  {rows.map((p: any) => {
-                    const hasPayment = safeNumber(p.paid) > 0;
-                    const isLate = !hasPayment && String(p.due_date || "") < today && p.computed !== "İptal" && safeNumber(p.remain) > 0;
-                    const displayStatus = hasPayment ? p.computed : isLate ? "Vadesi Geçti" : "Bekliyor";
-                    const label = hasPayment ? displayLabel(p.computed) : isLate ? "Geciken Ödeme" : "Bekliyor";
-                    return (
-                      <tr
-                        key={p.id}
-                        className={cn("border-t border-border transition-colors hover:bg-accent/5", onRowClick ? "cursor-pointer" : "")}
-                        onClick={onRowClick ? () => onRowClick(p) : undefined}
-                        title={onRowClick ? "Ödemeyi düzenle" : undefined}
-                      >
-                        <td className="p-3"><div className="font-medium">{p.title}</div>{p.description && <div className="text-xs text-muted-foreground">{p.description}</div>}</td>
-                        <td className="p-3">{formatDate(p.due_date)}</td>
-                        <td className="p-3">
-                          <div className="font-medium">{p.payment_method || "Nakit"}</div>
-                          {maturityBadge(p) && <div className="mt-1 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700" title={maturityBadge(p) || undefined}>{maturityBadge(p)}</div>}
-                        </td>
-                        <td className="p-3 text-right">{formatTRY(p.amount)}</td>
-                        <td className="p-3 text-right text-emerald-700">{formatTRY(p.paid)}</td>
-                        <td className="p-3 text-right font-bold">{formatTRY(p.remain)}</td>
-                        <td className="p-3"><span className={cn("px-2 py-0.5 rounded-md border text-xs", statusBadgeClass(displayStatus))}>{label}</span></td>
-                      </tr>
-                    );
-                  })}
-                  {rows.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">{emptyMessage}</td></tr>}
-                </tbody>
-              </table>
-            </div>
-          );
           return (
             <TabsContent key={account.value} value={account.value} className="mt-4 space-y-5">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -551,22 +649,16 @@ export default function AdminCustomerDetail() {
               </div>
 
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                <div className="lg:col-span-2 space-y-4">
-                  <div>
-                    <div className="flex justify-end mb-3">
-                      <Button onClick={() => openNewPayment(account.value)} className="bg-accent hover:bg-accent-glow text-accent-foreground"><Plus className="h-4 w-4 mr-1" /> Ödeme Ekle</Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="mb-3 font-semibold">Hesap Özeti</h3>
-                    {renderPlanRows(summary.accountSummaryPlans, "Bu hesap türü için hesap özeti kaydı bulunmuyor.", usingNewEntries ? undefined : openEditPayment)}
-                  </div>
-
-                  <div>
-                    <h3 className="mb-3 font-semibold">Gelecek Ödemeler</h3>
-                    {renderPlanRows(summary.futurePlans, "Bu hesap türü için gelecek ödeme bulunmuyor.", usingNewEntries ? undefined : openEditPayment)}
-                  </div>
+                <div className="lg:col-span-2">
+                  <CardStatementTable
+                    entries={(customerEntries as any[]).filter((e: any) => e.account_type === account.value)}
+                    projects={allProjectsForEntries}
+                    direction="income"
+                    onAdd={handleEntryAdd}
+                    onEdit={handleEntryEdit}
+                    onDelete={handleEntryDelete}
+                    title="Tahsilat Hareketleri"
+                  />
                 </div>
 
                 <div className="space-y-4">
@@ -594,75 +686,103 @@ export default function AdminCustomerDetail() {
                       </ResponsiveContainer>
                     ) : <div className="text-sm text-muted-foreground py-12 text-center">Bu müşteri için ödeme verisi bulunmuyor.</div>}
                   </div>
-
                 </div>
               </div>
             </TabsContent>
           );
         })}
-      </Tabs>
-      <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>{editingPlanId ? "Ödemeyi Düzenle" : "Ödeme Ekle"}</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div><Label>Hesap Türü</Label>
-              <Select value={planForm.account_type || "resmi"} onValueChange={(value) => setPlanForm((form: any) => ({ ...form, account_type: value }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="resmi">Resmi Hesap</SelectItem><SelectItem value="gayri_resmi">Gayri Resmi Hesap</SelectItem></SelectContent>
-              </Select>
-            </div>
-            <div><Label>Proje</Label>
-              <Select value={planForm.project_id || "none"} onValueChange={(value) => setPlanForm((form: any) => ({ ...form, project_id: value === "none" ? "" : value }))}>
-                <SelectTrigger><SelectValue placeholder="Proje seçin" /></SelectTrigger>
-                <SelectContent><SelectItem value="none">Seçilmedi</SelectItem>{allProjects.map((project) => <SelectItem key={project.id} value={project.id}>{project.title}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div><Label>Başlık *</Label><Input value={planForm.title} onChange={(event) => setPlanForm((form: any) => ({ ...form, title: event.target.value }))} /></div>
-            <div><Label>Tutar *</Label><Input type="number" step="0.01" value={planForm.amount} onChange={(event) => setPlanForm((form: any) => ({ ...form, amount: event.target.value }))} /></div>
-            {planForm.status === "Kısmi Ödendi" && <div><Label>Ödenen Tutar *</Label><Input type="number" step="0.01" value={planForm.paid_amount} onChange={(event) => setPlanForm((form: any) => ({ ...form, paid_amount: event.target.value }))} /></div>}
-            <div><Label>Tarih *</Label><Input type="date" value={planForm.date} onChange={(event) => setPlanForm((form: any) => ({ ...form, date: event.target.value }))} /></div>
-            <div><Label>Tür</Label>
-              <Select value={planForm.type || "Diğer"} onValueChange={(value) => setPlanForm((form: any) => ({ ...form, type: value }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{["Kapora", "Taksit", "Hakediş", "Diğer"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div><Label>Para Birimi</Label>
-              <Select value={planForm.currency || "TRY"} onValueChange={(value) => setPlanForm((form: any) => ({ ...form, currency: value }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{["TRY", "USD", "EUR", "XAU_GRAM"].map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Ödeme Yöntemi *</Label>
-              <Select value={planForm.payment_method || "Nakit"} onValueChange={(value) => setPlanForm((form: any) => ({ ...form, payment_method: value }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{PAYMENT_METHODS.map((method) => <SelectItem key={method} value={method}>{method}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            {planForm.payment_method === "Banka Havalesi / EFT" && <div><Label>İşlem Referansı</Label><Input value={planForm.transaction_reference} onChange={(event) => setPlanForm((form: any) => ({ ...form, transaction_reference: event.target.value }))} /></div>}
-            {planForm.payment_method === "Kredi Kartı" && <div><Label>Kart Notu</Label><Input value={planForm.card_note} onChange={(event) => setPlanForm((form: any) => ({ ...form, card_note: event.target.value }))} /></div>}
-            {planForm.payment_method === "Çek" && (
-              <>
-                <div><Label>Çek Vade Tarihi *</Label><Input type="date" value={planForm.cheque_maturity_date} onChange={(event) => setPlanForm((form: any) => ({ ...form, cheque_maturity_date: event.target.value }))} /></div>
-                <div><Label>Çek No</Label><Input value={planForm.cheque_no} onChange={(event) => setPlanForm((form: any) => ({ ...form, cheque_no: event.target.value }))} /></div>
-                <div><Label>Banka</Label><Input value={planForm.bank_name} onChange={(event) => setPlanForm((form: any) => ({ ...form, bank_name: event.target.value }))} /></div>
-              </>
-            )}
-            {planForm.payment_method === "Senet" && <div><Label>Senet Vade Tarihi *</Label><Input type="date" value={planForm.promissory_maturity_date} onChange={(event) => setPlanForm((form: any) => ({ ...form, promissory_maturity_date: event.target.value }))} /></div>}
-            <div className="md:col-span-2"><Label>Açıklama</Label><Textarea value={planForm.description} onChange={(event) => setPlanForm((form: any) => ({ ...form, description: event.target.value }))} rows={2} /></div>
-            <div className="md:col-span-2"><Label>Not</Label><Textarea value={planForm.notes} onChange={(event) => setPlanForm((form: any) => ({ ...form, notes: event.target.value }))} rows={2} /></div>
-          </div>
-          <DialogFooter>
-            {editingPlanId && <Button variant="destructive" onClick={deletePaymentPlanFromModal}>Sil</Button>}
-            <div className="flex flex-1 justify-end gap-2">
-              <Button variant="outline" onClick={() => setPlanDialogOpen(false)}>İptal</Button>
-              <Button onClick={savePaymentPlan} className="bg-accent hover:bg-accent-glow text-accent-foreground">Kaydet</Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
+        {/* ── Hakedişler tab ──────────────────────────────────────────── */}
+        <TabsContent value="hakedisler" className="mt-4 space-y-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Stat label="Toplam Hakediş" value={formatTRY(gppSummary.planned)} />
+            <Stat label="Ödenen" value={formatTRY(gppSummary.paid)} color="text-emerald-700" />
+            <Stat label="Kalan" value={formatTRY(gppSummary.remaining)} color={gppSummary.remaining > 0 ? "text-amber-600" : "text-emerald-700"} />
+          </div>
+
+          <div className="rounded-md border border-border bg-card">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <h3 className="font-semibold text-sm">Devlet Hakediş Ödemeleri</h3>
+              <Button
+                size="sm"
+                onClick={() => { setGppEditing(null); setGppDialogOpen(true); }}
+              >
+                <Plus className="h-4 w-4 mr-1" /> Hakediş Ekle
+              </Button>
+            </div>
+
+            {(govtPayments as GovernmentProgressPayment[]).length === 0 ? (
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                Bu müşteri için hakediş kaydı bulunmuyor.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-[800px] w-full text-sm">
+                  <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="p-3">Başlık / Aşama</th>
+                      <th className="p-3">Oran</th>
+                      <th className="p-3">Vade</th>
+                      <th className="p-3 text-right">Planlanan</th>
+                      <th className="p-3 text-right">Ödenen</th>
+                      <th className="p-3 text-right">Kalan</th>
+                      <th className="p-3">Durum</th>
+                      <th className="p-3">Proje</th>
+                      <th className="p-3 text-right">İşlem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(govtPayments as GovernmentProgressPayment[]).map((gpp) => {
+                      const planned = Number(gpp.planned_amount_try) || 0;
+                      const paid = Number(gpp.paid_amount_try) || 0;
+                      const remaining = Math.max(0, planned - paid);
+                      const statusLabel = GPP_STATUS_LABELS[gpp.status] ?? gpp.status;
+                      const statusColor = GPP_STATUS_COLOR[gpp.status] ?? "";
+                      return (
+                        <tr key={gpp.id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                          <td className="p-3">
+                            <div className="font-medium">{gpp.title}</div>
+                            {gpp.stage && <div className="text-xs text-muted-foreground">{GPP_STAGE_LABELS[gpp.stage] ?? gpp.stage}</div>}
+                          </td>
+                          <td className="p-3 text-muted-foreground">
+                            {Number(gpp.stage_percentage) > 0 ? `%${Number(gpp.stage_percentage)}` : "—"}
+                          </td>
+                          <td className="p-3 text-muted-foreground">{gpp.due_date || "—"}</td>
+                          <td className="p-3 text-right font-medium">{formatTRY(planned)}</td>
+                          <td className="p-3 text-right text-emerald-700">{formatTRY(paid)}</td>
+                          <td className={cn("p-3 text-right font-bold", remaining > 0 ? "text-amber-600" : "text-emerald-700")}>{formatTRY(remaining)}</td>
+                          <td className="p-3">
+                            <span className={cn("inline-block rounded border px-2 py-0.5 text-xs font-medium", statusColor)}>{statusLabel}</span>
+                          </td>
+                          <td className="p-3 text-xs text-muted-foreground">{gpp.project_title || "—"}</td>
+                          <td className="p-3">
+                            <div className="flex justify-end gap-1">
+                              <Button size="sm" variant="ghost" title="Düzenle" onClick={() => { setGppEditing(gpp); setGppDialogOpen(true); }}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" title="Sil" onClick={() => handleGppDelete(gpp)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      <GppDialog
+        open={gppDialogOpen}
+        onClose={() => { setGppDialogOpen(false); setGppEditing(null); }}
+        onSave={handleGppSave}
+        initial={gppInitial}
+        projects={allProjectsForEntries}
+      />
     </div>
   );
 }

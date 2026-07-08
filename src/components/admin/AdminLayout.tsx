@@ -3,6 +3,7 @@ import { NavLink, Outlet, Navigate, useLocation, useNavigate, Link } from "react
 import {
   Bell,
   Building2,
+  Calculator,
   ChevronRight,
   FolderKanban,
   HardHat,
@@ -14,6 +15,7 @@ import {
   Menu,
   Settings,
   Tags,
+  Wrench,
   TrendingDown,
   TrendingUp,
   Users,
@@ -32,6 +34,7 @@ const NAV_GROUPS = [
       { to: "/admin", label: "Genel Bakış", description: "Kısa şirket özeti", icon: LayoutDashboard, end: true },
       { to: "/admin/gelenler", label: "Gelenler", description: "Müşteri tahsilat kalemleri", icon: TrendingUp },
       { to: "/admin/gidenler", label: "Gidenler", description: "Tüm gider kalemleri", icon: TrendingDown },
+      { to: "/admin/enflasyon-hesaplama", label: "Enflasyon Hesaplama", description: "TÜFE endeksi ile tutar güncelleme", icon: Calculator },
     ],
   },
   {
@@ -45,6 +48,7 @@ const NAV_GROUPS = [
     title: "Cari ve Tahsilat",
     items: [
       { to: "/admin/musteriler", label: "Müşteriler", description: "Cari kayıtlar", icon: Users },
+      { to: "/admin/devlet-hakedisleri", label: "Devlet Hakedişleri", description: "Hakediş ve teşvik ödemeleri", icon: TrendingUp },
     ],
   },
   {
@@ -70,7 +74,8 @@ const NAV_GROUPS = [
   {
     title: "Sistem",
     items: [
-      { to: "/admin/ayarlar", label: "Ayarlar", description: "Site ayarları", icon: Settings },
+      { to: "/admin/ayarlar",      label: "Ayarlar",       description: "Site ayarları",              icon: Settings },
+      { to: "/admin/bakim-konsolu", label: "Bakım Konsolu", description: "Migration ve bakım araçları", icon: Wrench },
     ],
   },
 ];
@@ -96,6 +101,7 @@ const PAGE_META: PageMeta[] = [
   { path: "/admin/musteriler/:id", title: "Müşteri Detayı", group: "Cari ve Tahsilat", match: (pathname) => /^\/admin\/musteriler\/[^/]+$/.test(pathname) },
   { path: "/admin/projeler", title: "Projeler", group: "Proje Yönetimi" },
   { path: "/admin/musteriler", title: "Müşteriler", group: "Cari ve Tahsilat" },
+  { path: "/admin/devlet-hakedisleri", title: "Devlet Hakedişleri", group: "Cari ve Tahsilat" },
   { path: "/admin/personeller", title: "Personeller", group: "Personel" },
   { path: "/admin/finans-dashboard", title: "Finans Özeti", group: "Finans" },
   { path: "/admin/gelenler", title: "Gelenler", group: "Cari ve Tahsilat" },
@@ -112,7 +118,8 @@ const PAGE_META: PageMeta[] = [
   { path: "/admin/talepler", title: "İletişim Talepleri", group: "Operasyon" },
   { path: "/admin/bildirimler", title: "Bildirimler", group: "Operasyon" },
   { path: "/admin/ayarlar", title: "Ayarlar", group: "Sistem" },
-  { path: "/admin/sql-editor", title: "SQL Editörü", group: "Sistem" },
+  { path: "/admin/sql-editor",    title: "SQL Editörü",  group: "Sistem" },
+  { path: "/admin/bakim-konsolu", title: "Bakım Konsolu", group: "Sistem" },
   { path: "/admin", title: "Genel Bakış", group: "Genel", exact: true },
 ];
 

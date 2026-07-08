@@ -19,6 +19,7 @@ try {
                 'payment_plans' => fetch_all('SELECT * FROM ak_payment_plans WHERE customer_id = :id ORDER BY due_date ASC', ['id' => $id]),
                 'payments' => fetch_all('SELECT * FROM ak_payments WHERE customer_id = :id ORDER BY payment_date DESC', ['id' => $id]),
                 'financial_entries' => fetch_customer_financial_entries($id),
+                'government_progress_payments' => fetch_government_progress_payments($id),
             ]);
         }
 
@@ -81,8 +82,68 @@ try {
             $input = read_admin_json_body();
             $id = require_non_empty($input, 'id', 'Müşteri bulunamadı.');
         }
-        db()->prepare('DELETE FROM ak_customers WHERE id = :id')->execute(['id' => $id]);
-        json_success(['deleted' => true]);
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $counts = [];
+
+            // Check if ak_payment_plan_settlements exists (late-added table; may be absent on older installs)
+            $settlementsExist = (bool) $pdo->query(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'ak_payment_plan_settlements'"
+            )->fetchColumn();
+
+            if ($settlementsExist) {
+                // 1a. Settlements linked to this customer's payment plans (RESTRICT on payment_plan_id)
+                $s = $pdo->prepare(
+                    'DELETE FROM ak_payment_plan_settlements WHERE payment_plan_id IN (SELECT id FROM ak_payment_plans WHERE customer_id = :id)'
+                );
+                $s->execute(['id' => $id]); $counts['payment_plan_settlements_via_plans'] = $s->rowCount();
+
+                // 1b. Settlements linked to this customer's legacy financial entries (RESTRICT on financial_entry_id)
+                $s = $pdo->prepare(
+                    'DELETE FROM ak_payment_plan_settlements WHERE financial_entry_id IN (SELECT id FROM ak_financial_entries WHERE customer_id = :id)'
+                );
+                $s->execute(['id' => $id]); $counts['payment_plan_settlements_via_entries'] = $s->rowCount();
+            }
+
+            // 2. Canonical customer financial entries (RESTRICT on customer_id)
+            $s = $pdo->prepare('DELETE FROM ak_customer_financial_entries WHERE customer_id = :id');
+            $s->execute(['id' => $id]); $counts['customer_financial_entries'] = $s->rowCount();
+
+            // 3. Legacy financial entries (SET NULL FK; delete for clean removal)
+            $s = $pdo->prepare('DELETE FROM ak_financial_entries WHERE customer_id = :id');
+            $s->execute(['id' => $id]); $counts['financial_entries'] = $s->rowCount();
+
+            // 4. Notifications (SET NULL FK; delete stale records)
+            $s = $pdo->prepare('DELETE FROM ak_notifications WHERE related_customer_id = :id');
+            $s->execute(['id' => $id]); $counts['notifications'] = $s->rowCount();
+
+            // 5. Payment plans (RESTRICT; settlements already removed above)
+            $s = $pdo->prepare('DELETE FROM ak_payment_plans WHERE customer_id = :id');
+            $s->execute(['id' => $id]); $counts['payment_plans'] = $s->rowCount();
+
+            // 6. Legacy payments (SET NULL FK; delete for clean removal)
+            $s = $pdo->prepare('DELETE FROM ak_payments WHERE customer_id = :id');
+            $s->execute(['id' => $id]); $counts['payments'] = $s->rowCount();
+
+            // 7. Legacy expenses (SET NULL FK; delete for clean removal)
+            $s = $pdo->prepare('DELETE FROM ak_expenses WHERE customer_id = :id');
+            $s->execute(['id' => $id]); $counts['expenses'] = $s->rowCount();
+
+            // 8. Notes and project links (CASCADE FKs; explicit for safety)
+            $s = $pdo->prepare('DELETE FROM ak_customer_notes WHERE customer_id = :id');
+            $s->execute(['id' => $id]); $counts['customer_notes'] = $s->rowCount();
+            $s = $pdo->prepare('DELETE FROM ak_customer_projects WHERE customer_id = :id');
+            $s->execute(['id' => $id]); $counts['customer_projects'] = $s->rowCount();
+
+            // 9. Parent
+            $pdo->prepare('DELETE FROM ak_customers WHERE id = :id')->execute(['id' => $id]);
+            $pdo->commit();
+            json_success(['deleted' => true, 'counts' => $counts]);
+        } catch (Throwable $txEx) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $txEx;
+        }
     }
 
     header('Allow: GET, POST, PATCH, DELETE');
@@ -96,7 +157,10 @@ try {
     } catch (Throwable $rollbackException) {
         log_customer_api_exception($rollbackException, $method . ':rollback');
     }
-    json_error('Müşteri işlemi tamamlanamadı.', 500);
+    $safeReason = ($exception instanceof PDOException)
+        ? 'Veritabanı hatası: ' . $exception->getCode()
+        : get_class($exception);
+    json_error('Müşteri işlemi tamamlanamadı. (' . $safeReason . ')', 500);
 }
 
 function ensure_account_type_columns(): void
@@ -303,10 +367,11 @@ function fetch_customer_financial_entries(string $customerId): array
     if (!table_exists('ak_customer_financial_entries')) {
         return [];
     }
+    // Temporary migration safety filter: exclude Hakediş entries until cleanup migration is confirmed
     $rows = fetch_all(
         "SELECT id, customer_id, amount_try, paid_amount_try, account_type, entry_date
          FROM ak_customer_financial_entries
-         WHERE customer_id = :id AND status <> 'İptal'
+         WHERE customer_id = :id AND status <> 'İptal' AND title NOT LIKE '%Hakediş%'
          ORDER BY entry_date DESC",
         ['id' => $customerId]
     );
@@ -318,12 +383,29 @@ function fetch_customer_financial_entry_summary(): array
     if (!table_exists('ak_customer_financial_entries')) {
         return [];
     }
+    // Temporary migration safety filter: exclude Hakediş entries until cleanup migration is confirmed
     $rows = fetch_all(
         "SELECT id, customer_id, amount_try, paid_amount_try, account_type, entry_date
          FROM ak_customer_financial_entries
-         WHERE status <> 'İptal'"
+         WHERE status <> 'İptal' AND title NOT LIKE '%Hakediş%'"
     );
     return map_cfe_entries_to_legacy($rows);
+}
+
+function fetch_government_progress_payments(string $customerId): array
+{
+    if (!table_exists('ak_government_progress_payments')) {
+        return [];
+    }
+    $stmt = db()->prepare(
+        'SELECT gpp.*, p.title AS project_title
+           FROM ak_government_progress_payments gpp
+           LEFT JOIN ak_projects p ON p.id = gpp.project_id
+          WHERE gpp.customer_id = :cid
+          ORDER BY gpp.due_date ASC, gpp.created_at ASC'
+    );
+    $stmt->execute(['cid' => $customerId]);
+    return $stmt->fetchAll() ?: [];
 }
 
 /**

@@ -62,9 +62,25 @@ try {
         if (!ec_fetch_one($id)) {
             json_error('Gider kalemi bulunamadı.', 404);
         }
-        // FK ON DELETE SET NULL nulls expense_item_id in ak_project_expense_transactions; name snapshot is preserved.
-        db()->prepare('DELETE FROM ak_expense_cards WHERE id = :id')->execute(['id' => $id]);
-        json_success(['deleted' => true]);
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $counts = [];
+            // 1. Canonical financial entries (RESTRICT on expense_card_id)
+            $s = $pdo->prepare('DELETE FROM ak_expense_card_financial_entries WHERE expense_card_id = :id');
+            $s->execute(['id' => $id]); $counts['expense_card_financial_entries'] = $s->rowCount();
+            // 2. Legacy financial entries (SET NULL FK; delete for clean removal)
+            $s = $pdo->prepare('DELETE FROM ak_financial_entries WHERE expense_card_id = :id');
+            $s->execute(['id' => $id]); $counts['financial_entries'] = $s->rowCount();
+            // ak_project_expense_transactions.expense_item_id is SET NULL — DB handles on parent delete
+            // 3. Parent
+            $pdo->prepare('DELETE FROM ak_expense_cards WHERE id = :id')->execute(['id' => $id]);
+            $pdo->commit();
+            json_success(['deleted' => true, 'counts' => $counts]);
+        } catch (Throwable $txEx) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $txEx;
+        }
     }
 
     header('Allow: GET, POST, PATCH, DELETE');

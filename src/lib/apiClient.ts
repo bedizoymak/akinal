@@ -359,7 +359,18 @@ export type AdminMediaImage = ProjectImage & {
   is_protected?: boolean;
   protected_reason?: string | null;
   projects?: { title?: string | null; slug?: string | null };
+  album_ids?: string[];
 };
+
+export interface MediaAlbum {
+  id: string;
+  name: string;
+  color: string | null;
+  sort_order: number;
+  is_favorite: boolean;
+  item_count: number;
+  created_at: string;
+}
 
 export async function getAdminMedia(): Promise<AdminMediaImage[]> {
   const data = await apiRequest<{ images: AdminMediaImage[] }>("/api/admin/media.php", {
@@ -401,6 +412,116 @@ export async function uploadAdminMediaImage(file: File): Promise<AdminMediaImage
   });
   return data.image;
 }
+
+export async function getAdminMediaAlbums(): Promise<MediaAlbum[]> {
+  const data = await apiRequest<{ albums: MediaAlbum[] }>("/api/admin/media-albums.php", {
+    method: "GET",
+    credentials: "include",
+  });
+  return data.albums || [];
+}
+
+export async function createAdminMediaAlbum(name: string, color?: string): Promise<MediaAlbum> {
+  const data = await apiRequest<{ album: MediaAlbum }>("/api/admin/media-albums.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify({ action: "create", name, color: color ?? null }),
+  });
+  return data.album;
+}
+
+export async function updateAdminMediaAlbum(id: string, patch: { name?: string; color?: string | null }): Promise<MediaAlbum> {
+  const data = await apiRequest<{ album: MediaAlbum }>(`/api/admin/media-albums.php?id=${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    credentials: "include",
+    body: JSON.stringify(patch),
+  });
+  return data.album;
+}
+
+export async function deleteAdminMediaAlbum(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/media-albums.php?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+}
+
+export async function assignMediaToAlbum(albumId: string, mediaId: string): Promise<void> {
+  await apiRequest<{ assigned: boolean }>("/api/admin/media-albums.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify({ action: "assign", album_id: albumId, media_id: mediaId }),
+  });
+}
+
+export async function removeMediaFromAlbum(albumId: string, mediaId: string): Promise<void> {
+  await apiRequest<{ removed: boolean }>("/api/admin/media-albums.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify({ action: "remove", album_id: albumId, media_id: mediaId }),
+  });
+}
+
+// ─── Inflation Indices ───────────────────────────────────────────────────────
+
+export interface InflationIndex {
+  id: string;
+  index_type: string;
+  period_year: number;
+  period_month: number;
+  /** Yearly-base derived index (Jan=100 each year). Kept for backward compatibility
+   *  with finance/receivables integrations. NOT used by the calculator. */
+  index_value: number | null;
+  monthly_change_percent: number | null;
+  annual_change_percent: number | null;
+  source: string | null;
+  created_at: string;
+}
+
+/** Result of the compound monthly inflation calculation. */
+export interface InflationCalculationResult {
+  amount_try: number;
+  /** Compound factor: product of (1 + monthly_change_percent/100) for each month in range */
+  factor: number;
+  /** (factor - 1) × 100 — effective inflation rate over the selected period */
+  rate_percent: number;
+  adjusted_amount: number;
+  difference: number;
+  /** Ordered list of YYYY-MM strings for every month compounded (base+1 through target) */
+  months_used: string[];
+  base_period: string;
+  target_period: string;
+}
+
+export interface InflationIndicesResponse {
+  indices: InflationIndex[];
+  sync_warning: string | null;
+  last_synced_period: string | null;
+  active_index_type: string;
+}
+
+export async function getInflationIndices(): Promise<InflationIndicesResponse> {
+  return apiRequest<InflationIndicesResponse>(
+    "/api/admin/inflation-indices.php",
+    { method: "GET", credentials: "include" },
+  );
+}
+
+export async function calculateInflation(payload: {
+  amount_try: number;
+  base_year: number;
+  base_month: number;
+  target_year: number;
+  target_month: number;
+  index_type?: string;
+}): Promise<InflationCalculationResult> {
+  return apiRequest<InflationCalculationResult>("/api/admin/inflation-indices.php", {
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify({ action: "calculate", ...payload }),
+  });
+}
+
 
 export async function uploadAdminProjectImage(file: Blob, filename: string): Promise<string> {
   const form = new FormData();
@@ -1112,6 +1233,70 @@ export async function updateCustomerFinancialEntry(payload: Partial<CardFinancia
 
 export async function deleteCustomerFinancialEntry(id: string): Promise<void> {
   await apiRequest<{ deleted: boolean }>(`/api/admin/customer-financial-entries.php?id=${encodeURIComponent(id)}`, { method: "DELETE", credentials: "include" });
+}
+
+// ── Government progress payments ───────────────────────────────────────────────
+
+export async function getGovernmentProgressPayments(params: { customer_id?: string; project_id?: string; id?: string } = {}): Promise<import("./apiTypes").GovernmentProgressPayment[]> {
+  const p = new URLSearchParams(Object.entries(params).filter(([, v]) => v).map(([k, v]) => [k, v as string]));
+  const data = await apiRequest<{ payments?: import("./apiTypes").GovernmentProgressPayment[]; payment?: import("./apiTypes").GovernmentProgressPayment }>(`/api/admin/government-progress-payments.php${p.toString() ? "?" + p.toString() : ""}`, { method: "GET", credentials: "include" });
+  return data.payments || (data.payment ? [data.payment] : []);
+}
+
+export async function createGovernmentProgressPayment(payload: import("./apiTypes").GovernmentProgressPaymentPayload): Promise<import("./apiTypes").GovernmentProgressPayment> {
+  const data = await apiRequest<{ payment: import("./apiTypes").GovernmentProgressPayment }>("/api/admin/government-progress-payments.php", { method: "POST", credentials: "include", body: JSON.stringify(payload) });
+  return data.payment;
+}
+
+export async function updateGovernmentProgressPayment(payload: Partial<import("./apiTypes").GovernmentProgressPaymentPayload> & { id: string }): Promise<import("./apiTypes").GovernmentProgressPayment> {
+  const data = await apiRequest<{ payment: import("./apiTypes").GovernmentProgressPayment }>("/api/admin/government-progress-payments.php", { method: "PATCH", credentials: "include", body: JSON.stringify(payload) });
+  return data.payment;
+}
+
+export async function deleteGovernmentProgressPayment(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/api/admin/government-progress-payments.php?id=${encodeURIComponent(id)}`, { method: "DELETE", credentials: "include" });
+}
+
+export async function createGppCollection(payload: {
+  government_progress_payment_id: string;
+  breakdown_id?: string | null;
+  title: string;
+  collection_date: string;
+  amount_try: number;
+  notes?: string | null;
+}): Promise<import("./apiTypes").GovernmentProgressPayment> {
+  const data = await apiRequest<{ payment: import("./apiTypes").GovernmentProgressPayment }>("/api/admin/government-progress-payments.php", { method: "POST", credentials: "include", body: JSON.stringify({ action: "create_collection", ...payload }) });
+  return data.payment;
+}
+
+export async function updateGppCollection(payload: {
+  collection_id: string;
+  breakdown_id?: string | null;
+  title?: string;
+  collection_date?: string;
+  amount_try?: number;
+  notes?: string | null;
+}): Promise<import("./apiTypes").GovernmentProgressPayment> {
+  const data = await apiRequest<{ payment: import("./apiTypes").GovernmentProgressPayment }>("/api/admin/government-progress-payments.php", { method: "PATCH", credentials: "include", body: JSON.stringify({ action: "update_collection", ...payload }) });
+  return data.payment;
+}
+
+export async function deleteGppCollection(collectionId: string): Promise<import("./apiTypes").GovernmentProgressPayment> {
+  const data = await apiRequest<{ payment: import("./apiTypes").GovernmentProgressPayment }>("/api/admin/government-progress-payments.php", { method: "DELETE", credentials: "include", body: JSON.stringify({ action: "delete_collection", collection_id: collectionId }) });
+  return data.payment;
+}
+
+export async function updateGppBreakdown(payload: {
+  breakdown_id: string;
+  planned_amount_try?: number;
+  paid_amount_try?: number;
+  due_date?: string | null;
+  paid_date?: string | null;
+  status?: import("./apiTypes").GovernmentPaymentStatus;
+  notes?: string | null;
+}): Promise<import("./apiTypes").GovernmentProgressPayment> {
+  const data = await apiRequest<{ payment: import("./apiTypes").GovernmentProgressPayment }>("/api/admin/government-progress-payments.php", { method: "PATCH", credentials: "include", body: JSON.stringify(payload) });
+  return data.payment;
 }
 
 // ── Employee financial entries ─────────────────────────────────────────────────

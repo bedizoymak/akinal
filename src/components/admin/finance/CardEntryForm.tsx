@@ -90,7 +90,6 @@ export function CardEntryForm({ open, onClose, onSave, initial, projects, title,
     if (!values.title.trim()) { setError("Başlık zorunludur."); return; }
     if (!values.entry_date) { setError("Tarih zorunludur."); return; }
     if (!values.amount || isNaN(Number(values.amount)) || Number(values.amount) <= 0) { setError("Geçerli bir tutar girin."); return; }
-    if (!values.project_id) { setError("Proje seçimi zorunludur."); return; }
     setLoading(true);
     setError(null);
     try {
@@ -129,10 +128,11 @@ export function CardEntryForm({ open, onClose, onSave, initial, projects, title,
             </div>
 
             <div>
-              <Label>Proje *</Label>
-              <Select value={values.project_id} onValueChange={(v) => set("project_id", v)}>
-                <SelectTrigger><SelectValue placeholder="Proje seç" /></SelectTrigger>
+              <Label>Proje</Label>
+              <Select value={values.project_id || "__none__"} onValueChange={(v) => set("project_id", v === "__none__" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="Proje seç (isteğe bağlı)" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__none__">Seçilmedi</SelectItem>
                   {projects.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
                   ))}

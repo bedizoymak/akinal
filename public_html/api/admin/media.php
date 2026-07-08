@@ -109,7 +109,40 @@ function collect_media_images(): array
         add_media_image($images, $seen, $row);
     }
 
-    return array_values($images);
+    $images = array_values($images);
+
+    // Attach album membership — silently skipped if album tables not yet migrated
+    $allIds = array_filter(array_column($images, 'id'));
+    if ($allIds !== []) {
+        try {
+            $placeholders = implode(',', array_fill(0, count($allIds), '?'));
+            $stmt = db()->prepare(
+                "SELECT album_id, media_id FROM ak_media_album_items WHERE media_id IN ({$placeholders})"
+            );
+            $stmt->execute(array_values($allIds));
+            $byMedia = [];
+            foreach ($stmt->fetchAll() ?: [] as $row) {
+                $byMedia[$row['media_id']][] = $row['album_id'];
+            }
+            foreach ($images as &$image) {
+                $image['album_ids'] = $byMedia[$image['id'] ?? ''] ?? [];
+            }
+            unset($image);
+        } catch (Throwable $albumException) {
+            // ak_media_album_items table not yet created; return images without album data
+            foreach ($images as &$image) {
+                $image['album_ids'] = [];
+            }
+            unset($image);
+        }
+    } else {
+        foreach ($images as &$image) {
+            $image['album_ids'] = [];
+        }
+        unset($image);
+    }
+
+    return $images;
 }
 
 function add_media_image(array &$images, array &$seen, array $row): void

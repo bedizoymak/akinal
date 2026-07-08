@@ -671,6 +671,76 @@ export interface AdminCustomerListResponse {
   projects: Pick<PublicProject, "id" | "title">[];
 }
 
+export type GovernmentPaymentStage = "Su Basmanı" | "Kaba İnşaat" | "İnce İnşaat" | "İskan" | "Belirtilmemiş";
+export type GovernmentPaymentStatus = "planned" | "partial" | "paid" | "cancelled";
+
+export interface GppBreakdown {
+  id: string;
+  government_progress_payment_id: string;
+  stage: string;
+  stage_percentage: number;
+  planned_amount_try: number;
+  paid_amount_try: number;
+  due_date: string | null;
+  paid_date: string | null;
+  status: GovernmentPaymentStatus;
+  notes: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GppCollection {
+  id: string;
+  government_progress_payment_id: string;
+  breakdown_id: string | null;
+  project_id: string | null;
+  customer_id: string | null;
+  title: string;
+  collection_date: string;
+  amount_try: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  breakdown_stage?: string | null;
+}
+
+export interface GovernmentProgressPayment {
+  id: string;
+  project_id: string | null;
+  customer_id: string | null;
+  source_customer_financial_entry_id: string | null;
+  title: string;
+  stage: GovernmentPaymentStage;
+  stage_percentage: number | string;
+  planned_amount_try: number | string;
+  paid_amount_try: number | string;
+  due_date: string | null;
+  paid_date: string | null;
+  status: GovernmentPaymentStatus;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  customer_name?: string | null;
+  project_title?: string | null;
+  breakdowns: GppBreakdown[];
+  collections: GppCollection[];
+}
+
+export interface GovernmentProgressPaymentPayload {
+  project_id?: string | null;
+  customer_id?: string | null;
+  title: string;
+  stage: GovernmentPaymentStage;
+  stage_percentage?: number;
+  planned_amount_try: number | string;
+  paid_amount_try?: number | string;
+  due_date?: string | null;
+  paid_date?: string | null;
+  status?: GovernmentPaymentStatus;
+  notes?: string | null;
+}
+
 export interface AdminCustomerDetailResponse {
   customer: AdminCustomer | null;
   links: AdminCustomerProjectLink[];
@@ -679,6 +749,7 @@ export interface AdminCustomerDetailResponse {
   payments: AdminPayment[];
   financial_entries: AdminFinancialEntry[];
   expenses: Record<string, unknown>[];
+  government_progress_payments?: GovernmentProgressPayment[];
 }
 
 export interface AdminPaymentsResponse {
@@ -830,7 +901,7 @@ export type CardEntryRateSource = "api" | "manual" | "default";
 
 export interface CardFinancialEntry {
   id: string;
-  project_id: string;
+  project_id: string | null;
   entry_date: string;
   title: string;
   notes: string | null;
@@ -877,7 +948,7 @@ export interface ExpenseCardFinancialEntry extends CardFinancialEntry {
 }
 
 // Normalized union row from project-statement.php and gidenler.php
-export type CardEntrySourceType = "customer" | "employee" | "supplier" | "expense_card";
+export type CardEntrySourceType = "customer" | "employee" | "supplier" | "expense_card" | "government";
 
 export interface ProjectStatementRow {
   id: string;
@@ -917,6 +988,11 @@ export interface ProjectStatementSummary {
   total_income_planned: number;
   total_income_paid: number;
   total_income_remaining: number;
+  customer_income_planned: number;
+  customer_income_paid: number;
+  government_income_planned: number;
+  government_income_paid: number;
+  customer_income_inflation_adjusted?: number | null;
   total_expense_planned: number;
   total_expense_paid: number;
   total_expense_remaining: number;
@@ -939,8 +1015,26 @@ export interface GelenlerSummary {
   row_count: number;
 }
 
+export interface GelenlerEntry {
+  id: string;
+  source_type: "customer" | "government";
+  source_label: string;
+  owner_name: string | null;
+  project_title: string | null;
+  entry_date: string;
+  title: string;
+  notes: string | null;
+  amount_try: number | string;
+  paid_amount_try: number | string;
+  remaining_amount_try?: number | string;
+  status: string;
+  is_overdue: number | boolean;
+  created_at: string;
+  [key: string]: unknown;
+}
+
 export interface GelenlerResponse {
-  entries: (CustomerFinancialEntry & { source_type: "customer"; source_label: string; owner_name: string; project_title: string })[];
+  entries: GelenlerEntry[];
   summary: GelenlerSummary;
   projects: { id: string; title: string }[];
   customers: { id: string; name: string }[];
@@ -971,7 +1065,7 @@ export interface GidenlerResponse {
 
 // Payload types for creating/updating entries
 export interface CardFinancialEntryPayload {
-  project_id: string;
+  project_id?: string | null;
   entry_date: string;
   title: string;
   notes?: string | null;

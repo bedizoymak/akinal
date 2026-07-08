@@ -36,8 +36,75 @@ try {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function ps_table_exists(string $table): bool
+{
+    $stmt = db()->prepare(
+        'SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :t LIMIT 1'
+    );
+    $stmt->execute(['t' => $table]);
+    return (bool) $stmt->fetchColumn();
+}
+
 function fetch_project_statement_rows(string $projectId): array
 {
+    $gppExists = ps_table_exists('ak_government_progress_payments');
+
+    $gppBlock = $gppExists ? "
+        UNION ALL
+
+        SELECT
+          gpp.id,
+          'government'                                          AS source_type,
+          'Devlet Hakedişi'                                     AS source_label,
+          gpp.customer_id                                       AS owner_id,
+          COALESCE(c_gpp.company_name, c_gpp.full_name, 'Devlet') AS owner_name,
+          gpp.project_id,
+          p_gpp.title                                           AS project_name,
+          COALESCE(gpp.due_date, DATE(gpp.created_at))         AS entry_date,
+          gpp.title,
+          gpp.notes,
+          'income'                                              AS direction,
+          1                                                     AS sign,
+          gpp.planned_amount_try                               AS amount,
+          gpp.paid_amount_try                                  AS paid_amount,
+          'TRY'                                                 AS currency,
+          1.0                                                   AS exchange_rate_to_try,
+          NULL                                                  AS exchange_rate_source,
+          NULL                                                  AS exchange_rate_snapshot_at,
+          0                                                     AS is_exchange_rate_manual,
+          gpp.planned_amount_try                               AS amount_try,
+          gpp.paid_amount_try                                  AS paid_amount_try,
+          NULL                                                  AS account_type,
+          NULL                                                  AS payment_method,
+          CASE gpp.status
+              WHEN 'paid'      THEN 'Gerçekleşti'
+              WHEN 'partial'   THEN 'Kısmi Ödendi'
+              WHEN 'cancelled' THEN 'İptal'
+              ELSE 'Planlanan'
+          END                                                   AS status,
+          CASE
+              WHEN gpp.status NOT IN ('paid', 'cancelled')
+                   AND gpp.due_date IS NOT NULL
+                   AND gpp.due_date < CURDATE()
+              THEN 1 ELSE 0
+          END                                                   AS is_overdue,
+          gpp.created_at,
+          gpp.updated_at
+        FROM ak_government_progress_payments gpp
+        LEFT JOIN ak_customers c_gpp ON c_gpp.id = gpp.customer_id
+        LEFT JOIN ak_projects  p_gpp ON p_gpp.id = gpp.project_id
+        WHERE gpp.project_id = :pid5" : '';
+
+    $params = [
+        'pid'  => $projectId,
+        'pid2' => $projectId,
+        'pid3' => $projectId,
+        'pid4' => $projectId,
+    ];
+    if ($gppExists) {
+        $params['pid5'] = $projectId;
+    }
+
     $sql = "
         SELECT
           cfe.id,
@@ -71,6 +138,7 @@ function fetch_project_statement_rows(string $projectId): array
         LEFT JOIN ak_customers c ON c.id = cfe.customer_id
         LEFT JOIN ak_projects  p ON p.id = cfe.project_id
         WHERE cfe.project_id = :pid
+          AND cfe.title NOT LIKE '%Hakediş%'
 
         UNION ALL
 
@@ -177,19 +245,18 @@ function fetch_project_statement_rows(string $projectId): array
         LEFT JOIN ak_projects      p  ON p.id  = ecfe.project_id
         WHERE ecfe.project_id = :pid4
 
+        {$gppBlock}
+
         ORDER BY entry_date DESC, created_at DESC
     ";
 
     $stmt = db()->prepare($sql);
-    $stmt->execute([
-        'pid'  => $projectId,
-        'pid2' => $projectId,
-        'pid3' => $projectId,
-        'pid4' => $projectId,
-    ]);
+    $stmt->execute($params);
     $rows = $stmt->fetchAll() ?: [];
 
-    return array_map(function (array $row): array {
+    $psIndexType = preferred_inflation_index_type();
+
+    return array_map(function (array $row) use ($psIndexType): array {
         $amount    = (float) $row['amount'];
         $paid      = (float) $row['paid_amount'];
         $amountTry = (float) $row['amount_try'];
@@ -209,21 +276,67 @@ function fetch_project_statement_rows(string $projectId): array
         $row['is_overdue']             = (int)   $row['is_overdue'];
         $row['sign']                   = $sign;
 
+        // Add inflation adjustment for planned customer receivable rows only
+        $inflationFields = inflation_null_fields();
+        $plannedStatuses = ['Planlanan', 'Gecikmiş', 'Kısmi Ödendi'];
+        if ($row['source_type'] === 'customer'
+            && $row['direction'] === 'income'
+            && in_array($row['status'], $plannedStatuses, true)
+            && $amountTry > 0
+            && !empty($row['created_at'])
+            && !empty($row['entry_date'])
+        ) {
+            $adj = calculate_inflation_adjustment($amountTry, (string) $row['created_at'], (string) $row['entry_date'], $psIndexType);
+            // Fall back to TUFE if preferred type lacks data for these periods
+            if ($adj === null && $psIndexType !== 'TUFE') {
+                $adj = calculate_inflation_adjustment($amountTry, (string) $row['created_at'], (string) $row['entry_date'], 'TUFE');
+            }
+            if ($adj !== null) {
+                $inflationFields = $adj;
+            }
+        }
+        $row = array_merge($row, $inflationFields);
+
         return $row;
     }, $rows);
 }
 
 function compute_statement_summary(array $rows): array
 {
-    $totalIncomePlanned  = 0.0;
-    $totalIncomePaid     = 0.0;
-    $totalExpensePlanned = 0.0;
-    $totalExpensePaid    = 0.0;
+    $totalIncomePlanned              = 0.0;
+    $totalIncomePaid                 = 0.0;
+    $totalExpensePlanned             = 0.0;
+    $totalExpensePaid                = 0.0;
+    $customerIncomePlanned           = 0.0;
+    $customerIncomePaid              = 0.0;
+    $governmentIncomePlanned         = 0.0;
+    $governmentIncomePaid            = 0.0;
+    $customerIncomeInflationAdjusted = 0.0;
+    $hasInflationData                = false;
 
     foreach ($rows as $row) {
         if ($row['direction'] === 'income') {
-            $totalIncomePlanned  += (float) $row['amount_try'];
-            $totalIncomePaid     += (float) $row['paid_amount_try'];
+            $planned = (float) $row['amount_try'];
+            $paid    = (float) $row['paid_amount_try'];
+            $totalIncomePlanned += $planned;
+            $totalIncomePaid    += $paid;
+            if ($row['source_type'] === 'government') {
+                $governmentIncomePlanned += $planned;
+                $governmentIncomePaid    += $paid;
+            } else {
+                $customerIncomePlanned += $planned;
+                $customerIncomePaid    += $paid;
+                if ($row['source_type'] === 'customer') {
+                    $adj = $row['inflation_adjusted_amount_try'] ?? null;
+                    if ($adj !== null) {
+                        $customerIncomeInflationAdjusted += (float) $adj;
+                        $hasInflationData = true;
+                    } else {
+                        // Paid entries contribute their paid amount to the inflation-adjusted total
+                        $customerIncomeInflationAdjusted += $paid;
+                    }
+                }
+            }
         } else {
             $totalExpensePlanned += (float) $row['amount_try'];
             $totalExpensePaid    += (float) $row['paid_amount_try'];
@@ -231,14 +344,19 @@ function compute_statement_summary(array $rows): array
     }
 
     return [
-        'total_income_planned'   => round($totalIncomePlanned, 2),
-        'total_income_paid'      => round($totalIncomePaid, 2),
-        'total_income_remaining' => round($totalIncomePlanned - $totalIncomePaid, 2),
-        'total_expense_planned'  => round($totalExpensePlanned, 2),
-        'total_expense_paid'     => round($totalExpensePaid, 2),
-        'total_expense_remaining'=> round($totalExpensePlanned - $totalExpensePaid, 2),
-        'realized_profit'        => round($totalIncomePaid - $totalExpensePaid, 2),
-        'planned_profit'         => round($totalIncomePlanned - $totalExpensePlanned, 2),
-        'row_count'              => count($rows),
+        'total_income_planned'                   => round($totalIncomePlanned, 2),
+        'total_income_paid'                      => round($totalIncomePaid, 2),
+        'total_income_remaining'                 => round($totalIncomePlanned - $totalIncomePaid, 2),
+        'customer_income_planned'                => round($customerIncomePlanned, 2),
+        'customer_income_paid'                   => round($customerIncomePaid, 2),
+        'government_income_planned'              => round($governmentIncomePlanned, 2),
+        'government_income_paid'                 => round($governmentIncomePaid, 2),
+        'customer_income_inflation_adjusted'     => $hasInflationData ? round($customerIncomeInflationAdjusted, 2) : null,
+        'total_expense_planned'                  => round($totalExpensePlanned, 2),
+        'total_expense_paid'                     => round($totalExpensePaid, 2),
+        'total_expense_remaining'                => round($totalExpensePlanned - $totalExpensePaid, 2),
+        'realized_profit'                        => round($totalIncomePaid - $totalExpensePaid, 2),
+        'planned_profit'                         => round($totalIncomePlanned - $totalExpensePlanned, 2),
+        'row_count'                              => count($rows),
     ];
 }

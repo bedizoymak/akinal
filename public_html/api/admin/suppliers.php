@@ -69,14 +69,21 @@ try {
         }
         if (!sup_fetch_one($id)) json_error('Tedarikçi bulunamadı.', 404);
 
-        // Check for linked financial entries before deletion
-        $linked = db()->prepare('SELECT id FROM ak_supplier_financial_entries WHERE supplier_id = :id LIMIT 1');
-        $linked->execute(['id' => $id]);
-        if ($linked->fetch()) {
-            json_error('Finansal kaydı bulunan tedarikçi silinemez. Önce bağlı finansal kayıtları silin veya tedarikçiyi pasif yapın.', 409);
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $counts = [];
+            // 1. Canonical financial entries (RESTRICT on supplier_id)
+            $s = $pdo->prepare('DELETE FROM ak_supplier_financial_entries WHERE supplier_id = :id');
+            $s->execute(['id' => $id]); $counts['supplier_financial_entries'] = $s->rowCount();
+            // 2. Parent
+            $pdo->prepare('DELETE FROM ak_suppliers WHERE id = :id')->execute(['id' => $id]);
+            $pdo->commit();
+            json_success(['deleted' => true, 'counts' => $counts]);
+        } catch (Throwable $txEx) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $txEx;
         }
-        db()->prepare('DELETE FROM ak_suppliers WHERE id = :id')->execute(['id' => $id]);
-        json_success(['deleted' => true]);
     }
 
     header('Allow: GET, POST, PATCH, DELETE');

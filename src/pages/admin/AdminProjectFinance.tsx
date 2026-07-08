@@ -16,10 +16,11 @@ function fmtDate(d: string) {
 }
 
 const SOURCE_LABEL: Record<string, string> = {
-  customer: "Müşteri",
-  employee: "Personel",
-  supplier: "Tedarikçi",
+  customer:     "Müşteri",
+  employee:     "Personel",
+  supplier:     "Tedarikçi",
   expense_card: "Masraf Kartı",
+  government:   "Devlet Hakedişi",
 };
 
 function StatementTable({ rows }: { rows: ProjectStatementRow[] }) {
@@ -98,21 +99,47 @@ export default function AdminProjectFinance() {
       )}
 
       {summary && (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          {([
-            ["Planlanan Gelir", summary.total_income_planned, "text-emerald-700"],
-            ["Gerçekleşen Gelir", summary.total_income_paid, "text-emerald-700"],
-            ["Kalan Alacak", summary.total_income_remaining, "text-amber-600"],
-            ["Planlanan Gider", summary.total_expense_planned, "text-destructive"],
-            ["Gerçekleşen Gider", summary.total_expense_paid, "text-destructive"],
-            ["Gerçekleşen Kâr", summary.realized_profit, Number(summary.realized_profit) >= 0 ? "text-emerald-700" : "text-destructive"],
-          ] as const).map(([label, value, color]) => (
-            <div key={label} className="rounded-md border border-border bg-card p-4 shadow-card-soft">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
-              <div className={`mt-2 break-words text-xl font-extrabold leading-tight tabular-nums ${color}`}>{fmtTRY(value)}</div>
+        <>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            {([
+              ["Planlanan Gelir", summary.total_income_planned, "text-emerald-700"],
+              ["Gerçekleşen Gelir", summary.total_income_paid, "text-emerald-700"],
+              ["Kalan Alacak", summary.total_income_remaining, "text-amber-600"],
+              ["Planlanan Gider", summary.total_expense_planned, "text-destructive"],
+              ["Gerçekleşen Gider", summary.total_expense_paid, "text-destructive"],
+              ["Gerçekleşen Kâr", summary.realized_profit, Number(summary.realized_profit) >= 0 ? "text-emerald-700" : "text-destructive"],
+            ] as const).map(([label, value, color]) => (
+              <div key={label} className="rounded-md border border-border bg-card p-4 shadow-card-soft">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
+                <div className={`mt-2 break-words text-xl font-extrabold leading-tight tabular-nums ${color}`}>{fmtTRY(value)}</div>
+              </div>
+            ))}
+          </div>
+          {(summary.government_income_planned > 0 || summary.customer_income_planned > 0) && (
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {([
+                ["Müşteri Geliri — Planlanan", summary.customer_income_planned, "text-foreground"],
+                ["Müşteri Geliri — Gerçekleşen", summary.customer_income_paid, "text-foreground"],
+                ["Devlet Hakedişi — Planlanan", summary.government_income_planned, "text-foreground"],
+                ["Devlet Hakedişi — Gerçekleşen", summary.government_income_paid, "text-foreground"],
+              ] as [string, number, string][]).map(([label, value, color]) => (
+                <div key={label} className="rounded-md border border-border bg-card p-3 shadow-card-soft">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</div>
+                  <div className={`mt-1.5 break-words text-base font-bold leading-tight tabular-nums ${color}`}>{fmtTRY(value)}</div>
+                </div>
+              ))}
+              {summary.customer_income_inflation_adjusted != null && (
+                <div className="rounded-md border border-orange-200 bg-orange-50 p-3 shadow-card-soft">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-700">Müşteri Geliri — TÜFE Güncelleme</div>
+                  <div className="mt-1.5 break-words text-base font-bold leading-tight tabular-nums text-orange-700">{fmtTRY(summary.customer_income_inflation_adjusted)}</div>
+                  <div className="mt-0.5 text-[10px] text-orange-600">
+                    +{fmtTRY(summary.customer_income_inflation_adjusted - summary.customer_income_planned)} fark
+                  </div>
+                </div>
+              )}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       {isLoading && <div className="py-8 text-center text-sm text-muted-foreground">Yükleniyor...</div>}

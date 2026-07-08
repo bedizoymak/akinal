@@ -70,6 +70,7 @@ try {
     header('Allow: GET, POST, PATCH, DELETE');
     json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
+    error_log('[payment-plans] ' . $exception->getMessage() . ' in ' . $exception->getFile() . ':' . $exception->getLine());
     json_error('Tahsilat kalemi işlemi tamamlanamadı.', 500);
 }
 
@@ -118,7 +119,7 @@ function pp_auto_status(float $amount, float $paid, string $date): string
 function pp_payload(array $input): array
 {
     $customerId = require_non_empty($input, 'customer_id', 'Müşteri seçimi zorunludur.');
-    $projectId  = require_non_empty($input, 'project_id', 'Proje seçimi zorunludur.');
+    $projectId  = nullable_string($input, 'project_id');
     $title      = require_non_empty($input, 'title', 'Başlık zorunludur.');
     $amount     = require_positive_amount($input);
     $paidAmount = max(0.0, (float) ($input['paid_amount'] ?? 0));

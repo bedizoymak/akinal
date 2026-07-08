@@ -161,7 +161,14 @@ export function formatMoney(amount: number | string | null | undefined, currency
 
 export function formatDate(d: string | Date | null | undefined): string {
   if (!d) return "-";
-  return new Date(d).toLocaleDateString("tr-TR");
+  if (typeof d === "string") {
+    const [year, month, day] = d.slice(0, 10).split("-");
+    if (year && month && day) return `${day}.${month}.${year}`;
+    return d;
+  }
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  return `${day}.${month}.${d.getFullYear()}`;
 }
 
 export function displayLabel(value: string | null | undefined): string {

@@ -70,6 +70,20 @@ function require_iso_date(array $input, string $key, string $message): string
     return $value;
 }
 
+/**
+ * Checks that no row exists in $table where $column = $id.
+ * Calls json_error(409) with $message when a linked record is found.
+ * Prevents FK RESTRICT violations from reaching the DB layer.
+ */
+function assert_no_linked_records(string $table, string $column, string $id, string $message): void
+{
+    $stmt = db()->prepare("SELECT 1 FROM `{$table}` WHERE `{$column}` = :id LIMIT 1");
+    $stmt->execute(['id' => $id]);
+    if ($stmt->fetch()) {
+        json_error($message, 409);
+    }
+}
+
 function require_upload_size(array $file, int $maxBytes): void
 {
     $size = (int) ($file['size'] ?? 0);

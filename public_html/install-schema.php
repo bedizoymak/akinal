@@ -758,6 +758,122 @@ CREATE TABLE IF NOT EXISTS ak_cookie_consents (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
+
+    'ak_inflation_indices' => <<<'SQL'
+CREATE TABLE IF NOT EXISTS ak_inflation_indices (
+  id                     CHAR(36)      NOT NULL PRIMARY KEY,
+  index_type             VARCHAR(20)   NOT NULL,
+  period_year            INT           NOT NULL,
+  period_month           INT           NOT NULL,
+  index_value            DECIMAL(12,4) NULL,
+  monthly_change_percent DECIMAL(8,4)  NULL,
+  annual_change_percent  DECIMAL(8,4)  NULL,
+  source                 VARCHAR(100)  NULL,
+  created_at             DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_inflation_indices_type_period (index_type, period_year, period_month),
+  KEY idx_inflation_indices_type (index_type),
+  KEY idx_inflation_indices_year (period_year)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+
+    'ak_media_albums' => <<<'SQL'
+CREATE TABLE IF NOT EXISTS ak_media_albums (
+  id          CHAR(36)     NOT NULL PRIMARY KEY,
+  name        VARCHAR(255) NOT NULL,
+  color       VARCHAR(20)      NULL,
+  sort_order  INT          NOT NULL DEFAULT 0,
+  is_favorite TINYINT(1)   NOT NULL DEFAULT 0,
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_media_albums_sort (sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+
+    'ak_media_album_items' => <<<'SQL'
+CREATE TABLE IF NOT EXISTS ak_media_album_items (
+  album_id CHAR(36)     NOT NULL,
+  media_id VARCHAR(255) NOT NULL,
+  PRIMARY KEY (album_id, media_id),
+  KEY idx_media_album_items_media (media_id),
+  CONSTRAINT fk_media_album_items_album FOREIGN KEY (album_id)
+    REFERENCES ak_media_albums(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+
+    'ak_government_progress_payments' => <<<'SQL'
+CREATE TABLE IF NOT EXISTS ak_government_progress_payments (
+  id                                  CHAR(36)      NOT NULL PRIMARY KEY,
+  project_id                          CHAR(36)      NULL,
+  customer_id                         CHAR(36)      NULL,
+  source_customer_financial_entry_id  CHAR(36)      NULL,
+  title                               VARCHAR(255)  NOT NULL,
+  stage                               VARCHAR(50)   NOT NULL DEFAULT 'Belirtilmemiş',
+  stage_percentage                    DECIMAL(5,2)  NOT NULL DEFAULT 0,
+  planned_amount_try                  DECIMAL(15,2) NOT NULL DEFAULT 0,
+  paid_amount_try                     DECIMAL(15,2) NOT NULL DEFAULT 0,
+  due_date                            DATE          NULL,
+  paid_date                           DATE          NULL,
+  status                              VARCHAR(20)   NOT NULL DEFAULT 'planned',
+  notes                               TEXT          NULL,
+  created_at                          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at                          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_gpp_project_id  (project_id),
+  KEY idx_gpp_customer_id (customer_id),
+  KEY idx_gpp_stage       (stage),
+  KEY idx_gpp_status      (status),
+  KEY idx_gpp_due_date    (due_date),
+  KEY idx_gpp_source_cfe  (source_customer_financial_entry_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+
+    'ak_government_progress_payment_breakdowns' => <<<'SQL'
+CREATE TABLE IF NOT EXISTS ak_government_progress_payment_breakdowns (
+  id                              CHAR(36)       NOT NULL PRIMARY KEY,
+  government_progress_payment_id  CHAR(36)       NOT NULL,
+  stage                           VARCHAR(50)    NOT NULL,
+  stage_percentage                DECIMAL(5,2)   NOT NULL DEFAULT 0,
+  planned_amount_try              DECIMAL(15,2)  NOT NULL DEFAULT 0,
+  paid_amount_try                 DECIMAL(15,2)  NOT NULL DEFAULT 0,
+  due_date                        DATE           NULL,
+  paid_date                       DATE           NULL,
+  status                          VARCHAR(20)    NOT NULL DEFAULT 'planned',
+  notes                           TEXT           NULL,
+  sort_order                      INT            NOT NULL DEFAULT 0,
+  created_at                      DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at                      DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_gppb_payment_id (government_progress_payment_id),
+  KEY idx_gppb_stage      (stage),
+  KEY idx_gppb_status     (status),
+  KEY idx_gppb_due_date   (due_date),
+  KEY idx_gppb_sort       (sort_order),
+  CONSTRAINT fk_gppb_payment FOREIGN KEY (government_progress_payment_id)
+    REFERENCES ak_government_progress_payments (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+
+    'ak_government_progress_payment_collections' => <<<'SQL'
+CREATE TABLE IF NOT EXISTS ak_government_progress_payment_collections (
+  id                              CHAR(36)       NOT NULL PRIMARY KEY,
+  government_progress_payment_id  CHAR(36)       NOT NULL,
+  breakdown_id                    CHAR(36)       NULL,
+  project_id                      CHAR(36)       NULL,
+  customer_id                     CHAR(36)       NULL,
+  title                           VARCHAR(255)   NOT NULL,
+  collection_date                 DATE           NOT NULL,
+  amount_try                      DECIMAL(15,2)  NOT NULL DEFAULT 0,
+  notes                           TEXT           NULL,
+  created_at                      DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at                      DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_gppc_payment_id      (government_progress_payment_id),
+  KEY idx_gppc_breakdown_id    (breakdown_id),
+  KEY idx_gppc_collection_date (collection_date),
+  KEY idx_gppc_project_id      (project_id),
+  KEY idx_gppc_customer_id     (customer_id),
+  CONSTRAINT fk_gppc_payment   FOREIGN KEY (government_progress_payment_id)
+    REFERENCES ak_government_progress_payments (id) ON DELETE CASCADE,
+  CONSTRAINT fk_gppc_breakdown FOREIGN KEY (breakdown_id)
+    REFERENCES ak_government_progress_payment_breakdowns (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
 ];
 
 try {

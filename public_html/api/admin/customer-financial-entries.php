@@ -3,8 +3,39 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/finance-entry-helpers.php';
+require_once __DIR__ . '/inflation-helper.php';
 
 require_admin();
+
+/**
+ * Post-process enriched customer entries with TÜFE inflation adjustment.
+ * Only applied to unpaid/partial entries — does not mutate stored amounts.
+ */
+function cfe_add_inflation(array $entries): array
+{
+    $plannedStatuses = ['Planlanan', 'Gecikmiş', 'Kısmi Ödendi'];
+    $indexType = preferred_inflation_index_type();
+    foreach ($entries as &$entry) {
+        $inflationFields = inflation_null_fields();
+        $amountTry  = (float) ($entry['amount_try'] ?? 0);
+        $status     = (string) ($entry['status'] ?? '');
+        $createdAt  = (string) ($entry['created_at'] ?? '');
+        $entryDate  = (string) ($entry['entry_date'] ?? '');
+        if (in_array($status, $plannedStatuses, true) && $amountTry > 0 && $createdAt !== '' && $entryDate !== '') {
+            $adj = calculate_inflation_adjustment($amountTry, $createdAt, $entryDate, $indexType);
+            // Fall back to TUFE if preferred type lacks data for these periods
+            if ($adj === null && $indexType !== 'TUFE') {
+                $adj = calculate_inflation_adjustment($amountTry, $createdAt, $entryDate, 'TUFE');
+            }
+            if ($adj !== null) {
+                $inflationFields = $adj;
+            }
+        }
+        $entry = array_merge($entry, $inflationFields);
+    }
+    unset($entry);
+    return $entries;
+}
 
 const CFE_TABLE = 'ak_customer_financial_entries';
 
@@ -19,20 +50,23 @@ try {
         if ($id !== '') {
             $entry = fe_fetch_one_by_id(CFE_TABLE, $id);
             if (!$entry) json_error('Müşteri finansal kaydı bulunamadı.', 404);
+            $entry = cfe_add_inflation([$entry])[0];
             json_success(['entry' => $entry]);
         }
 
         if ($customerId !== '') {
+            // Temporary migration safety filter: exclude Hakediş entries until cleanup migration is confirmed
             $entries = fe_fetch_all(
-                'SELECT cfe.*, c.company_name, c.full_name, p.title AS project_title
+                "SELECT cfe.*, c.company_name, c.full_name, p.title AS project_title
                    FROM ak_customer_financial_entries cfe
                    LEFT JOIN ak_customers c ON c.id = cfe.customer_id
                    LEFT JOIN ak_projects  p ON p.id = cfe.project_id
                   WHERE cfe.customer_id = :cid
-                  ORDER BY cfe.entry_date DESC, cfe.created_at DESC',
+                    AND cfe.title NOT LIKE '%Hakediş%'
+                  ORDER BY cfe.entry_date DESC, cfe.created_at DESC",
                 ['cid' => $customerId]
             );
-            json_success(['entries' => $entries]);
+            json_success(['entries' => cfe_add_inflation($entries)]);
         }
 
         if ($projectId !== '') {
@@ -45,7 +79,7 @@ try {
                   ORDER BY cfe.entry_date DESC, cfe.created_at DESC',
                 ['pid' => $projectId]
             );
-            json_success(['entries' => $entries]);
+            json_success(['entries' => cfe_add_inflation($entries)]);
         }
 
         // Global list
@@ -57,7 +91,7 @@ try {
               ORDER BY cfe.entry_date DESC, cfe.created_at DESC
               LIMIT 500'
         );
-        json_success(['entries' => $entries]);
+        json_success(['entries' => cfe_add_inflation($entries)]);
     }
 
     if ($method === 'POST') {

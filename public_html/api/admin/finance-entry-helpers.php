@@ -6,6 +6,8 @@ declare(strict_types=1);
  * Included by customer/employee/supplier/expense-card financial entry endpoints.
  */
 
+require_once __DIR__ . '/inflation-helper.php';
+
 const FE_CURRENCIES     = ['TRY', 'USD', 'EUR', 'XAU_GRAM'];
 const FE_ACCOUNT_TYPES  = ['resmi', 'gayri_resmi'];
 const FE_PAYMENT_METHODS = ['Nakit', 'Banka Havalesi/EFT', 'Kredi Kartı', 'Çek', 'Senet', 'Diğer'];
@@ -48,7 +50,7 @@ function fe_is_overdue(float $amount, float $paid, string $entryDate): int
  */
 function fe_payload(array $input, string $ownerField, string $ownerValue, ?string $preserveSnapshotAt = null): array
 {
-    $projectId  = require_non_empty($input, 'project_id', 'Proje seçimi zorunludur.');
+    $projectId  = nullable_string($input, 'project_id');
     $title      = require_non_empty($input, 'title', 'Başlık zorunludur.');
     $entryDate  = require_iso_date($input, 'entry_date', 'Geçerli bir tarih zorunludur.');
     $amount     = max(0.0, (float) ($input['amount'] ?? 0));

@@ -56,6 +56,9 @@ const AdminSupplierEdit = lazy(() => import("./pages/admin/AdminSupplierEdit"));
 const AdminSupplierDetail = lazy(() => import("./pages/admin/AdminSupplierDetail"));
 const AdminGelenler = lazy(() => import("./pages/admin/AdminGelenler"));
 const AdminGidenler = lazy(() => import("./pages/admin/AdminGidenler"));
+const AdminGovernmentProgressPayments = lazy(() => import("./pages/admin/AdminGovernmentProgressPayments"));
+const AdminMaintenanceConsole = lazy(() => import("./pages/admin/AdminMaintenanceConsole"));
+const AdminInflationCalculator = lazy(() => import("./pages/admin/AdminInflationCalculator"));
 
 const queryClient = new QueryClient();
 
@@ -82,6 +85,7 @@ const App = () => (
                   <Route path="musteriler/:id" element={<AdminCustomerDetail />} />
                   <Route path="musteriler/:id/duzenle" element={<AdminCustomerEdit />} />
                   <Route path="musteriler/:id/finans" element={<FinancRedirect base="musteriler" />} />
+                  <Route path="devlet-hakedisleri" element={<AdminGovernmentProgressPayments />} />
                   <Route path="personeller" element={<AdminEmployees />} />
                   <Route path="personeller/:id/finans" element={<FinancRedirect base="personeller" />} />
                   <Route path="personeller/:id/tahsisat" element={<AdminEmployeeAllocations />} />
@@ -103,7 +107,9 @@ const App = () => (
                   <Route path="bildirimler" element={<AdminNotifications />} />
                   <Route path="raporlar" element={<AdminReports />} />
                   <Route path="ayarlar" element={<AdminSettings />} />
-                  <Route path="sql-editor" element={<AdminSqlEditor />} />
+                  <Route path="sql-editor"    element={<AdminSqlEditor />} />
+                  <Route path="bakim-konsolu" element={<AdminMaintenanceConsole />} />
+                  <Route path="enflasyon-hesaplama" element={<AdminInflationCalculator />} />
                 </Route>
 
                 <Route element={<PublicLayout />}>

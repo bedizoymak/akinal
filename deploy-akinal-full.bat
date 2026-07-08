@@ -1,5 +1,5 @@
 @echo off
-title Akinal Insaat Deploy (Diff)
+title Akinal Insaat Deploy (Full Clean)
 cd /d "%userprofile%\Documents\akinalinsaat.com"
 
 echo.
@@ -14,8 +14,8 @@ if errorlevel 1 (
 )
 
 echo.
-echo === FTP DIFF DEPLOY BASLIYOR ===
-python scripts\deploy_ftp.py --diff
+echo === FTP FULL DEPLOY BASLIYOR (assets temizlenecek) ===
+python scripts\deploy_ftp.py --full
 
 if errorlevel 1 (
   echo.

@@ -6,14 +6,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AdminPageHeader } from "@/components/admin/AdminPage";
 import { EntryStatusBadge } from "@/components/admin/finance/EntryStatusBadge";
 import { getGelenler } from "@/lib/apiClient";
+import type { GelenlerEntry } from "@/lib/apiTypes";
 
 const STATUSES = ["Planlanan", "Gecikmiş", "Kısmi Ödendi", "Gerçekleşti", "Fazla Ödendi"];
 
 function fmtTRY(v: number | string) {
   return "₺" + Number(v).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-function fmtDate(d: string) {
-  try { return new Date(d + "T00:00:00").toLocaleDateString("tr-TR"); } catch { return d; }
+function fmtDate(d: string | null | undefined): string {
+  if (!d) return "—";
+  const [year, month, day] = String(d).slice(0, 10).split("-");
+  if (year && month && day) return `${day}.${month}.${year}`;
+  return String(d);
 }
 
 export default function AdminGelenler() {
@@ -36,7 +40,7 @@ export default function AdminGelenler() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader title="Gelenler" description="Tüm müşteri tahsilat ve alacak kalemleri" />
+      <AdminPageHeader title="Gelenler" description="Tüm müşteri tahsilatları ve devlet hakediş ödemeleri" />
 
       {/* Summary cards */}
       {summary && (
@@ -96,18 +100,21 @@ export default function AdminGelenler() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {entries.map((e) => (
+              {(entries as GelenlerEntry[]).map((e) => (
                 <tr key={e.id} className="hover:bg-muted/20 transition-colors">
                   <td className="px-4 py-3 tabular-nums">{fmtDate(e.entry_date)}</td>
                   <td className="px-4 py-3">
-                    <div className="font-medium">{e.owner_name}</div>
+                    {e.source_type === "government" && (
+                      <div className="mb-0.5 inline-block rounded border border-blue-200 bg-blue-50 px-1.5 py-0 text-[10px] font-semibold text-blue-700">Devlet Hakedişi</div>
+                    )}
+                    <div className="font-medium">{e.owner_name || "—"}</div>
                     <div className="text-[11px] text-muted-foreground">{e.title}</div>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{e.project_title}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{e.project_title || "—"}</td>
                   <td className="px-4 py-3 text-right tabular-nums font-medium">{fmtTRY(e.amount_try)}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-emerald-600">{fmtTRY(e.paid_amount_try)}</td>
                   <td className="px-4 py-3">
-                    <EntryStatusBadge status={e.status} isOverdue={e.is_overdue} />
+                    <EntryStatusBadge status={e.status} isOverdue={Number(e.is_overdue) === 1} />
                   </td>
                 </tr>
               ))}

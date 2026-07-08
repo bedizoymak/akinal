@@ -7,7 +7,7 @@ require_once __DIR__ . '/finance-entry-helpers.php';
 require_admin();
 require_method('GET');
 
-// Gelenler — global incoming view: customer financial entries only
+// Gelenler — all incoming income: customer financial entries + government progress payments
 
 try {
     $projectId   = trim((string) ($_GET['project_id']   ?? ''));
@@ -19,26 +19,28 @@ try {
     $dateTo      = trim((string) ($_GET['date_to']      ?? ''));
     $q           = trim((string) ($_GET['q']            ?? ''));
 
-    $where  = [];
-    $params = [];
+    // ── Customer financial entries ────────────────────────────────────────────
 
-    if ($projectId !== '')   { $where[] = 'cfe.project_id = :project_id';     $params['project_id']   = $projectId; }
-    if ($customerId !== '')  { $where[] = 'cfe.customer_id = :customer_id';   $params['customer_id']  = $customerId; }
-    if ($currency !== '')    { $where[] = 'cfe.currency = :currency';          $params['currency']     = $currency; }
-    if ($accountType !== '') { $where[] = 'cfe.account_type = :account_type'; $params['account_type'] = $accountType; }
-    if ($status !== '')      { $where[] = 'cfe.status = :status';              $params['status']       = $status; }
-    if ($dateFrom !== '')    { $where[] = 'cfe.entry_date >= :date_from';      $params['date_from']    = $dateFrom; }
-    if ($dateTo !== '')      { $where[] = 'cfe.entry_date <= :date_to';        $params['date_to']      = $dateTo; }
+    $cfeWhere  = ['cfe.title NOT LIKE \'%Hakediş%\''];
+    $cfeParams = [];
+
+    if ($projectId !== '')   { $cfeWhere[] = 'cfe.project_id = :project_id';     $cfeParams['project_id']   = $projectId; }
+    if ($customerId !== '')  { $cfeWhere[] = 'cfe.customer_id = :customer_id';   $cfeParams['customer_id']  = $customerId; }
+    if ($currency !== '')    { $cfeWhere[] = 'cfe.currency = :currency';          $cfeParams['currency']     = $currency; }
+    if ($accountType !== '') { $cfeWhere[] = 'cfe.account_type = :account_type'; $cfeParams['account_type'] = $accountType; }
+    if ($status !== '')      { $cfeWhere[] = 'cfe.status = :status';              $cfeParams['status']       = $status; }
+    if ($dateFrom !== '')    { $cfeWhere[] = 'cfe.entry_date >= :date_from';      $cfeParams['date_from']    = $dateFrom; }
+    if ($dateTo !== '')      { $cfeWhere[] = 'cfe.entry_date <= :date_to';        $cfeParams['date_to']      = $dateTo; }
     if ($q !== '') {
-        $where[] = '(cfe.title LIKE :q OR COALESCE(c.company_name, c.full_name) LIKE :q2)';
+        $cfeWhere[] = '(cfe.title LIKE :q OR COALESCE(c.company_name, c.full_name) LIKE :q2)';
         $like = '%' . $q . '%';
-        $params['q']  = $like;
-        $params['q2'] = $like;
+        $cfeParams['q']  = $like;
+        $cfeParams['q2'] = $like;
     }
 
-    $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+    $cfeWhereClause = 'WHERE ' . implode(' AND ', $cfeWhere);
 
-    $entries = fe_fetch_all("
+    $cfeEntries = fe_fetch_all("
         SELECT
           cfe.*,
           COALESCE(c.company_name, c.full_name) AS owner_name,
@@ -48,14 +50,33 @@ try {
         FROM ak_customer_financial_entries cfe
         LEFT JOIN ak_customers c ON c.id = cfe.customer_id
         LEFT JOIN ak_projects  p ON p.id = cfe.project_id
-        {$whereClause}
+        {$cfeWhereClause}
         ORDER BY cfe.entry_date DESC, cfe.created_at DESC
         LIMIT 1000
-    ", $params);
+    ", $cfeParams);
 
-    $summary = gelenler_summary($entries);
+    // ── Government progress payments ──────────────────────────────────────────
 
-    $projects  = db()->query('SELECT id, title FROM ak_projects ORDER BY title ASC')->fetchAll() ?: [];
+    $gppEntries = [];
+
+    if (gelenler_table_exists('ak_government_progress_payments')) {
+        $gppEntries = gelenler_fetch_gpp($projectId, $customerId, $status, $dateFrom, $dateTo, $q);
+    }
+
+    // ── Merge, sort by entry_date DESC then created_at DESC, limit 1000 ───────
+
+    $entries = array_merge($cfeEntries, $gppEntries);
+    usort($entries, static function (array $a, array $b): int {
+        $dateCmp = strcmp((string) ($b['entry_date'] ?? ''), (string) ($a['entry_date'] ?? ''));
+        if ($dateCmp !== 0) return $dateCmp;
+        return strcmp((string) ($b['created_at'] ?? ''), (string) ($a['created_at'] ?? ''));
+    });
+    if (count($entries) > 1000) {
+        $entries = array_slice($entries, 0, 1000);
+    }
+
+    $summary  = gelenler_summary($entries);
+    $projects = db()->query('SELECT id, title FROM ak_projects ORDER BY title ASC')->fetchAll() ?: [];
     $customers = db()->query("SELECT id, COALESCE(company_name, full_name) AS name FROM ak_customers ORDER BY name ASC")->fetchAll() ?: [];
 
     json_success([
@@ -68,15 +89,129 @@ try {
     json_error('Gelenler listesi yüklenemedi.', 500);
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function gelenler_table_exists(string $table): bool
+{
+    $stmt = db()->prepare(
+        'SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :t LIMIT 1'
+    );
+    $stmt->execute(['t' => $table]);
+    return (bool) $stmt->fetchColumn();
+}
+
+function gelenler_fetch_gpp(
+    string $projectId,
+    string $customerId,
+    string $status,
+    string $dateFrom,
+    string $dateTo,
+    string $q
+): array {
+    $where  = [];
+    $params = [];
+
+    if ($projectId !== '')  { $where[] = 'gpp.project_id = :project_id';   $params['project_id']  = $projectId; }
+    if ($customerId !== '') { $where[] = 'gpp.customer_id = :customer_id'; $params['customer_id'] = $customerId; }
+
+    if ($dateFrom !== '') { $where[] = 'COALESCE(gpp.due_date, DATE(gpp.created_at)) >= :date_from'; $params['date_from'] = $dateFrom; }
+    if ($dateTo !== '')   { $where[] = 'COALESCE(gpp.due_date, DATE(gpp.created_at)) <= :date_to';   $params['date_to']   = $dateTo; }
+
+    // Status filter: map Turkish display status to GPP stored values
+    if ($status !== '') {
+        switch ($status) {
+            case 'Gerçekleşti':
+                $where[] = "gpp.status = 'paid'";
+                break;
+            case 'Kısmi Ödendi':
+                $where[] = "gpp.status = 'partial'";
+                break;
+            case 'Gecikmiş':
+                $where[] = "gpp.status NOT IN ('paid', 'cancelled') AND gpp.due_date IS NOT NULL AND gpp.due_date < CURDATE()";
+                break;
+            case 'Planlanan':
+                $where[] = "gpp.status = 'planned' AND (gpp.due_date IS NULL OR gpp.due_date >= CURDATE())";
+                break;
+            case 'Fazla Ödendi':
+                // No GPP equivalent — return no rows for this filter
+                return [];
+            default:
+                // Unknown status — skip GPP to avoid returning irrelevant data
+                return [];
+        }
+    }
+
+    if ($q !== '') {
+        $where[] = '(gpp.title LIKE :gq OR COALESCE(c.company_name, c.full_name) LIKE :gq2 OR p.title LIKE :gq3)';
+        $like = '%' . $q . '%';
+        $params['gq']  = $like;
+        $params['gq2'] = $like;
+        $params['gq3'] = $like;
+    }
+
+    $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+    $sql = "
+        SELECT
+          gpp.id,
+          'government'                                                    AS source_type,
+          'Devlet Hakedişi'                                               AS source_label,
+          gpp.customer_id                                                 AS customer_id,
+          COALESCE(c.company_name, c.full_name)                          AS owner_name,
+          gpp.project_id,
+          p.title                                                         AS project_title,
+          COALESCE(gpp.due_date, DATE(gpp.created_at))                   AS entry_date,
+          gpp.title,
+          gpp.notes,
+          gpp.planned_amount_try                                         AS amount_try,
+          gpp.paid_amount_try                                            AS paid_amount_try,
+          GREATEST(0, gpp.planned_amount_try - gpp.paid_amount_try)      AS remaining_amount_try,
+          CASE gpp.status
+              WHEN 'paid'      THEN 'Gerçekleşti'
+              WHEN 'partial'   THEN 'Kısmi Ödendi'
+              WHEN 'cancelled' THEN 'İptal'
+              ELSE 'Planlanan'
+          END                                                             AS status,
+          CASE
+              WHEN gpp.status NOT IN ('paid', 'cancelled')
+                   AND gpp.due_date IS NOT NULL
+                   AND gpp.due_date < CURDATE()
+              THEN 1 ELSE 0
+          END                                                             AS is_overdue,
+          gpp.stage,
+          gpp.stage_percentage,
+          gpp.due_date,
+          gpp.paid_date,
+          gpp.created_at,
+          gpp.updated_at
+        FROM ak_government_progress_payments gpp
+        LEFT JOIN ak_customers c ON c.id = gpp.customer_id
+        LEFT JOIN ak_projects  p ON p.id = gpp.project_id
+        {$whereClause}
+        ORDER BY entry_date DESC, gpp.created_at DESC
+        LIMIT 1000
+    ";
+
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+    return array_map(static function (array $row): array {
+        $row['is_overdue']           = (int)   $row['is_overdue'];
+        $row['amount_try']           = (float) $row['amount_try'];
+        $row['paid_amount_try']      = (float) $row['paid_amount_try'];
+        $row['remaining_amount_try'] = (float) ($row['remaining_amount_try'] ?? 0.0);
+        return $row;
+    }, $stmt->fetchAll() ?: []);
+}
+
 function gelenler_summary(array $entries): array
 {
-    $planned  = 0.0;
-    $paid     = 0.0;
-    $overdue  = 0;
+    $planned = 0.0;
+    $paid    = 0.0;
+    $overdue = 0;
     foreach ($entries as $row) {
         $planned += (float) $row['amount_try'];
         $paid    += (float) $row['paid_amount_try'];
-        if ($row['is_overdue']) $overdue++;
+        if (!empty($row['is_overdue'])) $overdue++;
     }
     return [
         'total_planned'   => round($planned, 2),
