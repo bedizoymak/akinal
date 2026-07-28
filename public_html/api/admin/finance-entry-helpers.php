@@ -50,7 +50,19 @@ function fe_is_overdue(float $amount, float $paid, string $entryDate): int
  */
 function fe_payload(array $input, string $ownerField, string $ownerValue, ?string $preserveSnapshotAt = null): array
 {
-    $projectId  = nullable_string($input, 'project_id');
+    // project_id is NOT NULL on all four card financial entry tables — validate here
+    // (single shared code path for customer/employee/supplier/expense-card entries)
+    // instead of letting an unselected project reach the DB as an opaque FK/NOT NULL failure.
+    $projectId = nullable_string($input, 'project_id');
+    if ($projectId === null) {
+        json_error('Proje seçimi zorunludur.', 422);
+    }
+    $projectCheck = db()->prepare('SELECT 1 FROM ak_projects WHERE id = :id LIMIT 1');
+    $projectCheck->execute(['id' => $projectId]);
+    if (!$projectCheck->fetch()) {
+        json_error('Seçilen proje bulunamadı.', 422);
+    }
+
     $title      = require_non_empty($input, 'title', 'Başlık zorunludur.');
     $entryDate  = require_iso_date($input, 'entry_date', 'Geçerli bir tarih zorunludur.');
     $amount     = max(0.0, (float) ($input['amount'] ?? 0));

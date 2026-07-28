@@ -489,6 +489,8 @@ CREATE TABLE IF NOT EXISTS ak_customer_financial_entries (
   payment_method            VARCHAR(40)    NOT NULL DEFAULT 'Nakit',
   status                    VARCHAR(50)    NOT NULL DEFAULT 'Planlanan',
   is_overdue                TINYINT(1)     NOT NULL DEFAULT 0,
+  inflation_enabled         TINYINT(1)     NOT NULL DEFAULT 0,
+  inflation_start_date      DATE               NULL,
   created_at                DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at                DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_cfe_customer    (customer_id),

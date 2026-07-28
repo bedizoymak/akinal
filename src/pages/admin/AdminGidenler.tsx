@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search, TrendingDown, AlertTriangle } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AdminPageHeader } from "@/components/admin/AdminPage";
 import { EntryStatusBadge } from "@/components/admin/finance/EntryStatusBadge";
 import { getGidenler } from "@/lib/apiClient";
+import { LIST_SORT_OPTIONS, applyParam, parseSortOrder, sortListEntries } from "@/lib/adminListFilters";
 
 const STATUSES = ["Planlanan", "Gecikmiş", "Kısmi Ödendi", "Gerçekleşti", "Fazla Ödendi"];
 
@@ -23,22 +26,49 @@ function fmtDate(d: string) {
 }
 
 export default function AdminGidenler() {
-  const [q, setQ] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [projectFilter, setProjectFilter] = useState("all");
-  const [sourceFilter, setSourceFilter] = useState("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const q = searchParams.get("q") || "";
+  const statusFilter = searchParams.get("status") || "all";
+  const projectFilter = searchParams.get("project_id") || "all";
+  const sourceFilter = searchParams.get("source_type") || "all";
+  const dateFrom = searchParams.get("date_from") || "";
+  const dateTo = searchParams.get("date_to") || "";
+  const sort = parseSortOrder(searchParams.get("sort"));
+  const [qInput, setQInput] = useState(q);
+
+  useEffect(() => { setQInput(q); }, [q]);
+
+  const hasActiveFilters = q !== "" || statusFilter !== "all" || projectFilter !== "all" || sourceFilter !== "all" || dateFrom !== "" || dateTo !== "" || sort !== "date_asc";
+
+  function updateParam(key: string, value: string, defaultValue = "all") {
+    const next = new URLSearchParams(searchParams);
+    applyParam(next, key, value, defaultValue);
+    setSearchParams(next, { replace: true });
+  }
+
+  function updateQ(value: string) {
+    setQInput(value);
+    updateParam("q", value, "");
+  }
+
+  function clearFilters() {
+    setQInput("");
+    setSearchParams(new URLSearchParams(), { replace: true });
+  }
 
   const { data, isLoading } = useQuery({
-    queryKey: ["gidenler", q, statusFilter, projectFilter, sourceFilter],
+    queryKey: ["gidenler", q, statusFilter, projectFilter, sourceFilter, dateFrom, dateTo],
     queryFn: () => getGidenler({
       q: q || undefined,
       status: statusFilter === "all" ? undefined : statusFilter,
       project_id: projectFilter === "all" ? undefined : projectFilter,
       source_type: sourceFilter === "all" ? undefined : sourceFilter,
+      date_from: dateFrom || undefined,
+      date_to: dateTo || undefined,
     }),
   });
 
-  const entries = data?.entries ?? [];
+  const entries = useMemo(() => sortListEntries(data?.entries ?? [], sort), [data?.entries, sort]);
   const summary = data?.summary;
   const projects = data?.projects ?? [];
 
@@ -64,12 +94,12 @@ export default function AdminGidenler() {
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-48">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-48 flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Başlık veya kart sahibi ara..." value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input className="pl-9" placeholder="Başlık veya kart sahibi ara..." value={qInput} onChange={(e) => updateQ(e.target.value)} />
         </div>
-        <Select value={sourceFilter} onValueChange={setSourceFilter}>
+        <Select value={sourceFilter} onValueChange={(v) => updateParam("source_type", v)}>
           <SelectTrigger className="w-40"><SelectValue placeholder="Kaynak" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tüm Kaynaklar</SelectItem>
@@ -78,20 +108,31 @@ export default function AdminGidenler() {
             <SelectItem value="expense_card">Masraf Kartı</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(v) => updateParam("status", v)}>
           <SelectTrigger className="w-44"><SelectValue placeholder="Durum" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tüm Durumlar</SelectItem>
             {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={projectFilter} onValueChange={setProjectFilter}>
+        <Select value={projectFilter} onValueChange={(v) => updateParam("project_id", v)}>
           <SelectTrigger className="w-48"><SelectValue placeholder="Proje" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tüm Projeler</SelectItem>
             {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Input type="date" className="w-40" value={dateFrom} onChange={(e) => updateParam("date_from", e.target.value, "")} aria-label="Başlangıç tarihi" />
+        <Input type="date" className="w-40" value={dateTo} onChange={(e) => updateParam("date_to", e.target.value, "")} aria-label="Bitiş tarihi" />
+        <Select value={sort} onValueChange={(v) => updateParam("sort", v, "date_asc")}>
+          <SelectTrigger className="w-52"><SelectValue placeholder="Sırala" /></SelectTrigger>
+          <SelectContent>
+            {LIST_SORT_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {hasActiveFilters && (
+          <Button variant="outline" size="sm" onClick={clearFilters}><X className="h-4 w-4 mr-1" /> Filtreleri Temizle</Button>
+        )}
       </div>
 
       {/* Table */}

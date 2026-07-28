@@ -194,7 +194,7 @@ export default function AdminInflationCalculator() {
     }
   }
 
-  const canCalculate = !calculating && !orderInvalid && !baseMissing && !targetMissing && indices.length > 0;
+  const canCalculate = !calculating && !orderInvalid && !baseMissing && indices.length > 0;
 
   return (
     <div className="space-y-8">
@@ -308,18 +308,25 @@ export default function AdminInflationCalculator() {
           {orderInvalid && (
             <p className="text-sm text-red-600">Hedef dönem baz dönemden sonra olmalıdır.</p>
           )}
-          {!orderInvalid && (baseMissing || targetMissing) && (
+          {!orderInvalid && baseMissing && (
             <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
               <span>
-                {baseMissing && <>{periodLabel(baseYear, baseMonth)} (baz dönem){targetMissing ? " ve " : ""}</>}
-                {targetMissing && <>{periodLabel(targetYear, targetMonth)} (hedef dönem)</>}
-                {" "}için veri bulunamadı.
+                {periodLabel(baseYear, baseMonth)} (baz dönem) için veri bulunamadı.
               </span>
             </div>
           )}
 
-          {!orderInvalid && !baseMissing && !targetMissing && indices.length > 0 && (
+          {!orderInvalid && !baseMissing && targetMissing && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <span>
+                {periodLabel(targetYear, targetMonth)} için henüz TCMB verisi yok. İleri dönemler için tahmini TÜFE kullanılacaktır.
+              </span>
+            </div>
+          )}
+
+          {!orderInvalid && !baseMissing && indices.length > 0 && (
             <p className="text-xs text-muted-foreground">
               {periodCount} aylık bileşik hesaplama:{" "}
               {periodLabel(baseYear, baseMonth)} → {periodLabel(targetYear, targetMonth)}
@@ -374,6 +381,40 @@ export default function AdminInflationCalculator() {
               sub={`Çarpan: ${result.factor.toLocaleString("tr-TR", { minimumFractionDigits: 4, maximumFractionDigits: 6 })}`}
             />
           </div>
+
+          {result.used_forecast && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+              <div className="mb-2 flex items-center gap-2 font-semibold">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <span>Tahmini TÜFE Kullanıldı</span>
+              </div>
+              <p className="mb-3 text-amber-800 dark:text-amber-300">
+                Bu hesapta ileri tarihli dönemler için tahmini TÜFE kullanılmıştır. Tahmini değerler bilgi amaçlıdır;
+                resmi TCMB verileri açıklandığında bu tutarlar otomatik olarak güncellenecektir.
+              </p>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs sm:grid-cols-4">
+                <div>
+                  <span className="text-amber-700 dark:text-amber-400">Resmi ay:</span>{" "}
+                  <span className="font-medium">{result.official_months_count}</span>
+                </div>
+                <div>
+                  <span className="text-amber-700 dark:text-amber-400">Tahmini ay:</span>{" "}
+                  <span className="font-medium">{result.forecast_months_count}</span>
+                </div>
+                <div>
+                  <span className="text-amber-700 dark:text-amber-400">Resmi oran:</span>{" "}
+                  <span className="font-medium">{result.official_compound_rate_percent.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}%</span>
+                </div>
+                <div>
+                  <span className="text-amber-700 dark:text-amber-400">Tahmini oran:</span>{" "}
+                  <span className="font-medium">{result.forecast_compound_rate_percent.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}%</span>
+                </div>
+              </div>
+              {result.forecast_method && (
+                <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">Tahmin yöntemi: {result.forecast_method}</p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -388,6 +429,9 @@ export default function AdminInflationCalculator() {
                   Son dönem: <span className="font-medium text-foreground">{lastSyncedPeriod}</span>
                 </span>
               )}
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                Yıllık Baz Endeks (Ocak=100)
+              </span>
               <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
                 Kaynak: TCMB
               </span>
@@ -402,12 +446,20 @@ export default function AdminInflationCalculator() {
             </div>
           ) : (
             <Table>
+              <colgroup>
+                <col style={{ width: "28%" }} />
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "18%" }} />
+              </colgroup>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Dönem</TableHead>
-                  <TableHead className="text-right">Yıllık Değişim</TableHead>
-                  <TableHead className="text-right">Aylık Değişim</TableHead>
-                  <TableHead>Kaynak</TableHead>
+                  <TableHead className="text-left">Dönem</TableHead>
+                  <TableHead className="!text-center">Endeks Değeri</TableHead>
+                  <TableHead className="!text-center">Yıllık Değişim</TableHead>
+                  <TableHead className="!text-center">Aylık Değişim</TableHead>
+                  <TableHead className="!text-center">Kaynak</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -424,7 +476,7 @@ export default function AdminInflationCalculator() {
                       key={row.id}
                       className={inRange ? "bg-accent/5" : isBase ? "bg-muted/40" : undefined}
                     >
-                      <TableCell className="font-medium tabular-nums">
+                      <TableCell className="text-left font-medium tabular-nums">
                         {periodLabel(row.period_year, row.period_month)}
                         {isBase && (
                           <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">baz</span>
@@ -433,9 +485,14 @@ export default function AdminInflationCalculator() {
                           <span className="ml-2 rounded-full bg-accent/20 px-1.5 py-0.5 text-xs font-semibold text-accent">hedef</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{formatPct(row.annual_change_percent)}</TableCell>
-                      <TableCell className="text-right tabular-nums font-medium">{formatPct(row.monthly_change_percent)}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{row.source ?? "—"}</TableCell>
+                      <TableCell className="text-center tabular-nums text-muted-foreground">
+                        {row.index_value !== null && row.index_value !== undefined
+                          ? row.index_value.toLocaleString("tr-TR", { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-center tabular-nums">{formatPct(row.annual_change_percent)}</TableCell>
+                      <TableCell className="text-center tabular-nums font-medium">{formatPct(row.monthly_change_percent)}</TableCell>
+                      <TableCell className="text-center text-xs text-muted-foreground">{row.source ?? "—"}</TableCell>
                     </TableRow>
                   );
                 })}

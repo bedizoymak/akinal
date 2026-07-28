@@ -899,6 +899,28 @@ export type CardEntryPaymentMethod =
   | "Diğer";
 export type CardEntryRateSource = "api" | "manual" | "default";
 
+export interface InflationPreview {
+  enabled: boolean;
+  base_period?: string;
+  target_period?: string;
+  months_used?: string[];
+  official_months_count?: number;
+  forecast_months_count?: number;
+  official_compound_rate_percent?: number;
+  forecast_compound_rate_percent?: number;
+  total_compound_rate_percent?: number;
+  factor?: number;
+  rate_percent?: number;
+  principal_amount?: number;
+  adjusted_amount?: number;
+  current_collectible_amount?: number;
+  inflation_difference?: number;
+  used_forecast?: boolean;
+  forecast_method?: string | null;
+  forecast_note?: string | null;
+  warning?: string | null;
+}
+
 export interface CardFinancialEntry {
   id: string;
   project_id: string | null;
@@ -925,6 +947,10 @@ export interface CardFinancialEntry {
   // Joined fields (may be present depending on query)
   owner_name?: string;
   project_title?: string;
+  // Inflation adjustment (customer entries only)
+  inflation_enabled?: number;
+  inflation_start_date?: string | null;
+  inflation_preview?: InflationPreview | null;
 }
 
 export interface CustomerFinancialEntry extends CardFinancialEntry {
@@ -1077,6 +1103,8 @@ export interface CardFinancialEntryPayload {
   is_exchange_rate_manual?: boolean | number;
   account_type?: CardEntryAccountType;
   payment_method?: CardEntryPaymentMethod;
+  inflation_enabled?: number;
+  inflation_start_date?: string | null;
 }
 
 export interface AdminSuppliersResponse {

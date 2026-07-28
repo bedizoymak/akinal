@@ -136,12 +136,16 @@ export default function AdminEmployees() {
   }
 
   async function deleteEmployee(employee: AdminEmployee) {
-    if (!confirm(`"${employee.full_name}" personel kartını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
+    if (!confirm(`"${employee.full_name}" personel kartını silmek istediğinize emin misiniz?\n\nBu işlem yalnızca hiçbir maaş/avans hareketi, rol, maliyet dönemi veya proje ataması olmayan personel kartlarında yapılabilir. Geçmişi olan bir personeli silmek yerine durumunu "Pasif" olarak ayarlayın.`)) return;
 
     try {
       await deleteAdminEmployee(employee.id);
     } catch (error) {
-      toast({ title: "Personel silinemedi.", description: "Personel kartı silinirken bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
+      toast({
+        title: "Personel silinemedi.",
+        description: error instanceof Error ? error.message : "Personel kartı silinirken bir problem oluştu. Lütfen tekrar deneyin.",
+        variant: "destructive",
+      });
       return;
     }
 

@@ -62,25 +62,24 @@ try {
         if (!ec_fetch_one($id)) {
             json_error('Gider kalemi bulunamadı.', 404);
         }
-        $pdo = db();
-        $pdo->beginTransaction();
-        try {
-            $counts = [];
-            // 1. Canonical financial entries (RESTRICT on expense_card_id)
-            $s = $pdo->prepare('DELETE FROM ak_expense_card_financial_entries WHERE expense_card_id = :id');
-            $s->execute(['id' => $id]); $counts['expense_card_financial_entries'] = $s->rowCount();
-            // 2. Legacy financial entries (SET NULL FK; delete for clean removal)
-            $s = $pdo->prepare('DELETE FROM ak_financial_entries WHERE expense_card_id = :id');
-            $s->execute(['id' => $id]); $counts['financial_entries'] = $s->rowCount();
-            // ak_project_expense_transactions.expense_item_id is SET NULL — DB handles on parent delete
-            // 3. Parent
-            $pdo->prepare('DELETE FROM ak_expense_cards WHERE id = :id')->execute(['id' => $id]);
-            $pdo->commit();
-            json_success(['deleted' => true, 'counts' => $counts]);
-        } catch (Throwable $txEx) {
-            if ($pdo->inTransaction()) $pdo->rollBack();
-            throw $txEx;
+
+        // Guard: never delete a card with linked financial entries. The confirm() dialog on the
+        // frontend promises linked records are preserved — the backend used to silently do the
+        // opposite (cascade-delete them). Preserve financial history: block the delete instead
+        // (see audit P0 item B). Archive/passive behavior can be added later if needed.
+        $countStmt = db()->prepare('SELECT COUNT(*) FROM ak_expense_card_financial_entries WHERE expense_card_id = :id');
+        $countStmt->execute(['id' => $id]);
+        $entryCount = (int) $countStmt->fetchColumn();
+        if ($entryCount > 0) {
+            json_error(
+                "Bu masraf kartı silinemez, bağlı {$entryCount} finansal hareket var. "
+                . 'Silme işlemi yalnızca bağlı kaydı olmayan masraf kartlarında yapılabilir.',
+                409
+            );
         }
+
+        db()->prepare('DELETE FROM ak_expense_cards WHERE id = :id')->execute(['id' => $id]);
+        json_success(['deleted' => true]);
     }
 
     header('Allow: GET, POST, PATCH, DELETE');

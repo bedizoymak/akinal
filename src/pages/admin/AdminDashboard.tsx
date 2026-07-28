@@ -573,6 +573,13 @@ export default function AdminDashboard() {
     );
   }
 
+  // Gelenler (/admin/gelenler) reads status/date_from/date_to as API filters and "sort" as a
+  // client-side-only ordering hint — see AdminGelenler.tsx. "Planlanan" = expected/not-yet-due,
+  // "Gecikmiş" = overdue and not yet collected.
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const beklenenTahsilatHref = `/admin/gelenler?${new URLSearchParams({ status: "Planlanan", date_from: todayISO, sort: "date_asc" }).toString()}`;
+  const vadesiGecenHref = `/admin/gelenler?${new URLSearchParams({ status: "Gecikmiş", sort: "date_desc" }).toString()}`;
+
   return (
     <div className="w-full max-w-full space-y-6 overflow-x-hidden">
       <AdminPageHeader
@@ -596,9 +603,9 @@ export default function AdminDashboard() {
             <AdminMetricCard to="/admin/projeler" label="Aktif Projeler" value={dashboard.summary.active_projects} description={`${dashboard.summary.total_projects} toplam proje`} icon={FolderKanban} tone="accent" />
             <AdminMetricCard to="/admin/gelenler" label="Toplam Tahsilat" value={formatDashboardTRY(dashboard.totalIncome)} description="Gerçekleşen gelen ödemeler" icon={Wallet} tone="success" />
             <AdminMetricCard to="/admin/gidenler" label="Toplam Gider" value={formatDashboardTRY(dashboard.totalExpenses)} description="Yapılan masraflar" icon={Receipt} tone="danger" />
-            <AdminMetricCard to="/admin/gelenler" label="Net Durum" value={formatDashboardTRY(dashboard.netStatus)} description="Gerçekleşen gelir eksi gider" icon={dashboard.netStatus >= 0 ? TrendingUp : TrendingDown} tone={dashboard.netStatus >= 0 ? "success" : "danger"} />
-            <AdminMetricCard to="/admin/musteriler" label="Beklenen Tahsilat" value={formatDashboardTRY(dashboard.expectedPayments)} description="Önümüzdeki 30 gündeki kalan müşteri alacakları" icon={CalendarClock} tone="warning" />
-            <AdminMetricCard to="/admin/musteriler" label="Vadesi Geçen Alacak" value={formatDashboardTRY(dashboard.overdueCollections)} description={`${dashboard.overduePlanCount} ödeme kaydı takip bekliyor`} icon={Receipt} tone={dashboard.overdueCollections > 0 ? "danger" : "success"} />
+            <AdminMetricCard label="Net Durum" value={formatDashboardTRY(dashboard.netStatus)} description="Gerçekleşen gelir eksi gider" icon={dashboard.netStatus >= 0 ? TrendingUp : TrendingDown} tone={dashboard.netStatus >= 0 ? "success" : "danger"} />
+            <AdminMetricCard to={beklenenTahsilatHref} label="Beklenen Tahsilat" value={formatDashboardTRY(dashboard.expectedPayments)} description="Bugünden itibaren tüm planlanan müşteri alacakları" icon={CalendarClock} tone="warning" />
+            <AdminMetricCard to={vadesiGecenHref} label="Vadesi Geçen Alacak" value={formatDashboardTRY(dashboard.overdueCollections)} description={`${dashboard.overduePlanCount} ödeme kaydı takip bekliyor`} icon={Receipt} tone={dashboard.overdueCollections > 0 ? "danger" : "success"} />
           </div>
 
           {(() => {

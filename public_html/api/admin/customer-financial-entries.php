@@ -8,30 +8,54 @@ require_once __DIR__ . '/inflation-helper.php';
 require_admin();
 
 /**
- * Post-process enriched customer entries with TÜFE inflation adjustment.
- * Only applied to unpaid/partial entries — does not mutate stored amounts.
+ * Ensures inflation columns exist on ak_customer_financial_entries.
+ * Runs on every write; ALTER TABLE is a no-op if the column already exists.
+ */
+function ensure_inflation_columns(): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    foreach (['inflation_enabled TINYINT(1) NOT NULL DEFAULT 0', 'inflation_start_date DATE NULL'] as $colDef) {
+        try {
+            db()->exec("ALTER TABLE ak_customer_financial_entries ADD COLUMN {$colDef}");
+        } catch (PDOException $e) {
+            // 1060 = duplicate column — already exists, safe to ignore
+        }
+    }
+}
+
+/**
+ * Post-process enriched customer entries with TÜFE inflation preview.
+ * Only applied when inflation_enabled = 1 on the entry.
+ * Never mutates stored amounts.
  */
 function cfe_add_inflation(array $entries): array
 {
-    $plannedStatuses = ['Planlanan', 'Gecikmiş', 'Kısmi Ödendi'];
     $indexType = preferred_inflation_index_type();
     foreach ($entries as &$entry) {
-        $inflationFields = inflation_null_fields();
-        $amountTry  = (float) ($entry['amount_try'] ?? 0);
-        $status     = (string) ($entry['status'] ?? '');
-        $createdAt  = (string) ($entry['created_at'] ?? '');
-        $entryDate  = (string) ($entry['entry_date'] ?? '');
-        if (in_array($status, $plannedStatuses, true) && $amountTry > 0 && $createdAt !== '' && $entryDate !== '') {
-            $adj = calculate_inflation_adjustment($amountTry, $createdAt, $entryDate, $indexType);
-            // Fall back to TUFE if preferred type lacks data for these periods
-            if ($adj === null && $indexType !== 'TUFE') {
-                $adj = calculate_inflation_adjustment($amountTry, $createdAt, $entryDate, 'TUFE');
-            }
-            if ($adj !== null) {
-                $inflationFields = $adj;
-            }
+        $inflationEnabled = (int) ($entry['inflation_enabled'] ?? 0);
+        $entry['inflation_enabled'] = $inflationEnabled;
+
+        if ($inflationEnabled !== 1) {
+            $entry['inflation_preview'] = ['enabled' => false];
+            continue;
         }
-        $entry = array_merge($entry, $inflationFields);
+
+        $amountTry = (float) ($entry['amount_try'] ?? 0);
+        $startDate = ($entry['inflation_start_date'] ?? null);
+        $baseDate  = ($startDate !== null && $startDate !== '')
+            ? (string) $startDate
+            : (string) ($entry['entry_date'] ?? '');
+
+        if ($amountTry <= 0 || $baseDate === '') {
+            $entry['inflation_preview'] = ['enabled' => false];
+            continue;
+        }
+
+        // target = entry_date (the actual due date); months beyond latest TCMB are forecast
+        $targetDate = (string) ($entry['entry_date'] ?? '');
+        $entry['inflation_preview'] = cfe_inflation_preview($amountTry, $baseDate, $targetDate, $indexType);
     }
     unset($entry);
     return $entries;
@@ -98,6 +122,11 @@ try {
         $input      = read_admin_json_body();
         $customerId = require_non_empty($input, 'customer_id', 'Müşteri seçimi zorunludur.');
         $payload    = fe_payload($input, 'customer_id', $customerId);
+        $payload['inflation_enabled']    = isset($input['inflation_enabled']) ? (int)(bool) $input['inflation_enabled'] : 0;
+        $payload['inflation_start_date'] = (isset($input['inflation_start_date']) && $input['inflation_start_date'] !== '')
+            ? substr((string) $input['inflation_start_date'], 0, 10)
+            : null;
+        ensure_inflation_columns();
         $id         = uuid_v4();
         $payload['id'] = $id;
         $cols = array_keys($payload);
@@ -115,6 +144,11 @@ try {
         $customerId      = require_non_empty($input, 'customer_id', 'Müşteri seçimi zorunludur.');
         $preserveSnapshot = fe_should_preserve_snapshot($input, $existing);
         $payload          = fe_payload($input, 'customer_id', $customerId, $preserveSnapshot);
+        $payload['inflation_enabled']    = isset($input['inflation_enabled']) ? (int)(bool) $input['inflation_enabled'] : 0;
+        $payload['inflation_start_date'] = (isset($input['inflation_start_date']) && $input['inflation_start_date'] !== '')
+            ? substr((string) $input['inflation_start_date'], 0, 10)
+            : null;
+        ensure_inflation_columns();
         $sets       = array_map(static fn($f) => "`{$f}` = :{$f}", array_keys($payload));
         $payload['id'] = $id;
         db()->prepare(

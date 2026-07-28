@@ -40,59 +40,45 @@ try {
         if (!fetch_one_employee('SELECT id FROM ak_employees WHERE id = :id', ['id' => $id])) {
             json_error('Personel bulunamadı.', 404);
         }
+
+        // Guard: never hard-delete an employee with any historical/business record.
+        // This used to bypass the ak_employee_financial_entries RESTRICT FK and cascade-delete
+        // salary/advance payment history behind a single confirm(). Financial and tenure history
+        // must be preserved — direct the admin to set status='Pasif' instead (see audit P0 item A).
+        $linkedTableLabels = [
+            'ak_employee_financial_entries'    => 'maaş/avans hareketi',
+            'ak_employee_roles'                => 'rol ataması',
+            'ak_employee_cost_periods'          => 'maliyet dönemi',
+            'ak_employee_project_assignments'  => 'proje görevlendirmesi',
+            'ak_employee_project_allocations'  => 'proje maliyet tahsisatı',
+        ];
         $pdo = db();
-        $pdo->beginTransaction();
-        try {
-            $counts = [];
+        $existingTables = $pdo->query(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('"
+            . implode("','", array_keys($linkedTableLabels)) . "')"
+        )->fetchAll(PDO::FETCH_COLUMN);
 
-            // One batch check for all optional/legacy tables
-            $optCheck = $pdo->query(
-                "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN ('ak_employee_financial_entries','ak_financial_entries','ak_payment_plan_settlements','ak_employee_project_allocations','ak_employee_project_assignments','ak_employee_cost_periods','ak_employee_roles')"
-            );
-            $opt = [];
-            foreach ($optCheck->fetchAll(PDO::FETCH_COLUMN) as $t) { $opt[$t] = true; }
-
-            // 1. Canonical employee financial entries (RESTRICT on employee_id)
-            if (isset($opt['ak_employee_financial_entries'])) {
-                $s = $pdo->prepare('DELETE FROM ak_employee_financial_entries WHERE employee_id = :id');
-                $s->execute(['id' => $id]); $counts['employee_financial_entries'] = $s->rowCount();
+        $blockedBy = [];
+        foreach ($existingTables as $table) {
+            $s = $pdo->prepare("SELECT COUNT(*) FROM `{$table}` WHERE employee_id = :id");
+            $s->execute(['id' => $id]);
+            $count = (int) $s->fetchColumn();
+            if ($count > 0) {
+                $blockedBy[] = $linkedTableLabels[$table] . " ({$count})";
             }
-            // 2. Settlements referencing this employee's legacy financial entries (RESTRICT on financial_entry_id)
-            if (isset($opt['ak_payment_plan_settlements']) && isset($opt['ak_financial_entries'])) {
-                $s = $pdo->prepare('DELETE FROM ak_payment_plan_settlements WHERE financial_entry_id IN (SELECT id FROM ak_financial_entries WHERE employee_id = :id)');
-                $s->execute(['id' => $id]); $counts['payment_plan_settlements'] = $s->rowCount();
-            }
-            // 3. Legacy financial entries (SET NULL FK; safe after settlements removed)
-            if (isset($opt['ak_financial_entries'])) {
-                $s = $pdo->prepare('DELETE FROM ak_financial_entries WHERE employee_id = :id');
-                $s->execute(['id' => $id]); $counts['financial_entries'] = $s->rowCount();
-            }
-            // 4. Employee-linked tables (optional; CASCADE in schema but may be absent)
-            if (isset($opt['ak_employee_project_allocations'])) {
-                $s = $pdo->prepare('DELETE FROM ak_employee_project_allocations WHERE employee_id = :id');
-                $s->execute(['id' => $id]); $counts['employee_project_allocations'] = $s->rowCount();
-            }
-            if (isset($opt['ak_employee_project_assignments'])) {
-                $s = $pdo->prepare('DELETE FROM ak_employee_project_assignments WHERE employee_id = :id');
-                $s->execute(['id' => $id]); $counts['employee_project_assignments'] = $s->rowCount();
-            }
-            if (isset($opt['ak_employee_cost_periods'])) {
-                $s = $pdo->prepare('DELETE FROM ak_employee_cost_periods WHERE employee_id = :id');
-                $s->execute(['id' => $id]); $counts['employee_cost_periods'] = $s->rowCount();
-            }
-            if (isset($opt['ak_employee_roles'])) {
-                $s = $pdo->prepare('DELETE FROM ak_employee_roles WHERE employee_id = :id');
-                $s->execute(['id' => $id]); $counts['employee_roles'] = $s->rowCount();
-            }
-            // 5. Parent
-            $pdo->prepare('DELETE FROM ak_employees WHERE id = :id')->execute(['id' => $id]);
-            $pdo->commit();
-            json_success(['deleted' => true, 'counts' => $counts]);
-        } catch (Throwable $txEx) {
-            if ($pdo->inTransaction()) $pdo->rollBack();
-            error_log(sprintf('[employees] DELETE id=%s %s code=%s: %s in %s:%d', $id, get_class($txEx), $txEx->getCode(), $txEx->getMessage(), basename($txEx->getFile()), $txEx->getLine()));
-            json_error('Personel silinemedi. [' . $txEx->getCode() . '] ' . $txEx->getMessage(), 500);
         }
+
+        if ($blockedBy) {
+            json_error(
+                'Bu personel silinemez, bağlı kayıtları var: ' . implode(', ', $blockedBy) . '. '
+                . 'Finansal ve özlük geçmişini korumak için personeli silmek yerine durumunu "Pasif" yapın.',
+                409
+            );
+        }
+
+        // No linked records — safe to remove the empty employee card.
+        $pdo->prepare('DELETE FROM ak_employees WHERE id = :id')->execute(['id' => $id]);
+        json_success(['deleted' => true]);
     }
 
     header('Allow: GET, POST, PATCH, DELETE');

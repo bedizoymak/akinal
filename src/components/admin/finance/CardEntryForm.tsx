@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +29,8 @@ export interface CardEntryFormValues {
   account_type: CardEntryAccountType;
   payment_method: CardEntryPaymentMethod;
   project_id: string;
+  inflation_enabled: boolean;
+  inflation_start_date: string;
 }
 
 interface Project {
@@ -43,6 +46,7 @@ interface Props {
   projects: Project[];
   title?: string;
   direction?: "income" | "expense";
+  showInflation?: boolean;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -60,10 +64,12 @@ function defaultValues(initial?: Partial<CardFinancialEntry>): CardEntryFormValu
     account_type: (initial?.account_type as CardEntryAccountType) ?? "resmi",
     payment_method: (initial?.payment_method as CardEntryPaymentMethod) ?? "Nakit",
     project_id: initial?.project_id ?? "",
+    inflation_enabled: Boolean(initial?.inflation_enabled),
+    inflation_start_date: initial?.inflation_start_date ?? "",
   };
 }
 
-export function CardEntryForm({ open, onClose, onSave, initial, projects, title, direction }: Props) {
+export function CardEntryForm({ open, onClose, onSave, initial, projects, title, direction, showInflation }: Props) {
   const [values, setValues] = useState<CardEntryFormValues>(defaultValues(initial));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +94,7 @@ export function CardEntryForm({ open, onClose, onSave, initial, projects, title,
 
   async function handleSave() {
     if (!values.title.trim()) { setError("Başlık zorunludur."); return; }
+    if (!values.project_id) { setError("Proje seçimi zorunludur."); return; }
     if (!values.entry_date) { setError("Tarih zorunludur."); return; }
     if (!values.amount || isNaN(Number(values.amount)) || Number(values.amount) <= 0) { setError("Geçerli bir tutar girin."); return; }
     setLoading(true);
@@ -128,11 +135,10 @@ export function CardEntryForm({ open, onClose, onSave, initial, projects, title,
             </div>
 
             <div>
-              <Label>Proje</Label>
-              <Select value={values.project_id || "__none__"} onValueChange={(v) => set("project_id", v === "__none__" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="Proje seç (isteğe bağlı)" /></SelectTrigger>
+              <Label>Proje *</Label>
+              <Select value={values.project_id} onValueChange={(v) => set("project_id", v)}>
+                <SelectTrigger><SelectValue placeholder="Proje seç" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">Seçilmedi</SelectItem>
                   {projects.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
                   ))}
@@ -198,6 +204,34 @@ export function CardEntryForm({ open, onClose, onSave, initial, projects, title,
               <Label>Notlar</Label>
               <Textarea value={values.notes} onChange={(e) => set("notes", e.target.value)} rows={2} placeholder="İsteğe bağlı not" />
             </div>
+
+            {showInflation && (
+              <div className="col-span-2 rounded-md border border-border bg-muted/30 p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="inflation_enabled"
+                    checked={values.inflation_enabled}
+                    onCheckedChange={(v) => set("inflation_enabled", Boolean(v))}
+                  />
+                  <Label htmlFor="inflation_enabled" className="cursor-pointer font-medium">
+                    Vade Farkı / TÜFE Güncellemesi Etkin
+                  </Label>
+                </div>
+                {values.inflation_enabled && (
+                  <div>
+                    <Label htmlFor="inflation_start_date" className="text-xs text-muted-foreground">
+                      Baz Tarih (boş bırakılırsa kayıt tarihi kullanılır)
+                    </Label>
+                    <Input
+                      id="inflation_start_date"
+                      type="date"
+                      value={values.inflation_start_date}
+                      onChange={(e) => set("inflation_start_date", e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

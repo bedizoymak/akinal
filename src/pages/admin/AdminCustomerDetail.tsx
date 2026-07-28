@@ -315,6 +315,8 @@ export default function AdminCustomerDetail() {
       is_exchange_rate_manual: values.is_exchange_rate_manual,
       account_type: values.account_type,
       payment_method: values.payment_method,
+      inflation_enabled: values.inflation_enabled ? 1 : 0,
+      inflation_start_date: values.inflation_start_date || null,
     });
     await qc.invalidateQueries({ queryKey: ["customer-financial-entries", id] });
     toast({ title: "Kayıt eklendi." });
@@ -334,6 +336,8 @@ export default function AdminCustomerDetail() {
       is_exchange_rate_manual: values.is_exchange_rate_manual,
       account_type: values.account_type,
       payment_method: values.payment_method,
+      inflation_enabled: values.inflation_enabled ? 1 : 0,
+      inflation_start_date: values.inflation_start_date || null,
     });
     await qc.invalidateQueries({ queryKey: ["customer-financial-entries", id] });
     toast({ title: "Kayıt güncellendi." });
@@ -342,6 +346,29 @@ export default function AdminCustomerDetail() {
     await deleteCustomerFinancialEntry(entryId);
     await qc.invalidateQueries({ queryKey: ["customer-financial-entries", id] });
     toast({ title: "Kayıt silindi." });
+  }
+  async function handleInflationSave(entryId: string, enabled: boolean, startDate: string | null) {
+    const entry = (customerEntries as any[]).find((e: any) => e.id === entryId);
+    if (!entry) return;
+    await updateCustomerFinancialEntry({
+      id: entryId,
+      customer_id: id!,
+      project_id: entry.project_id,
+      entry_date: entry.entry_date,
+      title: entry.title,
+      notes: entry.notes ?? null,
+      amount: entry.amount,
+      paid_amount: entry.paid_amount,
+      currency: entry.currency,
+      exchange_rate_to_try: entry.exchange_rate_to_try,
+      is_exchange_rate_manual: entry.is_exchange_rate_manual,
+      account_type: entry.account_type,
+      payment_method: entry.payment_method,
+      inflation_enabled: enabled ? 1 : 0,
+      inflation_start_date: startDate,
+    });
+    await qc.invalidateQueries({ queryKey: ["customer-financial-entries", id] });
+    toast({ title: enabled ? "Vade farkı etkinleştirildi." : "Vade farkı devre dışı bırakıldı." });
   }
 
 
@@ -657,7 +684,9 @@ export default function AdminCustomerDetail() {
                     onAdd={handleEntryAdd}
                     onEdit={handleEntryEdit}
                     onDelete={handleEntryDelete}
+                    onInflationSave={handleInflationSave}
                     title="Tahsilat Hareketleri"
+                    showInflation
                   />
                 </div>
 

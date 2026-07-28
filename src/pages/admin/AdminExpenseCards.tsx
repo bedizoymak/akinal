@@ -69,13 +69,17 @@ export default function AdminExpenseCards() {
   }
 
   async function remove(item: AdminExpenseCard) {
-    if (!confirm(`"${item.name}" masraf kartını silmek istediğinize emin misiniz?\n\nBağlı gider kayıtları korunur.`)) return;
+    if (!confirm(`"${item.name}" masraf kartını silmek istediğinize emin misiniz?\n\nSilme işlemi yalnızca bu karta bağlı hiçbir finansal hareket yoksa yapılabilir. Bağlı kayıt varsa işlem reddedilecektir.`)) return;
     try {
       await deleteAdminExpenseItem(item.id);
       toast({ title: "Masraf kartı silindi." });
       await load();
-    } catch {
-      toast({ title: "Masraf kartı silinemedi.", variant: "destructive" });
+    } catch (error) {
+      toast({
+        title: "Masraf kartı silinemedi.",
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
     }
   }
 

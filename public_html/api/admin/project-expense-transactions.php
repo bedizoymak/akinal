@@ -11,7 +11,6 @@ require_admin();
  * Planned profitability: all transactions.
  */
 
-const EXPENSE_CURRENCIES  = ['TRY', 'USD', 'EUR', 'XAU_GRAM'];
 const ISTANBUL_TZ_EXPR    = "DATE(CONVERT_TZ(NOW(), '+00:00', '+03:00'))";
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -48,40 +47,16 @@ try {
         ]);
     }
 
-    if ($method === 'POST') {
-        $input   = read_admin_json_body();
-        $payload = pet_payload($input);
-        $id      = uuid_v4();
-        $payload['id'] = $id;
-        $cols = array_keys($payload);
-        db()->prepare(
-            'INSERT INTO ak_project_expense_transactions (`' . implode('`, `', $cols) . '`) VALUES (:' . implode(', :', $cols) . ')'
-        )->execute($payload);
-        json_success(['transaction' => pet_fetch_one($id)], 201);
-    }
-
-    if ($method === 'PATCH') {
-        $input = read_admin_json_body();
-        $id    = require_non_empty($input, 'id', 'Gider kaydı bulunamadı.');
-        if (!pet_fetch_one($id)) json_error('Gider kaydı bulunamadı.', 404);
-        $payload = pet_payload($input);
-        $sets    = array_map(static fn($f) => "`{$f}` = :{$f}", array_keys($payload));
-        $payload['id'] = $id;
-        db()->prepare(
-            'UPDATE ak_project_expense_transactions SET ' . implode(', ', $sets) . ' WHERE id = :id'
-        )->execute($payload);
-        json_success(['transaction' => pet_fetch_one($id)]);
-    }
-
-    if ($method === 'DELETE') {
-        $id = trim((string) ($_GET['id'] ?? ''));
-        if ($id === '') {
-            $input = read_admin_json_body();
-            $id    = require_non_empty($input, 'id', 'Gider kaydı bulunamadı.');
-        }
-        if (!pet_fetch_one($id)) json_error('Gider kaydı bulunamadı.', 404);
-        db()->prepare('DELETE FROM ak_project_expense_transactions WHERE id = :id')->execute(['id' => $id]);
-        json_success(['deleted' => true]);
+    // ak_project_expense_transactions is a deprecated write path: entries made here are never
+    // read by project-statement.php, Genel Bakış, Gidenler, or any other current report (see
+    // audit P0 item E). Writes are disabled to stop new data from disappearing into this table;
+    // existing rows are left in place (read via GET above) and must not be deleted.
+    if ($method === 'POST' || $method === 'PATCH' || $method === 'DELETE') {
+        json_error(
+            'Bu modül artık kullanım dışıdır (deprecated). Yeni giderler Gidenler veya Masraf Kartları '
+            . 'üzerinden kart tabanlı finansal hareket olarak girilmelidir.',
+            409
+        );
     }
 
     header('Allow: GET, POST, PATCH, DELETE');
@@ -106,36 +81,6 @@ function pet_fetch_one(string $id): ?array
         ['id' => $id]
     );
     return $rows[0] ?? null;
-}
-
-function pet_payload(array $input): array
-{
-    $projectId     = require_non_empty($input, 'project_id', 'Proje seçimi zorunludur.');
-    // expense_item_id is required at create/edit time (spec: "required when created").
-    // It is only ever NULL at the DB level via FK ON DELETE SET NULL when the item is deleted.
-    $expenseItemId = require_non_empty($input, 'expense_item_id', 'Gider kalemi seçimi zorunludur.');
-    $snapshot      = require_non_empty($input, 'expense_item_name_snapshot', 'Gider kalemi adı zorunludur.');
-    $amount        = require_positive_amount($input);
-    $currency      = require_allowed_value($input, 'currency', EXPENSE_CURRENCIES, 'Geçerli bir para birimi seçilmelidir (TRY, USD, EUR, XAU_GRAM).');
-    $date          = require_iso_date($input, 'expense_date', 'Geçerli bir gider tarihi zorunludur.');
-
-    $rateRaw   = $input['exchange_rate_snapshot'] ?? null;
-    $rate      = ($rateRaw !== null && $rateRaw !== '') ? (float) $rateRaw : null;
-    if ($rate !== null && $rate <= 0) {
-        json_error('Kur değeri 0\'dan büyük olmalıdır.');
-    }
-    $overridden = normalize_bool($input['exchange_rate_overridden'] ?? false);
-
-    return [
-        'project_id'                 => $projectId,
-        'expense_item_id'            => $expenseItemId,
-        'expense_item_name_snapshot' => $snapshot,
-        'amount'                     => $amount,
-        'currency'                   => $currency,
-        'exchange_rate_snapshot'     => $rate,
-        'exchange_rate_overridden'   => $overridden,
-        'expense_date'               => $date,
-    ];
 }
 
 function pet_profitability(string $projectId): array

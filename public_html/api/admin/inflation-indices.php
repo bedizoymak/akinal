@@ -171,7 +171,7 @@ function handle_calculate(array $input): never
         json_error('Hedef dönem baz dönemden sonra olmalıdır.', 422);
     }
 
-    $chain = inflation_monthly_chain_factor($indexType, $baseYear, $baseMonth, $targetYear, $targetMonth);
+    $chain = inflation_monthly_chain_with_forecast($indexType, $baseYear, $baseMonth, $targetYear, $targetMonth);
     if (isset($chain['error'])) {
         json_error($chain['error'], 422);
     }
@@ -181,24 +181,26 @@ function handle_calculate(array $input): never
     $adjusted    = round($amountTry * $factor, 2);
     $difference  = round($adjusted - $amountTry, 2);
 
-    // Build the ordered list of month strings that were compounded.
-    $monthsList = [];
-    for ($s = $baseSerial + 1; $s <= $targetSerial; $s++) {
-        $m = $s % 12;
-        if ($m === 0) $m = 12;
-        $y = intdiv($s - $m, 12);
-        $monthsList[] = sprintf('%04d-%02d', $y, $m);
-    }
+    $officialFactor = (float) ($chain['official_factor'] ?? $factor);
+    $forecastFactor = (float) ($chain['forecast_factor'] ?? 1.0);
+    $usedForecast   = (bool)  (count($chain['forecast_months'] ?? []) > 0);
 
     json_success([
-        'amount_try'      => $amountTry,
-        'factor'          => $factor,
-        'rate_percent'    => $ratePercent,
-        'adjusted_amount' => $adjusted,
-        'difference'      => $difference,
-        'months_used'     => $monthsList,
-        'base_period'     => sprintf('%04d-%02d', $baseYear, $baseMonth),
-        'target_period'   => sprintf('%04d-%02d', $targetYear, $targetMonth),
+        'amount_try'                     => $amountTry,
+        'factor'                         => $factor,
+        'rate_percent'                   => $ratePercent,
+        'adjusted_amount'                => $adjusted,
+        'difference'                     => $difference,
+        'months_used'                    => $chain['months_used'] ?? [],
+        'base_period'                    => sprintf('%04d-%02d', $baseYear, $baseMonth),
+        'target_period'                  => sprintf('%04d-%02d', $targetYear, $targetMonth),
+        'used_forecast'                  => $usedForecast,
+        'official_months_count'          => count($chain['official_months'] ?? []),
+        'forecast_months_count'          => count($chain['forecast_months'] ?? []),
+        'official_compound_rate_percent' => round(($officialFactor - 1.0) * 100.0, 4),
+        'forecast_compound_rate_percent' => round(($forecastFactor - 1.0) * 100.0, 4),
+        'total_compound_rate_percent'    => $ratePercent,
+        'forecast_method'                => $usedForecast ? 'Son 5 yılın aynı ay ortalaması' : null,
     ]);
 }
 

@@ -481,16 +481,20 @@ export interface InflationIndex {
 /** Result of the compound monthly inflation calculation. */
 export interface InflationCalculationResult {
   amount_try: number;
-  /** Compound factor: product of (1 + monthly_change_percent/100) for each month in range */
   factor: number;
-  /** (factor - 1) × 100 — effective inflation rate over the selected period */
   rate_percent: number;
   adjusted_amount: number;
   difference: number;
-  /** Ordered list of YYYY-MM strings for every month compounded (base+1 through target) */
   months_used: string[];
   base_period: string;
   target_period: string;
+  used_forecast: boolean;
+  official_months_count: number;
+  forecast_months_count: number;
+  official_compound_rate_percent: number;
+  forecast_compound_rate_percent: number;
+  total_compound_rate_percent: number;
+  forecast_method: string | null;
 }
 
 export interface InflationIndicesResponse {
@@ -812,49 +816,9 @@ export async function getProjectExpenseTransactions(projectId: string): Promise<
   );
 }
 
-export async function createProjectExpenseTransaction(payload: {
-  project_id: string;
-  expense_item_id: string | null;
-  expense_item_name_snapshot: string;
-  amount: number;
-  currency: string;
-  exchange_rate_snapshot?: number | null;
-  exchange_rate_overridden?: boolean;
-  expense_date: string;
-}): Promise<AkExpenseTransaction> {
-  const data = await apiRequest<{ transaction: AkExpenseTransaction }>("/api/admin/project-expense-transactions.php", {
-    method: "POST",
-    credentials: "include",
-    body: JSON.stringify(payload),
-  });
-  return data.transaction;
-}
-
-export async function updateProjectExpenseTransaction(payload: {
-  id: string;
-  project_id: string;
-  expense_item_id: string | null;
-  expense_item_name_snapshot: string;
-  amount: number;
-  currency: string;
-  exchange_rate_snapshot?: number | null;
-  exchange_rate_overridden?: boolean;
-  expense_date: string;
-}): Promise<AkExpenseTransaction> {
-  const data = await apiRequest<{ transaction: AkExpenseTransaction }>("/api/admin/project-expense-transactions.php", {
-    method: "PATCH",
-    credentials: "include",
-    body: JSON.stringify(payload),
-  });
-  return data.transaction;
-}
-
-export async function deleteProjectExpenseTransaction(id: string): Promise<void> {
-  await apiRequest<{ deleted: boolean }>(`/api/admin/project-expense-transactions.php?id=${encodeURIComponent(id)}`, {
-    method: "DELETE",
-    credentials: "include",
-  });
-}
+// Create/update/delete for project expense transactions were removed: this write path is
+// deprecated (see FULL_SIDEBAR_SYSTEM_AUDIT_REPORT.md P0 item E) and the backend now rejects
+// POST/PATCH/DELETE on project-expense-transactions.php. Only the read (above) remains.
 
 // Legacy aliases kept for components that still reference old names (will be removed when those components are updated)
 export const getAdminExpenseCards = getAdminExpenseItems;
