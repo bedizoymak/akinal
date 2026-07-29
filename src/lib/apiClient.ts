@@ -1337,14 +1337,14 @@ export async function getProjectStatement(projectId: string): Promise<ProjectSta
 
 // ── Gelenler (global income view) ─────────────────────────────────────────────
 
-export async function getGelenler(params: { project_id?: string; customer_id?: string; status?: string; date_from?: string; date_to?: string; q?: string } = {}): Promise<GelenlerResponse> {
+export async function getGelenler(params: { project_id?: string; customer_id?: string; account_type?: string; status?: string; date_from?: string; date_to?: string; q?: string } = {}): Promise<GelenlerResponse> {
   const p = new URLSearchParams(Object.entries(params).filter(([, v]) => v).map(([k, v]) => [k, v as string]));
   return apiRequest<GelenlerResponse>(`/api/admin/gelenler.php${p.toString() ? "?" + p.toString() : ""}`, { method: "GET", credentials: "include" });
 }
 
 // ── Gidenler (global expense view) ────────────────────────────────────────────
 
-export async function getGidenler(params: { project_id?: string; source_type?: string; status?: string; date_from?: string; date_to?: string; q?: string } = {}): Promise<GidenlerResponse> {
+export async function getGidenler(params: { project_id?: string; source_type?: string; account_type?: string; status?: string; date_from?: string; date_to?: string; q?: string } = {}): Promise<GidenlerResponse> {
   const p = new URLSearchParams(Object.entries(params).filter(([, v]) => v).map(([k, v]) => [k, v as string]));
   return apiRequest<GidenlerResponse>(`/api/admin/gidenler.php${p.toString() ? "?" + p.toString() : ""}`, { method: "GET", credentials: "include" });
 }

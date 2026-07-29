@@ -60,7 +60,7 @@ try {
     $gppEntries = [];
 
     if (gelenler_table_exists('ak_government_progress_payments')) {
-        $gppEntries = gelenler_fetch_gpp($projectId, $customerId, $status, $dateFrom, $dateTo, $q);
+        $gppEntries = gelenler_fetch_gpp($projectId, $customerId, $accountType, $status, $dateFrom, $dateTo, $q);
     }
 
     // ── Merge, sort by entry_date DESC then created_at DESC, limit 1000 ───────
@@ -103,11 +103,20 @@ function gelenler_table_exists(string $table): bool
 function gelenler_fetch_gpp(
     string $projectId,
     string $customerId,
+    string $accountType,
     string $status,
     string $dateFrom,
     string $dateTo,
     string $q
 ): array {
+    // ak_government_progress_payments has no account_type column — GPP rows carry no genuine
+    // Resmi/Gayri Resmi classification. Rather than guessing one, exclude them entirely when
+    // that filter is active so a "Resmi"/"Gayri Resmi" view never silently includes
+    // unclassified rows.
+    if ($accountType !== '') {
+        return [];
+    }
+
     $where  = [];
     $params = [];
 
@@ -163,6 +172,7 @@ function gelenler_fetch_gpp(
           COALESCE(gpp.due_date, DATE(gpp.created_at))                   AS entry_date,
           gpp.title,
           gpp.notes,
+          NULL                                                            AS account_type,
           gpp.planned_amount_try                                         AS amount_try,
           gpp.paid_amount_try                                            AS paid_amount_try,
           GREATEST(0, gpp.planned_amount_try - gpp.paid_amount_try)      AS remaining_amount_try,

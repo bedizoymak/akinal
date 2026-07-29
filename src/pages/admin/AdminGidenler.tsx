@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AdminPageHeader } from "@/components/admin/AdminPage";
 import { EntryStatusBadge } from "@/components/admin/finance/EntryStatusBadge";
+import { AccountTypeBadge } from "@/components/admin/finance/AccountTypeBadge";
 import { getGidenler } from "@/lib/apiClient";
 import { LIST_SORT_OPTIONS, applyParam, parseSortOrder, sortListEntries } from "@/lib/adminListFilters";
 
@@ -17,6 +18,11 @@ const SOURCE_LABELS: Record<string, string> = {
   supplier: "Tedarikçi",
   expense_card: "Masraf Kartı",
 };
+
+const ACCOUNT_TYPES: { value: string; label: string }[] = [
+  { value: "resmi", label: "Resmi" },
+  { value: "gayri_resmi", label: "Gayri Resmi" },
+];
 
 function fmtTRY(v: number | string) {
   return "₺" + Number(v).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -31,6 +37,7 @@ export default function AdminGidenler() {
   const statusFilter = searchParams.get("status") || "all";
   const projectFilter = searchParams.get("project_id") || "all";
   const sourceFilter = searchParams.get("source_type") || "all";
+  const accountTypeFilter = searchParams.get("account_type") || "all";
   const dateFrom = searchParams.get("date_from") || "";
   const dateTo = searchParams.get("date_to") || "";
   const sort = parseSortOrder(searchParams.get("sort"));
@@ -38,7 +45,7 @@ export default function AdminGidenler() {
 
   useEffect(() => { setQInput(q); }, [q]);
 
-  const hasActiveFilters = q !== "" || statusFilter !== "all" || projectFilter !== "all" || sourceFilter !== "all" || dateFrom !== "" || dateTo !== "" || sort !== "date_asc";
+  const hasActiveFilters = q !== "" || statusFilter !== "all" || projectFilter !== "all" || sourceFilter !== "all" || accountTypeFilter !== "all" || dateFrom !== "" || dateTo !== "" || sort !== "date_desc";
 
   function updateParam(key: string, value: string, defaultValue = "all") {
     const next = new URLSearchParams(searchParams);
@@ -57,12 +64,13 @@ export default function AdminGidenler() {
   }
 
   const { data, isLoading } = useQuery({
-    queryKey: ["gidenler", q, statusFilter, projectFilter, sourceFilter, dateFrom, dateTo],
+    queryKey: ["gidenler", q, statusFilter, projectFilter, sourceFilter, accountTypeFilter, dateFrom, dateTo],
     queryFn: () => getGidenler({
       q: q || undefined,
       status: statusFilter === "all" ? undefined : statusFilter,
       project_id: projectFilter === "all" ? undefined : projectFilter,
       source_type: sourceFilter === "all" ? undefined : sourceFilter,
+      account_type: accountTypeFilter === "all" ? undefined : accountTypeFilter,
       date_from: dateFrom || undefined,
       date_to: dateTo || undefined,
     }),
@@ -122,9 +130,16 @@ export default function AdminGidenler() {
             {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={accountTypeFilter} onValueChange={(v) => updateParam("account_type", v)}>
+          <SelectTrigger className="w-40"><SelectValue placeholder="Kayıt Türü" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tüm Kayıt Türleri</SelectItem>
+            {ACCOUNT_TYPES.map((a) => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Input type="date" className="w-40" value={dateFrom} onChange={(e) => updateParam("date_from", e.target.value, "")} aria-label="Başlangıç tarihi" />
         <Input type="date" className="w-40" value={dateTo} onChange={(e) => updateParam("date_to", e.target.value, "")} aria-label="Bitiş tarihi" />
-        <Select value={sort} onValueChange={(v) => updateParam("sort", v, "date_asc")}>
+        <Select value={sort} onValueChange={(v) => updateParam("sort", v, "date_desc")}>
           <SelectTrigger className="w-52"><SelectValue placeholder="Sırala" /></SelectTrigger>
           <SelectContent>
             {LIST_SORT_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
@@ -149,6 +164,7 @@ export default function AdminGidenler() {
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Kaynak / Başlık</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tür</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Proje</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Kayıt Türü</th>
                 <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Planlanan</th>
                 <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ödenen</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Durum</th>
@@ -168,6 +184,7 @@ export default function AdminGidenler() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{e.project_title}</td>
+                  <td className="px-4 py-3"><AccountTypeBadge accountType={e.account_type} /></td>
                   <td className="px-4 py-3 text-right tabular-nums font-medium">{fmtTRY(e.amount_try)}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-emerald-600">{fmtTRY(e.paid_amount_try)}</td>
                   <td className="px-4 py-3">

@@ -577,6 +577,11 @@ export default function AdminDashboard() {
   // client-side-only ordering hint — see AdminGelenler.tsx. "Planlanan" = expected/not-yet-due,
   // "Gecikmiş" = overdue and not yet collected.
   const todayISO = new Date().toISOString().slice(0, 10);
+  // Local (Türkiye) calendar date — toISOString() above is UTC and can be off-by-one near
+  // midnight, so this card builds its own date_to from local date components instead.
+  const nowLocal = new Date();
+  const todayLocalISO = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, "0")}-${String(nowLocal.getDate()).padStart(2, "0")}`;
+  const toplamTahsilatHref = `/admin/gelenler?${new URLSearchParams({ date_to: todayLocalISO }).toString()}`;
   const beklenenTahsilatHref = `/admin/gelenler?${new URLSearchParams({ status: "Planlanan", date_from: todayISO, sort: "date_asc" }).toString()}`;
   const vadesiGecenHref = `/admin/gelenler?${new URLSearchParams({ status: "Gecikmiş", sort: "date_desc" }).toString()}`;
 
@@ -601,7 +606,7 @@ export default function AdminDashboard() {
         <>
           <div className="grid w-full max-w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <AdminMetricCard to="/admin/projeler" label="Aktif Projeler" value={dashboard.summary.active_projects} description={`${dashboard.summary.total_projects} toplam proje`} icon={FolderKanban} tone="accent" />
-            <AdminMetricCard to="/admin/gelenler" label="Toplam Tahsilat" value={formatDashboardTRY(dashboard.totalIncome)} description="Gerçekleşen gelen ödemeler" icon={Wallet} tone="success" />
+            <AdminMetricCard to={toplamTahsilatHref} label="Toplam Tahsilat" value={formatDashboardTRY(dashboard.totalIncome)} description="Gerçekleşen gelen ödemeler" icon={Wallet} tone="success" />
             <AdminMetricCard to="/admin/gidenler" label="Toplam Gider" value={formatDashboardTRY(dashboard.totalExpenses)} description="Yapılan masraflar" icon={Receipt} tone="danger" />
             <AdminMetricCard label="Net Durum" value={formatDashboardTRY(dashboard.netStatus)} description="Gerçekleşen gelir eksi gider" icon={dashboard.netStatus >= 0 ? TrendingUp : TrendingDown} tone={dashboard.netStatus >= 0 ? "success" : "danger"} />
             <AdminMetricCard to={beklenenTahsilatHref} label="Beklenen Tahsilat" value={formatDashboardTRY(dashboard.expectedPayments)} description="Bugünden itibaren tüm planlanan müşteri alacakları" icon={CalendarClock} tone="warning" />

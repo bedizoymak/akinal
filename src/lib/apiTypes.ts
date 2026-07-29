@@ -1050,6 +1050,8 @@ export interface GelenlerEntry {
   entry_date: string;
   title: string;
   notes: string | null;
+  // null for government progress payments — that table has no account_type column.
+  account_type: "resmi" | "gayri_resmi" | null;
   amount_try: number | string;
   paid_amount_try: number | string;
   remaining_amount_try?: number | string;

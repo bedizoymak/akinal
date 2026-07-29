@@ -11,8 +11,11 @@ export const LIST_SORT_OPTIONS: { value: ListSortOrder; label: string }[] = [
   { value: "amount_desc", label: "Tutar (Azalan)" },
 ];
 
+// Default (no "sort" param in the URL) is date_desc — newest first. An explicit value in the
+// URL (including "date_asc", used by the dashboard's Beklenen Tahsilat card link) is preserved.
 export function parseSortOrder(value: string | null): ListSortOrder {
-  return value === "date_desc" || value === "amount_asc" || value === "amount_desc" ? value : "date_asc";
+  if (value === "date_asc" || value === "date_desc" || value === "amount_asc" || value === "amount_desc") return value;
+  return "date_desc";
 }
 
 interface SortableEntry {
