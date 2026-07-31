@@ -398,10 +398,12 @@ export interface AdminDashboardMovement {
   project_title: string | null;
 }
 
+// Matches dashboard.php fetch_monthly_financials()'s actual response keys — 'month' and
+// 'expense' (singular), not 'month_key'/'expenses'.
 export interface AdminDashboardMonthlyFinancial {
-  month_key: string;
+  month: string;
   income: number | string;
-  expenses: number | string;
+  expense: number | string;
   net: number | string;
 }
 

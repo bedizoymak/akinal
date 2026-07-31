@@ -12,7 +12,18 @@ import { getGelenler } from "@/lib/apiClient";
 import type { GelenlerEntry } from "@/lib/apiTypes";
 import { LIST_SORT_OPTIONS, applyParam, parseSortOrder, sortListEntries } from "@/lib/adminListFilters";
 
-const STATUSES = ["Planlanan", "Gecikmiş", "Kısmi Ödendi", "Gerçekleşti", "Fazla Ödendi"];
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  // "Açık" is the synthetic open/uncollected filter driven by the dashboard's Beklenen Tahsilat
+  // card (?status=Açık) — server-side it maps to status IN ('Planlanan','Gecikmiş','Kısmi Ödendi'),
+  // see gelenler.php. Listed here so the Durum select has a matching option and shows a label
+  // instead of appearing blank when that filter is active.
+  { value: "Açık", label: "Açık (Tahsil Edilmemiş)" },
+  { value: "Planlanan", label: "Planlanan" },
+  { value: "Gecikmiş", label: "Gecikmiş" },
+  { value: "Kısmi Ödendi", label: "Kısmi Ödendi" },
+  { value: "Gerçekleşti", label: "Gerçekleşti" },
+  { value: "Fazla Ödendi", label: "Fazla Ödendi" },
+];
 const ACCOUNT_TYPES: { value: string; label: string }[] = [
   { value: "resmi", label: "Resmi" },
   { value: "gayri_resmi", label: "Gayri Resmi" },
@@ -106,7 +117,7 @@ export default function AdminGelenler() {
           <SelectTrigger className="w-44"><SelectValue placeholder="Durum" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tüm Durumlar</SelectItem>
-            {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            {STATUS_OPTIONS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={projectFilter} onValueChange={(v) => updateParam("project_id", v)}>

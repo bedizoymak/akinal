@@ -106,6 +106,7 @@ const PAGE_META: PageMeta[] = [
   { path: "/admin/finans-dashboard", title: "Finans Özeti", group: "Finans" },
   { path: "/admin/gelenler", title: "Gelenler", group: "Cari ve Tahsilat" },
   { path: "/admin/gidenler", title: "Gidenler", group: "Tedarik ve Giderler" },
+  { path: "/admin/net-durum", title: "Net Durum", group: "Genel" },
   { path: "/admin/tahsilatlar", title: "Tahsilatlar", group: "Cari ve Tahsilat" },
   { path: "/admin/giderler", title: "Giderler", group: "Tedarik ve Giderler" },
   { path: "/admin/gider-kartlari", title: "Masraf Kartları", group: "Tedarik ve Giderler" },

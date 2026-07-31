@@ -28,7 +28,15 @@ try {
     if ($customerId !== '')  { $cfeWhere[] = 'cfe.customer_id = :customer_id';   $cfeParams['customer_id']  = $customerId; }
     if ($currency !== '')    { $cfeWhere[] = 'cfe.currency = :currency';          $cfeParams['currency']     = $currency; }
     if ($accountType !== '') { $cfeWhere[] = 'cfe.account_type = :account_type'; $cfeParams['account_type'] = $accountType; }
-    if ($status !== '')      { $cfeWhere[] = 'cfe.status = :status';              $cfeParams['status']       = $status; }
+    if ($status === 'Açık') {
+        // "Açık" (open/uncollected) is a synthetic status, not a stored value — canonical open
+        // customer receivable = any row whose fe_auto_status() (finance-entry-helpers.php) is
+        // not a fully-settled status. Drives the dashboard's "Beklenen Tahsilat" card link.
+        $cfeWhere[] = "cfe.status IN ('Planlanan', 'Gecikmiş', 'Kısmi Ödendi')";
+    } elseif ($status !== '') {
+        $cfeWhere[] = 'cfe.status = :status';
+        $cfeParams['status'] = $status;
+    }
     if ($dateFrom !== '')    { $cfeWhere[] = 'cfe.entry_date >= :date_from';      $cfeParams['date_from']    = $dateFrom; }
     if ($dateTo !== '')      { $cfeWhere[] = 'cfe.entry_date <= :date_to';        $cfeParams['date_to']      = $dateTo; }
     if ($q !== '') {

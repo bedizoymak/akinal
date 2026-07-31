@@ -107,22 +107,25 @@ function dash_float(mixed $v): float
 function compute_finance_summary(PDO $pdo): array
 {
     $thisMonth = (new DateTimeImmutable('first day of this month'))->format('Y-m-01');
-    $today     = (new DateTimeImmutable('today'))->format('Y-m-d');
 
-    // "upcoming" = all future planned customer receivables (entry_date >= today), no end-date
-    // cutoff — feeds the dashboard's "Beklenen Tahsilat" card. Customer entries only (no GPP).
+    // "upcoming" = every currently OPEN customer receivable (any unpaid/partially-paid balance,
+    // planned or overdue alike) — feeds the dashboard's "Beklenen Tahsilat" card. Summed as the
+    // outstanding balance (amount_try - paid_amount_try), not the full planned amount, so
+    // partially-paid rows aren't double-counted. Customer entries only (no GPP). Status here is
+    // the same canonical fe_auto_status() value stored on each row (see finance-entry-helpers.php):
+    // 'Gerçekleşti'/'Fazla Ödendi' (fully settled) are excluded — everything else has an open balance.
     $custStmt = $pdo->prepare("
         SELECT
           COALESCE(SUM(amount_try), 0)     AS planned,
           COALESCE(SUM(paid_amount_try), 0) AS paid,
           COALESCE(SUM(CASE WHEN entry_date >= :m THEN paid_amount_try ELSE 0 END), 0) AS month_paid,
           COALESCE(SUM(CASE WHEN is_overdue = 1 THEN GREATEST(amount_try - paid_amount_try, 0) ELSE 0 END), 0) AS overdue_remaining,
-          COALESCE(SUM(CASE WHEN status = 'Planlanan' AND entry_date >= :d THEN amount_try ELSE 0 END), 0) AS upcoming,
+          COALESCE(SUM(CASE WHEN status IN ('Planlanan', 'Gecikmiş', 'Kısmi Ödendi') THEN GREATEST(amount_try - paid_amount_try, 0) ELSE 0 END), 0) AS upcoming,
           SUM(CASE WHEN is_overdue = 1 THEN 1 ELSE 0 END) AS overdue_count,
-          SUM(CASE WHEN status = 'Planlanan' AND entry_date >= :d2 THEN 1 ELSE 0 END) AS upcoming_count
+          SUM(CASE WHEN status IN ('Planlanan', 'Gecikmiş', 'Kısmi Ödendi') THEN 1 ELSE 0 END) AS upcoming_count
         FROM ak_customer_financial_entries
     ");
-    $custStmt->execute([':m' => $thisMonth, ':d' => $today, ':d2' => $today]);
+    $custStmt->execute([':m' => $thisMonth]);
     $custRow = $custStmt->fetch() ?: [];
 
     $expStmt = $pdo->prepare("

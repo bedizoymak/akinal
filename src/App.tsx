@@ -56,6 +56,7 @@ const AdminSupplierEdit = lazy(() => import("./pages/admin/AdminSupplierEdit"));
 const AdminSupplierDetail = lazy(() => import("./pages/admin/AdminSupplierDetail"));
 const AdminGelenler = lazy(() => import("./pages/admin/AdminGelenler"));
 const AdminGidenler = lazy(() => import("./pages/admin/AdminGidenler"));
+const AdminNetDurum = lazy(() => import("./pages/admin/AdminNetDurum"));
 const AdminGovernmentProgressPayments = lazy(() => import("./pages/admin/AdminGovernmentProgressPayments"));
 const AdminMaintenanceConsole = lazy(() => import("./pages/admin/AdminMaintenanceConsole"));
 const AdminInflationCalculator = lazy(() => import("./pages/admin/AdminInflationCalculator"));
@@ -97,6 +98,7 @@ const App = () => (
                   <Route path="tedarikciler/:id/duzenle" element={<AdminSupplierEdit />} />
                   <Route path="gelenler" element={<AdminGelenler />} />
                   <Route path="gidenler" element={<AdminGidenler />} />
+                  <Route path="net-durum" element={<AdminNetDurum />} />
                   <Route path="tahsilatlar" element={<Navigate to="/admin/gelenler" replace />} />
                   <Route path="giderler" element={<Navigate to="/admin/gidenler" replace />} />
                   <Route path="gider-kartlari" element={<AdminExpenseCards />} />
