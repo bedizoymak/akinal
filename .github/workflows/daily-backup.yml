@@ -66,10 +66,6 @@ jobs:
             "$BACKUP_CRON_URL") || true
 
           echo "HTTP status: $http_status"
-          echo "::group::DEBUG raw response (temporary diagnostic, response body is non-sensitive by design)"
-          cat "$response_file"
-          echo ""
-          echo "::endgroup::"
 
           # Sanitized summary only — never dump the raw body verbatim (it is
           # already designed to be non-sensitive, but this avoids depending
