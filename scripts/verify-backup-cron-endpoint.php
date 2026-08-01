@@ -42,6 +42,20 @@ check('never sends an Access-Control-Allow-Origin or other CORS header', !preg_m
 check('calls the canonical backup_execute_full_run() — no reimplemented archive/upload logic', strpos($src, "backup_execute_full_run('daily_cron')") !== false, $failures, $passed);
 check('does not call gdrive_upload_file/backup_build_frontend_archive/backup_dump_database directly (no duplicated logic)', strpos($src, 'gdrive_upload_file(') === false && strpos($src, 'backup_build_frontend_archive(') === false && strpos($src, 'backup_dump_database(') === false, $failures, $passed);
 check('distinctly handles BackupAlreadyRunningException as a safe, non-error "locked" result', strpos($src, 'catch (BackupAlreadyRunningException $exception)') !== false && strpos($src, "'code' => 'already_running'") !== false && strpos($src, "'locked' => true") !== false, $failures, $passed);
+
+// Root-cause regression coverage: a GitHub Actions run reported HTTP 200 in
+// ~1s with NO Drive package and NO email, because the workflow only checked
+// the HTTP status code — and an already-running lock legitimately returns
+// 200 (by design, "nothing failed") with success=false. The fix has two
+// halves: this endpoint must expose an explicit, unambiguous machine-
+// readable status for that case, and (checked further below) the workflow
+// must actually look at it instead of trusting the status code alone.
+echo "\n== 1b. Root-cause fix: locked/failed responses can never look like a real completion ==\n";
+check('the locked response includes an explicit status: "locked" field (not just a boolean/code an integrator could miss)', strpos($src, "'status' => 'locked'") !== false, $failures, $passed);
+check('the locked response sets success => false (never true) alongside status => locked', (bool) preg_match("/'success' => false,\\s*\\n\\s*'code' => 'already_running',\\s*\\n\\s*'status' => 'locked',/", $src), $failures, $passed);
+check('a locked rejection is now also written to the private log (previously silent — the actual production incident left zero log trace of the cron attempt)', strpos($src, "backup_log('Cron backup trigger found a run already in progress") !== false, $failures, $passed);
+check('the only place success => true is ever sent is the final response, built strictly AFTER backup_execute_full_run() returned without throwing', substr_count($src, "'success' => true") === 1 && strpos($src, "'success' => true") > strpos($src, "\$result = backup_execute_full_run('daily_cron')"), $failures, $passed);
+check('every failure/locked JSON payload in this file explicitly sets success => false (no path can omit it and default ambiguously)', substr_count($src, "'success' => false") === 7, $failures, $passed);
 check('audits with a synthetic github-actions-cron marker, never a real admin session object', strpos($src, "\$cronAdmin = ['email' => 'github-actions-cron']") !== false, $failures, $passed);
 check('never echoes the provided Authorization header or token value into any response/log call', !preg_match('/(backup_cron_send_json|backup_log)\([^)]*\$provided(Header|Token)/', $src), $failures, $passed);
 check('never echoes the configured token value into any response/log call', !preg_match('/(backup_cron_send_json|backup_log)\([^)]*\$configuredToken/', $src), $failures, $passed);
@@ -60,7 +74,16 @@ check('reads BACKUP_CRON_URL and BACKUP_CRON_TOKEN only from repository secrets'
 check('the workflow never echoes the token value itself (only ever used inside a curl --header argument)', !preg_match('/\becho\b[^\n]*\$\{?BACKUP_CRON_TOKEN\}?/', $workflowSource), $failures, $passed);
 check('fails the job on a non-2xx response', strpos($workflowSource, 'exit 1') !== false, $failures, $passed);
 
-echo "\n== 2. Live HTTP checks via PHP's built-in server (no production backup ever reachable — no token configured locally) ==\n";
+echo "\n== 2b. Root-cause fix: the workflow validates the JSON body, not just the HTTP status code ==\n";
+check('the workflow computes success strictly from `.success == true` in the JSON body (not merely "field present")', strpos($workflowSource, "jq -r 'if .success == true then \"true\" else \"false\" end'") !== false, $failures, $passed);
+check('the workflow independently validates the response is parseable JSON before trusting any field from it', strpos($workflowSource, 'jq -e . "$response_file"') !== false, $failures, $passed);
+check('an HTTP 2xx alone is no longer sufficient to pass the job — the case statement only breaks out of the non-2xx branch, it does not exit 0', !preg_match('/2\?\?\)\s*exit 0/', $workflowSource), $failures, $passed);
+check('the job fails when success is not exactly "true" (covers locked, failed, and any unexpected shape)', strpos($workflowSource, 'if [ "$success" != "true" ]') !== false, $failures, $passed);
+check('the job fails when package_name is empty even if success somehow said true', strpos($workflowSource, 'if [ -z "$package_name" ]') !== false, $failures, $passed);
+check('the job fails outright on invalid/unparseable JSON rather than treating missing fields as passing', strpos($workflowSource, 'if [ "$is_valid_json" != "true" ]') !== false, $failures, $passed);
+check('job timeout is at least 20 minutes (sufficient for the full synchronous backup run)', (bool) preg_match('/timeout-minutes:\s*(\d+)/', $workflowSource, $m) && (int) $m[1] >= 20, $failures, $passed);
+
+echo "\n== 3. Live HTTP checks via PHP's built-in server (no production backup ever reachable — no token configured locally) ==\n";
 
 $phpBinary = PHP_BINARY !== '' ? PHP_BINARY : 'php';
 $port = 8391;

@@ -26,7 +26,7 @@ permissions:
 jobs:
   trigger-backup:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Call backup-cron.php
         env:
@@ -70,7 +70,15 @@ jobs:
           # Sanitized summary only — never dump the raw body verbatim (it is
           # already designed to be non-sensitive, but this avoids depending
           # on that guarantee holding for every possible failure shape).
-          success=$(jq -r '.success // empty' "$response_file" 2>/dev/null || echo "")
+          # `jq -e` on invalid/empty JSON exits non-zero, so `is_valid_json`
+          # and every field below default to a safe empty/false value rather
+          # than silently treating unparseable output as anything passing.
+          if jq -e . "$response_file" >/dev/null 2>&1; then
+            is_valid_json="true"
+          else
+            is_valid_json="false"
+          fi
+          success=$(jq -r 'if .success == true then "true" else "false" end' "$response_file" 2>/dev/null || echo "false")
           code=$(jq -r '.code // empty' "$response_file" 2>/dev/null || echo "")
           package_name=$(jq -r '.package_name // empty' "$response_file" 2>/dev/null || echo "")
           status_field=$(jq -r '.status // empty' "$response_file" 2>/dev/null || echo "")
@@ -82,6 +90,7 @@ jobs:
             echo "| Field | Value |"
             echo "|---|---|"
             echo "| HTTP status | $http_status |"
+            echo "| valid JSON | $is_valid_json |"
             echo "| success | ${success:-n/a} |"
             echo "| code | ${code:-n/a} |"
             echo "| package_name | ${package_name:-n/a} |"
@@ -91,7 +100,31 @@ jobs:
 
           rm -f "$response_file"
 
+          # A completed backup requires ALL of: a 2xx HTTP status, valid
+          # JSON, success == true (never inferred from status code alone —
+          # an already-running lock, or any other rejection, is ALSO a 2xx
+          # response with success=false and must not be mistaken for a real
+          # completion), and a non-empty package_name (a genuine completion
+          # always has one; its absence means something is structurally
+          # wrong even if success somehow said true).
           case "$http_status" in
-            2??) exit 0 ;;
+            2??) ;;
             *) echo "::error::backup-cron.php returned HTTP $http_status"; exit 1 ;;
           esac
+
+          if [ "$is_valid_json" != "true" ]; then
+            echo "::error::backup-cron.php did not return valid JSON."
+            exit 1
+          fi
+
+          if [ "$success" != "true" ]; then
+            echo "::error::backup-cron.php did not report success (code=${code:-unknown}, status=${status_field:-unknown}). No real backup was completed."
+            exit 1
+          fi
+
+          if [ -z "$package_name" ]; then
+            echo "::error::backup-cron.php reported success but returned no package_name — treating as a failed/incomplete run."
+            exit 1
+          fi
+
+          exit 0

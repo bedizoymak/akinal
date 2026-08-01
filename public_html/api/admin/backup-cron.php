@@ -127,11 +127,16 @@ try {
 } catch (BackupAlreadyRunningException $exception) {
     // Another run (manual or scheduled) already holds the lock — this is a
     // safe, expected outcome, never a duplicate archive/email. Reported as a
-    // 200 with locked=true rather than an error status, since nothing failed.
+    // 200 with success=false and an explicit status="locked" rather than an
+    // error status, since nothing actually failed — but callers (including
+    // the GitHub Actions workflow) MUST check `success`/`status`, not just
+    // the HTTP status code, or this looks identical to a real completion.
+    backup_log('Cron backup trigger found a run already in progress; not starting a second one.');
     backup_audit($cronAdmin, 'cron_run_rejected', 'already_running');
     backup_cron_send_json(200, [
         'success' => false,
         'code' => 'already_running',
+        'status' => 'locked',
         'locked' => true,
     ]);
     exit;
