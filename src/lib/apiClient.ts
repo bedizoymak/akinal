@@ -55,6 +55,9 @@ import type {
   ProjectStatementResponse,
   GelenlerResponse,
   GidenlerResponse,
+  BackupDashboardResponse,
+  BackupValidationReport,
+  BackupRunNowResult,
 } from "@/lib/apiTypes";
 
 type ApiResponse<T> = {
@@ -240,6 +243,41 @@ export async function uploadAdminSiteAsset(file: File): Promise<string> {
     headers: {},
   });
   return data.url;
+}
+
+export async function getAdminBackupDashboard(): Promise<BackupDashboardResponse> {
+  return apiRequest<BackupDashboardResponse>("/api/admin/backups.php", {
+    method: "GET",
+    credentials: "include",
+  });
+}
+
+export async function validateAdminBackupPackage(files: File[]): Promise<BackupValidationReport> {
+  const form = new FormData();
+  files.forEach((file) => form.append("package[]", file, file.name));
+
+  const data = await apiRequest<{ report: BackupValidationReport }>("/api/admin/backup-restore-validate.php", {
+    method: "POST",
+    credentials: "include",
+    body: form,
+    headers: {},
+  });
+  return data.report;
+}
+
+export function adminBackupDownloadUrl(type: "site" | "database"): string {
+  return `/api/admin/backup-download.php?type=${type}`;
+}
+
+export function adminBackupDriveDownloadUrl(fileId: string, name: string): string {
+  return `/api/admin/backup-drive-download.php?file_id=${encodeURIComponent(fileId)}&name=${encodeURIComponent(name)}`;
+}
+
+export async function runAdminBackupNow(): Promise<BackupRunNowResult> {
+  return apiRequest<BackupRunNowResult>("/api/admin/backup-run-now.php", {
+    method: "POST",
+    credentials: "include",
+  });
 }
 
 export async function getAdminPushConfig(): Promise<{ public_key: string; configured: boolean }> {

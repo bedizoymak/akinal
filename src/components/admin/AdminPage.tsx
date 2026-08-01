@@ -30,6 +30,7 @@ type AdminMetricCardProps = {
   icon?: LucideIcon;
   tone?: "default" | "success" | "warning" | "danger" | "accent";
   to?: string;
+  href?: string;
 };
 
 const metricToneClass = {
@@ -96,16 +97,18 @@ function AutoFitMetricValue({ children, className }: { children: ReactNode; clas
   );
 }
 
-export function AdminMetricCard({ label, value, description, icon: Icon, tone = "default", to }: AdminMetricCardProps) {
+export function AdminMetricCard({ label, value, description, icon: Icon, tone = "default", to, href }: AdminMetricCardProps) {
   const complexValue = typeof value !== "string" && typeof value !== "number";
-  const Wrapper = to ? Link : "div";
+  const isClickable = Boolean(to || href);
+  const Wrapper = to ? Link : href ? "a" : "div";
 
   return (
     <Wrapper
       {...(to ? { to } : {})}
+      {...(href ? { href, target: "_blank", rel: "noopener noreferrer" } : {})}
       className={cn(
         "relative flex min-h-[138px] w-full min-w-0 max-w-full flex-col justify-between overflow-hidden rounded-md border border-border/80 bg-card p-5 text-current shadow-sm transition-colors duration-200 hover:border-foreground/20",
-        to && "cursor-pointer hover:border-accent/60 hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/45 focus-visible:ring-offset-2",
+        isClickable && "cursor-pointer hover:border-accent/60 hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/45 focus-visible:ring-offset-2",
       )}
     >
       <div className={cn("absolute inset-x-0 top-0 h-1", metricAccentClass[tone])} />

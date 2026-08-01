@@ -3,7 +3,13 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/response.php';
 
-$configPath = __DIR__ . '/config.php';
+// config.local.php (gitignored, never deployed — see deploy_ftp.py PROTECTED_REMOTE) lets a
+// developer point the local PHP server at a local database without touching config.php, which
+// holds the real production credentials.
+$configPath = __DIR__ . '/config.local.php';
+if (!is_file($configPath)) {
+    $configPath = __DIR__ . '/config.php';
+}
 
 if (!is_file($configPath)) {
     json_error('API configuration file is missing. Copy config.example.php to config.php on the server.', 500);

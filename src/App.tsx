@@ -59,6 +59,7 @@ const AdminGidenler = lazy(() => import("./pages/admin/AdminGidenler"));
 const AdminNetDurum = lazy(() => import("./pages/admin/AdminNetDurum"));
 const AdminGovernmentProgressPayments = lazy(() => import("./pages/admin/AdminGovernmentProgressPayments"));
 const AdminMaintenanceConsole = lazy(() => import("./pages/admin/AdminMaintenanceConsole"));
+const AdminBackupCenter = lazy(() => import("./pages/admin/AdminBackupCenter"));
 const AdminInflationCalculator = lazy(() => import("./pages/admin/AdminInflationCalculator"));
 
 const queryClient = new QueryClient();
@@ -111,6 +112,7 @@ const App = () => (
                   <Route path="ayarlar" element={<AdminSettings />} />
                   <Route path="sql-editor"    element={<AdminSqlEditor />} />
                   <Route path="bakim-konsolu" element={<AdminMaintenanceConsole />} />
+                  <Route path="yedekleme-merkezi" element={<AdminBackupCenter />} />
                   <Route path="enflasyon-hesaplama" element={<AdminInflationCalculator />} />
                 </Route>
 

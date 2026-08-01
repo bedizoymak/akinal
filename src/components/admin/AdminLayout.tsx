@@ -16,6 +16,7 @@ import {
   Settings,
   Tags,
   Wrench,
+  ShieldCheck,
   TrendingDown,
   TrendingUp,
   Users,
@@ -76,6 +77,7 @@ const NAV_GROUPS = [
     items: [
       { to: "/admin/ayarlar",      label: "Ayarlar",       description: "Site ayarları",              icon: Settings },
       { to: "/admin/bakim-konsolu", label: "Bakım Konsolu", description: "Migration ve bakım araçları", icon: Wrench },
+      { to: "/admin/yedekleme-merkezi", label: "Yedekleme Merkezi", description: "Otomatik ve manuel yedekler", icon: ShieldCheck },
     ],
   },
 ];
@@ -121,6 +123,7 @@ const PAGE_META: PageMeta[] = [
   { path: "/admin/ayarlar", title: "Ayarlar", group: "Sistem" },
   { path: "/admin/sql-editor",    title: "SQL Editörü",  group: "Sistem" },
   { path: "/admin/bakim-konsolu", title: "Bakım Konsolu", group: "Sistem" },
+  { path: "/admin/yedekleme-merkezi", title: "Yedekleme Merkezi", group: "Sistem" },
   { path: "/admin", title: "Genel Bakış", group: "Genel", exact: true },
 ];
 

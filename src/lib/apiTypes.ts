@@ -1141,3 +1141,136 @@ export interface CookieConsentPayload {
   analytics: boolean;
   marketing: boolean;
 }
+
+// ── Backup Center ─────────────────────────────────────────────────────────────
+
+export interface BackupRun {
+  id: string;
+  run_type: string;
+  status: "running" | "success" | "success_with_warnings" | "failed";
+  started_at: string;
+  finished_at: string | null;
+  package_name: string | null;
+  site_archive_size: number | null;
+  db_archive_size: number | null;
+  backend_archive_size: number | null;
+  uploads_archive_size: number | null;
+  total_size: number | null;
+  checksum_site: string | null;
+  checksum_db: string | null;
+  checksum_backend: string | null;
+  checksum_uploads: string | null;
+  drive_folder_id: string | null;
+  drive_folder_name: string | null;
+  db_dump_method: string | null;
+  error_message: string | null;
+  success_email_sent_at: string | null;
+  notification_status: "notification_sent" | "notification_failed" | "notification_not_configured" | "notification_sending" | null;
+  notification_detail: string | null;
+  created_at: string;
+}
+
+export interface BackupAuditLogEntry {
+  id: string;
+  admin_id: string | null;
+  admin_email: string | null;
+  action: string;
+  detail: string | null;
+  created_at: string;
+}
+
+export interface BackupDriveFile {
+  id: string;
+  name: string;
+  size: number;
+}
+
+export interface BackupDriveFolder {
+  id: string;
+  name: string;
+  created_at: string | null;
+  size: number;
+  file_count: number;
+  status: "complete" | "partial" | "incomplete" | "unknown";
+  status_label: string;
+  db_dump_method: string | null;
+  checksums: Record<string, string>;
+  files: BackupDriveFile[];
+}
+
+export interface BackupCapabilities {
+  zip_extension: boolean;
+  openssl_extension: boolean;
+  curl_extension: boolean;
+  exec_available: boolean;
+  mysqldump_available: boolean;
+  mail_function: boolean;
+  encryption_key_configured: boolean;
+  gdrive_configured: boolean;
+  alert_email_configured: boolean;
+  success_email_configured: boolean;
+  db_dump_method: string;
+}
+
+export type BackupDriveDiagnosticState =
+  | "not_configured"
+  | "credentials_problem"
+  | "auth_failed"
+  | "folder_inaccessible"
+  | "connected";
+
+export interface BackupDriveDiagnostics {
+  state: BackupDriveDiagnosticState;
+  message: string;
+}
+
+export interface BackupSchedule {
+  configured_in_code: boolean;
+  expression: string;
+  label: string;
+  confirmed_by_recent_run: boolean;
+  last_run_at: string | null;
+}
+
+export interface BackupDashboardResponse {
+  capabilities: BackupCapabilities;
+  full_recovery_available: boolean;
+  drive_diagnostics: BackupDriveDiagnostics;
+  schedule: BackupSchedule;
+  retention_limit: number;
+  retained_count: number;
+  last_full_success: BackupRun | null;
+  last_partial: BackupRun | null;
+  last_failure: BackupRun | null;
+  history: BackupRun[];
+  audit_log: BackupAuditLogEntry[];
+  drive_backups: BackupDriveFolder[];
+  drive_error: string | null;
+}
+
+export interface BackupChecksumResult {
+  file: string;
+  status: "match" | "mismatch" | "missing" | "empty";
+  expected?: string;
+  actual?: string;
+  size?: number;
+}
+
+export interface BackupValidationReport {
+  batch_id: string;
+  staged_files: string[];
+  manifest_found: boolean;
+  manifest_version_ok: boolean;
+  checksums_found: boolean;
+  checksum_results: BackupChecksumResult[];
+  issues: string[];
+  valid: boolean;
+  manifest: Record<string, unknown> | null;
+}
+
+export interface BackupRunNowResult {
+  run_id: string;
+  status: "success" | "success_with_warnings";
+  package_name: string;
+  created_at: string;
+}

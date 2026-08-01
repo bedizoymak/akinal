@@ -23,6 +23,15 @@ export default defineConfig(() => ({
     hmr: {
       overlay: false,
     },
+    // Dev-only: forwards /api/* to a local PHP backend (e.g. `php -S localhost:8000 -t public_html`)
+    // so admin auth (/api/admin/me.php, /api/admin/login.php, etc.) works under `npm run dev`.
+    // Does not affect `vite build` — server.proxy only applies to the dev server.
+    proxy: {
+      "/api": {
+        target: process.env.VITE_API_PROXY_TARGET || "http://localhost:8000",
+        changeOrigin: true,
+      },
+    },
   },
   plugins: [react()],
   resolve: {

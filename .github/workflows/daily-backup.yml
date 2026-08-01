@@ -1,0 +1,97 @@
+name: Daily Backup Trigger
+
+# Calls the private, server-to-server backup-cron.php endpoint once a day.
+# All backup logic (locking, archive/checksum generation, Google Drive
+# upload + verification, retention, success-notification email) already
+# lives on the server in public_html/api/admin/backup-cron.php →
+# backup_execute_full_run() — this workflow only makes the HTTP call.
+#
+# Required repository secrets (Settings > Secrets and variables > Actions):
+#   BACKUP_CRON_URL    Full HTTPS URL of the endpoint, e.g.
+#                       https://akinalinsaat.com/api/admin/backup-cron.php
+#   BACKUP_CRON_TOKEN   The same value as BACKUP_CRON_TOKEN in the server's
+#                       private akinal-private/akinal-backup/backup-config.local.php
+#
+# Neither secret is ever printed by this workflow.
+
+on:
+  schedule:
+    # 00:00 UTC daily = 03:00 Türkiye time while Europe/Istanbul is UTC+3.
+    - cron: "0 0 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  trigger-backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Call backup-cron.php
+        env:
+          BACKUP_CRON_URL: ${{ secrets.BACKUP_CRON_URL }}
+          BACKUP_CRON_TOKEN: ${{ secrets.BACKUP_CRON_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${BACKUP_CRON_URL:-}" ] || [ -z "${BACKUP_CRON_TOKEN:-}" ]; then
+            echo "::error::BACKUP_CRON_URL and/or BACKUP_CRON_TOKEN repository secrets are not set."
+            exit 1
+          fi
+
+          response_file="$(mktemp)"
+
+          # --fail-with-body: non-2xx exits non-zero AND still writes the body
+          #   so we can show a sanitized status locally, without ever leaking
+          #   the Authorization header (curl -H values are never echoed by
+          #   -v/--fail; only sent on the wire).
+          # --max-time: overall request timeout (the server itself runs the
+          #   full backup synchronously, which can legitimately take minutes).
+          # --retry: only retries on transient network failures (curl's own
+          #   definition — connection refused/reset, DNS, timeout — never on
+          #   a completed non-2xx HTTP response, so a real 401/500 fails fast
+          #   exactly once rather than retrying a rejected/failed request.
+          http_status=$(curl -sS \
+            --request POST \
+            --header "Authorization: Bearer ${BACKUP_CRON_TOKEN}" \
+            --header "Accept: application/json" \
+            --header "Content-Type: application/json" \
+            --max-time 900 \
+            --retry 3 \
+            --retry-delay 10 \
+            --retry-all-errors \
+            --output "$response_file" \
+            --write-out "%{http_code}" \
+            "$BACKUP_CRON_URL") || true
+
+          echo "HTTP status: $http_status"
+
+          # Sanitized summary only — never dump the raw body verbatim (it is
+          # already designed to be non-sensitive, but this avoids depending
+          # on that guarantee holding for every possible failure shape).
+          success=$(jq -r '.success // empty' "$response_file" 2>/dev/null || echo "")
+          code=$(jq -r '.code // empty' "$response_file" 2>/dev/null || echo "")
+          package_name=$(jq -r '.package_name // empty' "$response_file" 2>/dev/null || echo "")
+          status_field=$(jq -r '.status // empty' "$response_file" 2>/dev/null || echo "")
+          notification_status=$(jq -r '.notification_status // empty' "$response_file" 2>/dev/null || echo "")
+
+          {
+            echo "### Daily Backup Trigger Result"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| HTTP status | $http_status |"
+            echo "| success | ${success:-n/a} |"
+            echo "| code | ${code:-n/a} |"
+            echo "| package_name | ${package_name:-n/a} |"
+            echo "| status | ${status_field:-n/a} |"
+            echo "| notification_status | ${notification_status:-n/a} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          rm -f "$response_file"
+
+          case "$http_status" in
+            2??) exit 0 ;;
+            *) echo "::error::backup-cron.php returned HTTP $http_status"; exit 1 ;;
+          esac

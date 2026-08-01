@@ -11,9 +11,11 @@ node_modules
 dist
 dist-ssr
 *.local
+__pycache__/
 full_export.json
 supabase/.temp/
 public_html/api/config.php
+public_html/api/config.local.php
 public_html/import-data/*.json
 !public_html/import-data/.gitkeep
 migration-tools/exports/*
@@ -23,6 +25,14 @@ migration-tools/output/*
 tools/output/
 docs/exports/
 *.classification.json
+
+# Yedekleme Merkezi private config — server-only, uploaded via FTP next to
+# public_html, never committed. Only backup-config.local.example.php is tracked.
+akinal-private/akinal-backup/backup-config.local.php
+akinal-private/akinal-backup/*.json
+akinal-private/akinal-backup/logs/
+akinal-private/akinal-backup/temp/
+akinal-private/akinal-backup/staging/
 
 # Editor directories and files
 .vscode/*

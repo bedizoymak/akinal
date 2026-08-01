@@ -54,6 +54,36 @@ PROTECTED_NAMES: frozenset[str] = frozenset({".env", ".env.local"})
 # Directory names that are never uploaded or touched.
 SKIP_DIRS: frozenset[str] = frozenset({"uploads"})
 
+# Private, non-web-accessible mirror of the frontend source tree, kept in
+# sync on every normal deploy so the Backup Center's frontend.zip.enc can
+# contain a genuinely rebuildable source backup without ever walking the
+# cPanel account root (that root holds unrelated/sensitive content —
+# .htpasswd, logs/, stats/, private_html/, public_ftp/ — and never receives
+# the source tree through any other path). See backup_frontend_source_dir()
+# in public_html/api/admin/backup-lib.php, which only ever READS this path.
+FRONTEND_SOURCE_REMOTE_ROOT = "/akinal-private/frontend-source"
+
+# Top-level repo-root entries required to rebuild the frontend from scratch
+# (`npm install && npm run build`). Directories are synced recursively.
+# Deliberately excludes node_modules/, dist/, .git/, caches, editor files,
+# and local env files — none of those are listed here, so none are ever
+# walked or uploaded by this sync.
+FRONTEND_SOURCE_ITEMS: tuple[str, ...] = (
+    "src",
+    "public",
+    "package.json",
+    "package-lock.json",
+    "vite.config.ts",
+    "tsconfig.json",
+    "tsconfig.app.json",
+    "tsconfig.node.json",
+    "index.html",
+    "eslint.config.js",
+    "tailwind.config.ts",
+    "postcss.config.js",
+    "components.json",
+)
+
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -869,6 +899,67 @@ def _diff_dir(
 
 
 # ---------------------------------------------------------------------------
+# Frontend source mirror (private, non-public — for disaster-recovery backups)
+# ---------------------------------------------------------------------------
+def sync_frontend_source_mirror(
+    conn: Connection,
+    stats: Stats,
+    *,
+    checksum_mode: bool,
+    dry_run: bool,
+) -> None:
+    """Mirrors FRONTEND_SOURCE_ITEMS to FRONTEND_SOURCE_REMOTE_ROOT so the
+    Backup Center can assemble a genuinely rebuildable frontend.zip.enc
+    without ever touching the cPanel account root. Runs on every normal
+    deploy (full or diff alike) so the mirror never drifts from what's
+    actually committed. Reuses the same diff comparison (size, then server
+    hash) as the rest of this script — no separate logic path.
+    """
+    print("\n  --- Syncing private frontend-source mirror ---", flush=True)
+
+    items: list[tuple[Path, str]] = []
+    for name in FRONTEND_SOURCE_ITEMS:
+        local_path = ROOT / name
+        if not local_path.exists():
+            log("WARNING", f"Frontend source mirror: expected item not found locally, skipping: {name}")
+            continue
+        items.append((local_path, remote_join(FRONTEND_SOURCE_REMOTE_ROOT, name)))
+
+    if not items:
+        log("WARNING", "Frontend source mirror: nothing to sync (no expected items found).")
+        return
+
+    total = sum(1 if lp.is_file() else count_local_files(lp) for lp, _ in items)
+    counter = [0]
+
+    remote_index: dict[str, RemoteEntry] = {}
+    known_dirs: set[str] = set()
+    try:
+        remote_index, known_dirs = build_remote_index(conn, FRONTEND_SOURCE_REMOTE_ROOT)
+    except Exception as exc:
+        log("WARNING", f"Could not index {FRONTEND_SOURCE_REMOTE_ROOT} (likely first run): {exc}")
+
+    for local_path, remote_path in items:
+        if local_path.is_dir():
+            _diff_dir(conn, stats, local_path, remote_path, remote_index, known_dirs,
+                      checksum_mode=checksum_mode, dry_run=dry_run,
+                      counter=counter, total=total)
+        else:
+            if is_protected(local_path, remote_path):
+                log("PROTECTED", remote_path)
+                stats.skipped += 1
+                continue
+            counter[0] += 1
+            remote_entry = remote_index.get(normalise(remote_path))
+            if needs_upload(local_path, remote_entry, conn, checksum_mode=checksum_mode):
+                label = f"[{counter[0]}/{total}] {remote_path}"
+                conn.upload(local_path, remote_path, stats, progress_label=label, dry_run=dry_run)
+            else:
+                stats.unchanged += 1
+                log("UNCHANGED", f"[{counter[0]}/{total}] {remote_path}")
+
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 def print_summary(stats: Stats) -> None:
@@ -963,6 +1054,11 @@ def main() -> None:
                 checksum_mode=checksum_mode,
                 dry_run=dry_run,
             )
+
+        # Every normal deploy (full or diff) also keeps the private
+        # frontend-source mirror in sync — never skipped, never a separate
+        # opt-in step, so it can never silently drift from what's live.
+        sync_frontend_source_mirror(conn, stats, checksum_mode=checksum_mode, dry_run=dry_run)
     finally:
         conn.disconnect()
 
