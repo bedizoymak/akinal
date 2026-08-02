@@ -30,7 +30,7 @@ $schedule = [
     'last_run_at' => $lastDailyRunAt,
 ];
 
-$historyStmt = db()->query('SELECT * FROM ak_backup_runs ORDER BY started_at DESC LIMIT 50');
+$historyStmt = db()->query('SELECT * FROM ak_backup_runs ORDER BY started_at DESC LIMIT 5');
 $history = $historyStmt->fetchAll();
 
 $auditStmt = db()->query('SELECT * FROM ak_backup_audit_log ORDER BY created_at DESC LIMIT 100');

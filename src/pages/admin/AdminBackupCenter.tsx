@@ -335,7 +335,7 @@ export default function AdminBackupCenter() {
       </AdminSection>
 
       {/* History */}
-      <AdminSection title="Yedekleme Geçmişi" description="Son 50 yedekleme çalışması.">
+      <AdminSection title="Yedekleme Geçmişi" description="Son 5 yedekleme çalışması.">
         {history.length === 0 ? (
           <AdminEmptyState title="Henüz kayıt yok" icon={History} />
         ) : (
