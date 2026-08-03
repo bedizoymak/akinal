@@ -310,7 +310,7 @@ check('a run recorded 1 hour ago counts as confirmed', backup_pure_schedule_conf
 check('a run recorded 10 days ago does NOT count as confirmed (stale — cron may have stopped)', backup_pure_schedule_confirmed(gmdate('Y-m-d\TH:i:s\Z', time() - (10 * 86400)), time()) === false, $failures, $passed);
 check('an unparseable timestamp is treated as not confirmed rather than throwing', backup_pure_schedule_confirmed('not-a-date', time()) === false, $failures, $passed);
 check("backups.php derives 'confirmed_by_recent_run' from an actual ak_backup_runs row, not a hardcoded true", strpos($backupsPhpSource, "backup_pure_schedule_confirmed(\$lastDailyRunAt, time())") !== false, $failures, $passed);
-check('the schedule label constant matches the required cron expression 0 3 * * *', BACKUP_DAILY_SCHEDULE_EXPRESSION === '0 3 * * *', $failures, $passed);
+check('the schedule label constant matches the required cron expression 0 1 * * *', BACKUP_DAILY_SCHEDULE_EXPRESSION === '0 1 * * *', $failures, $passed);
 // Note: the customer-facing demo page intentionally no longer renders the schedule/
 // cron-confirmation banner (see §13) — the underlying data and honesty guarantee
 // (never claim "confirmed" without a real recorded run) still lives in the API/backend.
@@ -318,7 +318,7 @@ check('the schedule label constant matches the required cron expression 0 3 * * 
 echo "\n== 26. Cron documentation references the CLI entry point only (no HTTP-callable trigger implied) ==\n";
 check('docs point at cron/backup-daily.php as the command target', strpos($docsSource, 'cron/backup-daily.php') !== false, $failures, $passed);
 check('docs do not suggest any HTTP/browser-triggerable backup URL for the daily job', !preg_match('#https?://\S*backup-daily#i', $docsSource), $failures, $passed);
-check('docs state the required cron expression 0 3 * * *', strpos($docsSource, '0 3 * * *') !== false, $failures, $passed);
+check('docs state the required cron expression 0 1 * * *', strpos($docsSource, '0 1 * * *') !== false, $failures, $passed);
 check('docs explain the two paths to select (PHP CLI binary, script/log paths) rather than asking the reader to type an absolute path', stripos($docsSource, 'two paths') !== false, $failures, $passed);
 check('docs do not embed any real password/token/secret value', !preg_match('/(password|secret|token)\s*[:=]\s*[\'"][^\'"]{6,}[\'"]/i', $docsSource), $failures, $passed);
 

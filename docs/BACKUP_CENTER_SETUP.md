@@ -116,10 +116,10 @@ firings can never run at once, and refuses to execute at all outside a CLI conte
 browser/HTTP request to it always gets a 403, both from its own `PHP_SAPI !== 'cli'` check and
 from the sibling `.htaccess` denying the whole `cron/` folder).
 
-**Schedule:** once daily at 03:00 server time — the cron expression to enter:
+**Schedule:** once daily at 01:00 Türkiye time — the cron expression to enter:
 
 ```
-0 3 * * *
+0 1 * * *
 ```
 
 **Command template** (do not type a username or a literal `/home/...` path — see the two paths

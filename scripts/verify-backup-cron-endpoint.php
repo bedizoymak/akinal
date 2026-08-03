@@ -68,7 +68,7 @@ check('the example does not contain a real-looking secret (only the documented p
 
 $workflowSource = (string) @file_get_contents($root . '/.github/workflows/daily-backup.yml');
 check('.github/workflows/daily-backup.yml exists', $workflowSource !== '', $failures, $passed);
-check('scheduled for 00:00 UTC daily', strpos($workflowSource, 'cron: "0 0 * * *"') !== false, $failures, $passed);
+check('scheduled for 22:00 UTC daily (01:00 Türkiye time)', strpos($workflowSource, 'cron: "0 22 * * *"') !== false, $failures, $passed);
 check('supports workflow_dispatch for manual testing', strpos($workflowSource, 'workflow_dispatch') !== false, $failures, $passed);
 check('reads BACKUP_CRON_URL and BACKUP_CRON_TOKEN only from repository secrets', strpos($workflowSource, 'secrets.BACKUP_CRON_URL') !== false && strpos($workflowSource, 'secrets.BACKUP_CRON_TOKEN') !== false, $failures, $passed);
 check('the workflow never echoes the token value itself (only ever used inside a curl --header argument)', !preg_match('/\becho\b[^\n]*\$\{?BACKUP_CRON_TOKEN\}?/', $workflowSource), $failures, $passed);

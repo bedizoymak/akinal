@@ -38,8 +38,8 @@ const BACKUP_DRIVE_FOLDER_URL = 'https://drive.google.com/drive/folders/1i99EccR
 
 // The daily automation's intended cron schedule. A single source of truth for
 // both the admin UI label and docs/BACKUP_CENTER_SETUP.md's cron instructions.
-const BACKUP_DAILY_SCHEDULE_EXPRESSION = '0 3 * * *';
-const BACKUP_DAILY_SCHEDULE_LABEL = 'Her gün 03:00 (sunucu saati)';
+const BACKUP_DAILY_SCHEDULE_EXPRESSION = '0 1 * * *';
+const BACKUP_DAILY_SCHEDULE_LABEL = 'Her gün 01:00 (Türkiye saati)';
 
 // The three status labels shown in the admin UI and used for run/package
 // classification. "Tam Kurtarma Yedeği" requires BOTH a full site archive and a
