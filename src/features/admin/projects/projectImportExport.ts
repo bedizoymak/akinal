@@ -98,13 +98,23 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-export async function exportProjectsWithImages(): Promise<ProjectExportJson> {
+/**
+ * Exports project (+ image) rows as a downloadable JSON snapshot.
+ *
+ * When `projectIds` is provided, the export is scoped to just those projects —
+ * used by the admin project list's "Dışa Aktar" button so exporting while a
+ * filter/search is active exports what's currently shown, not silently every
+ * project in the database (see QA-B OBS-03). Omit it (or pass undefined) to
+ * export everything.
+ */
+export async function exportProjectsWithImages(projectIds?: string[]): Promise<ProjectExportJson> {
   const [projects, images] = await Promise.all([
     getAdminProjects(),
     getAdminProjectImages(),
   ]);
 
-  const allProjects = projects;
+  const idFilter = projectIds ? new Set(projectIds) : null;
+  const allProjects = idFilter ? projects.filter((project) => idFilter.has(project.id)) : projects;
   const allImages = images;
   const imagesByProject = allImages.reduce<Record<string, ProjectImageRow[]>>((acc, image) => {
     acc[image.project_id] = [...(acc[image.project_id] ?? []), image];

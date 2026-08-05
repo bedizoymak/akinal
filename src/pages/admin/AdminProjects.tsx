@@ -139,13 +139,16 @@ export default function AdminProjects() {
   async function handleExport() {
     setExporting(true);
     try {
-      const data = await exportProjectsWithImages();
+      // Scope the export to whatever the active search/type/status filters currently show —
+      // exporting the full unfiltered database while a filter is active would silently
+      // include projects the admin never intended to export (see QA-B OBS-03).
+      const data = await exportProjectsWithImages(filtered.map((p) => p.id));
       if (data.projects.length === 0) {
         toast({ title: "Dışa aktarılacak proje bulunamadı." });
         return;
       }
       downloadJsonFile(data);
-      toast({ title: "Projeler başarıyla dışa aktarıldı." });
+      toast({ title: `${data.projects.length} proje başarıyla dışa aktarıldı.` });
     } catch {
       toast({ title: "Projeler dışa aktarılamadı.", description: "Dışa aktarma sırasında bir problem oluştu. Lütfen tekrar deneyin.", variant: "destructive" });
     } finally {
