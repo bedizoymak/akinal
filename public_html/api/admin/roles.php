@@ -9,6 +9,11 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 try {
     if ($method === 'GET') {
+        // ak_roles ships in install-schema.php but that installer is gated and must be run
+        // manually — an environment that hasn't had it (re-)run yet would otherwise 500 here.
+        if (!roles_table_exists()) {
+            json_success(['roles' => [], 'table_missing' => true]);
+        }
         $activeOnly = ($_GET['active_only'] ?? '') === '1';
         $sql = $activeOnly
             ? 'SELECT * FROM ak_roles WHERE is_active = 1 ORDER BY name ASC'
@@ -98,6 +103,15 @@ try {
     json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
     json_error('Rol işlemi tamamlanamadı.', 500);
+}
+
+function roles_table_exists(): bool
+{
+    $stmt = db()->prepare(
+        'SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :t LIMIT 1'
+    );
+    $stmt->execute(['t' => 'ak_roles']);
+    return (bool) $stmt->fetchColumn();
 }
 
 function role_normalize(string $name): string

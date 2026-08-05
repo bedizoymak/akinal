@@ -14,6 +14,12 @@ try {
         if ($employeeId === '') {
             json_error('employee_id zorunludur.');
         }
+        // ak_employee_cost_periods ships in install-schema.php but that installer is gated
+        // and must be run manually — an environment that hasn't had it (re-)run yet would
+        // otherwise 500 here instead of showing an empty cost-period list.
+        if (!ecp_table_exists('ak_employee_cost_periods')) {
+            json_success(['cost_periods' => [], 'table_missing' => true]);
+        }
         $stmt = db()->prepare(
             'SELECT * FROM ak_employee_cost_periods
              WHERE employee_id = :employee_id
@@ -140,4 +146,13 @@ try {
     json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
     json_error('Maliyet dönemi işlemi tamamlanamadı.', 500);
+}
+
+function ecp_table_exists(string $table): bool
+{
+    $stmt = db()->prepare(
+        'SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :t LIMIT 1'
+    );
+    $stmt->execute(['t' => $table]);
+    return (bool) $stmt->fetchColumn();
 }

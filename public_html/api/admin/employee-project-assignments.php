@@ -12,6 +12,13 @@ try {
         $employeeId = trim((string) ($_GET['employee_id'] ?? ''));
         $projectId  = trim((string) ($_GET['project_id'] ?? ''));
 
+        // ak_employee_project_assignments ships in install-schema.php but that installer is
+        // gated and must be run manually — an environment that hasn't had it (re-)run yet
+        // would otherwise 500 here instead of showing an empty assignment list.
+        if (!epa_table_exists('ak_employee_project_assignments')) {
+            json_success(['assignments' => [], 'table_missing' => true]);
+        }
+
         if ($employeeId !== '') {
             $stmt = db()->prepare(
                 'SELECT a.*, p.title AS project_title
@@ -132,4 +139,13 @@ try {
     json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
     json_error('Görevlendirme işlemi tamamlanamadı.', 500);
+}
+
+function epa_table_exists(string $table): bool
+{
+    $stmt = db()->prepare(
+        'SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :t LIMIT 1'
+    );
+    $stmt->execute(['t' => $table]);
+    return (bool) $stmt->fetchColumn();
 }

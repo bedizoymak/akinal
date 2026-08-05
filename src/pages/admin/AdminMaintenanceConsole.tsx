@@ -34,6 +34,32 @@ interface MaintenanceAction {
 
 const ACTIONS: MaintenanceAction[] = [
   {
+    id: "employee-personnel-tables-apply",
+    title: "Personel Tablolarını Oluştur",
+    description:
+      "ak_roles, ak_employee_roles, ak_employee_cost_periods, ak_employee_project_assignments ve ak_employee_project_allocations tablolarını oluşturur. Mevcut veri etkilenmez.",
+    warning:
+      "İdempotent: tablolar zaten varsa güvenle tekrar çalıştırılabilir.",
+    endpoint: "/api/admin/migrations/employee-personnel-tables-apply.php",
+    method: "POST",
+    confirmMessage:
+      "Production veritabanında eksik personel tabloları (roller, maliyet dönemleri, proje atamaları, tahsisatlar) oluşturulacak. Devam edilsin mi?",
+    renderResult: (data) => {
+      const d = data as { tables_created?: Record<string, boolean> } | null;
+      if (!d?.tables_created) return null;
+      return (
+        <div className="grid grid-cols-2 gap-2 mt-2 sm:grid-cols-3">
+          {Object.entries(d.tables_created).map(([table, wasCreated]) => (
+            <div key={table} className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground truncate" title={table}>{table}</div>
+              <div className="mt-0.5 text-xs font-bold">{wasCreated ? "Oluşturuldu" : "Zaten Vardı"}</div>
+            </div>
+          ))}
+        </div>
+      );
+    },
+  },
+  {
     id: "gpp-collections-apply",
     title: "Hakediş Tahsilat Tablosunu Oluştur",
     description:
