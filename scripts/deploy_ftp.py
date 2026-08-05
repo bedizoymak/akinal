@@ -469,6 +469,27 @@ class Connection:
                 pass
             self.ftp.cwd(part)
 
+    def safe_cwd(self, remote_dir: str, *, dry_run: bool = False) -> bool:
+        """CWD to remote_dir; returns True on success.
+
+        Under dry_run, a failure (the directory does not exist yet —
+        correctly not created, since ensure_dir(..., dry_run=True) already
+        declined to issue MKD for it) is swallowed and False is returned
+        instead of raising. This never claims the directory exists — the
+        caller must treat a False return as "nothing to descend into here",
+        not as success. Under normal (non-dry-run) operation, this performs
+        exactly the CWD a bare `self.ftp.cwd(remote_dir)` call would — any
+        real failure propagates unchanged, so genuine errors stay visible.
+        """
+        if dry_run:
+            try:
+                self.ftp.cwd(remote_dir)
+                return True
+            except Exception:
+                return False
+        self.ftp.cwd(remote_dir)
+        return True
+
     # -- MDTM / MFMT --
 
     def get_mdtm(self, remote_path: str) -> Optional[datetime]:
@@ -786,7 +807,11 @@ def deploy_full(
 ) -> None:
     """Recursively upload every file unconditionally."""
     conn.ensure_dir(remote_dir, dry_run=dry_run)
-    conn.ftp.cwd(remote_dir)
+    if not conn.safe_cwd(remote_dir, dry_run=dry_run):
+        # Dry-run preview only: remote_dir doesn't exist yet (correctly not
+        # created). Nothing under it can be previewed as "already there",
+        # so stop descending rather than raising or falsely proceeding.
+        return
     for item in iter_local(local_dir):
         remote_path = remote_join(remote_dir, item.name)
         if item.is_dir():
@@ -797,7 +822,13 @@ def deploy_full(
             conn.ensure_dir(remote_path, dry_run=dry_run)
             deploy_full(conn, stats, item, remote_path,
                         dry_run=dry_run, _counter=_counter, _total=_total)
-            conn.ftp.cwd(remote_dir)
+            if not conn.safe_cwd(remote_dir, dry_run=dry_run):
+                # Already known reachable earlier in this same call (we
+                # passed the check above); a failure here would only occur
+                # in dry-run if the recursive call's own traversal left the
+                # session in an unexpected state. Stop rather than continue
+                # operating on a directory we can no longer confirm.
+                return
         else:
             if is_protected(item, remote_path):
                 log("PROTECTED", remote_path)

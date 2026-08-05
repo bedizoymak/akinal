@@ -218,5 +218,86 @@ class SyncFrontendSourceMirrorDryRunTests(unittest.TestCase):
                 dftp.ROOT, dftp.FRONTEND_SOURCE_ITEMS = orig_root, orig_items
 
 
+class DeployFullDryRunCwdTests(unittest.TestCase):
+    """Gate D3a: deploy_full()'s two direct cwd(remote_dir) calls used to be
+    unguarded — under --full --dry-run against a top-level remote directory
+    that doesn't exist yet, ensure_dir(dry_run=True) correctly declines to
+    create it, but the following bare cwd(remote_dir) would then raise.
+    These tests exercise both call sites through Connection.safe_cwd()."""
+
+    def _make_local_tree(self, tmp: str) -> Path:
+        local_dir = Path(tmp)
+        (local_dir / "file.txt").write_text("hello")
+        sub = local_dir / "sub"
+        sub.mkdir()
+        (sub / "nested.txt").write_text("x")
+        return local_dir
+
+    def test_dry_run_missing_top_dir_completes_without_raising_or_mutating(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            local_dir = self._make_local_tree(tmp)
+            ftp = FakeFTP(fail_cwd_for=frozenset({"/public_html/newroot"}))
+            conn = make_conn(ftp)
+            stats = dftp.Stats()
+            # Must not raise.
+            dftp.deploy_full(
+                conn, stats, local_dir, "/public_html/newroot",
+                dry_run=True, _counter=[0], _total=10,
+            )
+            self.assertEqual(ftp.mutating_calls(), [])
+
+    def test_dry_run_existing_top_dir_completes_and_exercises_both_cwd_sites(self):
+        """fail_cwd_for empty -> cwd always succeeds, so both the top-of-
+        function cwd and the post-recursion return-to-parent cwd (the two
+        formerly-direct call sites) are both exercised via safe_cwd()."""
+        with tempfile.TemporaryDirectory() as tmp:
+            local_dir = self._make_local_tree(tmp)
+            ftp = FakeFTP()
+            conn = make_conn(ftp)
+            stats = dftp.Stats()
+            dftp.deploy_full(
+                conn, stats, local_dir, "/public_html/api",
+                dry_run=True, _counter=[0], _total=10,
+            )
+            self.assertEqual(ftp.mutating_calls(), [])
+            cwd_paths = [c[1] for c in ftp.calls if c[0] == "CWD"]
+            # Both the parent dir and the nested "sub" dir were navigated
+            # into and back out of.
+            self.assertIn("/public_html/api", cwd_paths)
+            self.assertIn("/public_html/api/sub", cwd_paths)
+
+    def test_non_dry_run_missing_top_dir_real_cwd_failure_still_raises(self):
+        """A genuine (non-dry-run) CWD failure must never be silently
+        converted into success — safe_cwd() only swallows failures under
+        dry_run."""
+        with tempfile.TemporaryDirectory() as tmp:
+            local_dir = self._make_local_tree(tmp)
+            ftp = FakeFTP(fail_cwd_for=frozenset({"/public_html/newroot"}))
+            conn = make_conn(ftp)
+            stats = dftp.Stats()
+            with self.assertRaises(Exception):
+                dftp.deploy_full(
+                    conn, stats, local_dir, "/public_html/newroot",
+                    dry_run=False, _counter=[0], _total=10,
+                )
+
+    def test_non_dry_run_existing_top_dir_unchanged_behavior(self):
+        """Non-dry-run traversal of an existing directory still creates
+        (best-effort) dirs and uploads files exactly as before this repair."""
+        with tempfile.TemporaryDirectory() as tmp:
+            local_dir = self._make_local_tree(tmp)
+            ftp = FakeFTP()
+            conn = make_conn(ftp)
+            stats = dftp.Stats()
+            dftp.deploy_full(
+                conn, stats, local_dir, "/public_html/api",
+                dry_run=False, _counter=[0], _total=10,
+            )
+            mkd_paths = {c[1] for c in ftp.calls if c[0] == "MKD"}
+            stor_calls = [c for c in ftp.calls if c[0] == "STOR"]
+            self.assertEqual(mkd_paths, {"public_html", "api", "sub"})
+            self.assertEqual(len(stor_calls), 2)  # file.txt + sub/nested.txt
+
+
 if __name__ == "__main__":
     unittest.main()
