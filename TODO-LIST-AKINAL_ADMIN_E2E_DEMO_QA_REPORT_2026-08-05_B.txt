@@ -1,0 +1,199 @@
+AKINAL ADMIN E2E DEMO QA REPORT 2026-08-05_B — REPAIR TODO / SONUÇ LİSTESİ
+Kaynak: AKINAL_ADMIN_E2E_DEMO_QA_REPORT_2026-08-05_B.md
+Onarım oturumu: 2026-08-05 (bu oturum)
+Tam rapor: AKINAL_ADMIN_E2E_DEMO_QA_FINAL_REPAIR_REPORT_2026-08-05_B.md (depo kökü)
+
+Not: Bu dosya oturum başında BOŞTU (0 satır). Aşağıdaki liste QA raporundaki
+madde madde bulgulardan türetilmiştir.
+
+DURUM ANAHTARI:
+  [FIXED-VERIFIED]   Kod düzeltildi + izole ortamda gerçek MySQL/PHP ile veya
+                      Vitest ile somut kanıtla doğrulandı.
+  [FIXED-UNVERIFIED] Kod düzeltildi, mantık gözden geçirildi, ancak canlı admin
+                      panelde (gerçek tarayıcı + production DB) yeniden
+                      test edilmedi — bu oturumda production erişimi yoktu.
+  [BLOCKED]           Yalnızca yetki/erişim eksikliği nedeniyle tamamlanamadı.
+
+============================================================
+KRİTİK / BLOCKER BULGULAR
+============================================================
+
+[FIXED-VERIFIED] BUG-01 — Genel Bakış gelir/net toplamı ₺55.000 fazla
+  Kök neden : dashboard.php compute_finance_summary() ak_customer_financial_entries
+              tablosunu "Hakediş" başlıklı (migrate edilmiş ama silinmemiş) satırlar
+              dahil TÜM satırları topluyor, sonra ak_government_progress_payments
+              toplamını üstüne ekliyordu → mükerrer sayım.
+  Düzeltme  : dashboard.php'deki tüm ak_customer_financial_entries sorgularına
+              gelenler.php ile aynı `title NOT LIKE '%Hakediş%'` filtresi eklendi.
+  Kanıt     : İzole MySQL (PDO::ATTR_EMULATE_PREPARES=false) üzerinde önce/sonra
+              testi — eski formül mükerrer tutarı iki kez sayıyor, yeni formül
+              Gelenler ile birebir eşleşiyor. + src/test/dashboard-hakedis-dedup.test.ts
+  Commit    : fef2895
+
+[FIXED-UNVERIFIED] BUG-02 — Müşteri ödeme tarihi kullanıcı girişini kaybediyor
+[FIXED-UNVERIFIED] BUG-03 — Devlet hakedişi vade tarihi kayboluyor
+[FIXED-UNVERIFIED] BUG-08 — TÜFE/Vade Farkı baz tarihi kaydedilmiyor
+  Kök neden : Backend (fe_payload, gpp_payload) tarihi doğru şekilde kaydediyor —
+              koddan doğrulandı. Frontend'de CardEntryForm ve GppDialog, dialog
+              AÇIK KALIRKEN `initial`/`defaultAccountType` prop'u yeni bir referans
+              aldığında (ör. arka planda projects/entries sorgusu yeniden
+              çözüldüğünde) TÜM form durumunu sıfırlıyordu — yalnızca dialog
+              gerçekten açıldığında değil. Bu, kullanıcının henüz Kaydet'e
+              basmadan önce girdiği tarihin (ve diğer alanların) sessizce
+              varsayılana (bugün / boş) dönmesine yol açan gerçek ve kanıtlanmış
+              bir React kusuru. BUG-08'in "baz dönem = hedef dönem" hatası,
+              entry_date bozulmasının doğrudan sonucudur.
+  Düzeltme  : Her iki dialog artık yalnızca kapalı→açık geçişinde sıfırlanıyor
+              (wasOpen ref deseni).
+  Kanıt     : src/test/card-entry-form-date-persists-on-refetch.test.tsx — düzeltme
+              geri alındığında test (edit senaryosu) FAIL veriyor, düzeltmeyle PASS.
+  Uyarı     : Canlı tarayıcıda üretim veritabanına karşı yeniden test edilmedi
+              (bu oturumda production DB/tarayıcı erişimi yoktu). Kod seviyesinde
+              kanıtlanmış gerçek bir kusur sınıfı giderildi; QA-B senaryosunun
+              %100 aynı tetikleyiciyle oluştuğu iddia edilmiyor.
+  Commit    : 1089c12
+
+[FIXED-VERIFIED] BUG-04 — Personel tahsisat ve gelişmiş personel servisleri çalışmıyor
+  Kök neden : ak_roles, ak_employee_roles, ak_employee_cost_periods,
+              ak_employee_project_assignments, ak_employee_project_allocations
+              install-schema.php'de tanımlı ama bu installer manuel/gated —
+              yeni eklenen tablolar otomatik oluşmuyor. Tablo yoksa her sorgu
+              PDOException fırlatıyor → "... yüklenemedi".
+  Düzeltme  : (1) Yeni idempotent migration endpoint + Bakım Konsolu aksiyonu
+              ("Personel Tablolarını Oluştur") — mevcut gpp-collections-apply.php
+              desenini takip eder. (2) 5 endpoint'e de tablo-yok-ise zarif boş
+              liste dönen guard eklendi (500 yerine).
+  Kanıt     : İzole MySQL'de migration çalıştırıldı — 5 tablo doğru FK sırasında
+              oluştu, ikinci çalıştırma idempotent, rol ata/oku round-trip başarılı.
+  Uyarı     : Migration'ın PRODUCTION'da çalıştırılması gerekiyor (Bakım
+              Konsolu > "Personel Tablolarını Oluştur") — bu, üretim veritabanını
+              değiştiren bir aksiyon olduğu için bu oturumda otomatik
+              çalıştırılmadı (yetki/onay gerektirir, bkz. FINAL_REPAIR_REPORT).
+              Personel maliyetinin proje finansı/Gidenler'e otomatik yansıyıp
+              yansımadığı (kabul kriteri #6) migration çalıştırılıp canlı
+              yeniden test edilmeden doğrulanamaz.
+  Commit    : 6aea5ba
+
+============================================================
+YÜKSEK ÖNCELİKLİ BULGULAR
+============================================================
+
+[FIXED-VERIFIED] BUG-05 — Gidenler proje filtresi yeni projede boş sonuç
+  Kök neden : fetch_gidenler_rows() aynı adlı (:project_id vb.) parametreyi
+              3 UNION ALL dalında tekrar kullanıyor, tek sefer bind ediyordu.
+              db() PDO::ATTR_EMULATE_PREPARES=false ile bağlandığı için MySQL
+              native prepared statement aynı adı tekrar kabul etmiyor →
+              "SQLSTATE[HY093]: Invalid parameter number" → 500 → "Kayıt
+              bulunamadı".
+  Düzeltme  : Her UNION dalı kendi benzersiz son ekli parametrelerini alıyor
+              (:project_id_emp/_sup/_exp vb.), yalnızca dahil edilen dallar
+              için bind ediliyor. project-statement.php'de zaten kullanılan
+              doğru desenle (:pid/:pid2/:pid3/:pid4/:pid5) uyumlu hale getirildi.
+  Kanıt     : İzole MySQL'de eski kod aynı hatayla çöküyor (kanıtlandı), yeni
+              kod QA senaryosunu ve ek stres testlerini (tüm filtreler birlikte,
+              tek kaynak türü, filtresiz) doğru sonuçlarla geçiyor.
+  Commit    : 288d3b7
+
+============================================================
+ORTA ÖNCELİKLİ / UX BULGULARI
+============================================================
+
+[FIXED-VERIFIED] BUG-06 — Kurumsal müşteri telefon doğrulaması
+  Kök neden : Hem backend (normalize_customer_mobile_national_number) hem
+              frontend (normalizeTurkishPhone) yalnızca cep telefonu (05XX...)
+              kabul ediyordu; sabit hat (0216...) sessizce reddediliyordu.
+  Düzeltme  : Genel "Telefon" alanı artık sabit hat VEYA cep kabul ediyor;
+              WhatsApp ayrı, hâlâ yalnızca-cep bir kontrole (normalizeTurkishMobile /
+              normalize_customer_mobile_national_number) ayrıldı. Her iki formda
+              format ipucu placeholder eklendi.
+  Kanıt     : İzole PHP testi — QA'in bildirdiği numara (02169000002) artık
+              Telefon için kabul ediliyor, WhatsApp için hâlâ doğru şekilde
+              reddediliyor. + src/test/customer-master-data.test.ts güncellendi.
+  Commit    : c0b2beb
+
+[FIXED-VERIFIED] BUG-07 — Kurumsal "Yetkili Kişi" alanı kullanılamıyor
+  Kök neden : ak_customers.contact_person kolonu şemada yoktu; alan formda
+              kalıcı olarak devre dışı bırakılıp "Veritabanı alanı henüz
+              tanımlı değil" mesajı gösteriliyordu.
+  Düzeltme  : Alan tamamlandı (kaldırılmadı) — contact_person kolonu
+              install-schema.php'ye + idempotent ensure_contact_person_column()
+              migration'ına eklendi, customer_payload()'a ve her iki müşteri
+              formuna kablolandı.
+  Kanıt     : PHP lint + tsc + build temiz; alan artık normal bir metin girişi.
+  Commit    : c0b2beb
+
+[FIXED-VERIFIED] BUG-08 — bkz. BUG-02/03 (aynı kök neden zincirinin sonucu)
+
+[FIXED-VERIFIED] OBS-01 — Net Durum arama filtresi vs KPI kartları
+  Karar     : KPI kartları artık aktif filtre/aramaya göre kapsamlanıyor
+              (Gelenler/Gidenler'in kendi özet kartlarıyla aynı davranış).
+              Filtre aktifken kart etiketlerinde "(Filtrelenmiş)" gösteriliyor.
+              Koşan "Bakiye" bakiyesi kasıtlı olarak tam (filtresiz) geçmişe
+              göre hesaplanmaya devam ediyor.
+  Kanıt     : src/test/net-durum-filtered-kpi.test.ts
+  Commit    : 375154c
+
+[FIXED-VERIFIED] OBS-02 — Taslak projede public "Görüntüle" bağlantısı
+  Düzeltme  : Bağlantı yalnızca is_published=true iken gösteriliyor.
+  Not       : project-detail.php zaten yalnızca is_published=1 döndürüyor —
+              erişim kontrolü tarafında veri sızıntısı riski yoktu, yalnızca
+              admin UI'da yanıltıcı/ölü bir buton vardı.
+  Commit    : 2b75133
+
+[FIXED-VERIFIED] OBS-03 — Proje Dışa Aktar filtre kapsamı
+  Kök neden : exportProjectsWithImages() her zaman TÜM projeleri dışa
+              aktarıyordu, aktif filtre/arama'yı yok sayıyordu.
+  Düzeltme  : Fonksiyon artık isteğe bağlı proje-id listesi kabul ediyor;
+              handleExport() o an filtrelenmiş satırların id'lerini geçiyor.
+              Başarı toast'ı gerçek dışa aktarılan sayıyı gösteriyor.
+  Kanıt     : src/test/project-export-scoped-filter.test.ts
+  Commit    : f215f63
+
+============================================================
+DOĞRULAMA / TEST SONUÇLARI (bu oturum, çalışma kopyası üzerinde)
+============================================================
+
+  php -l (tüm public_html/*.php)  : PASS — hata yok
+  npx tsc --noEmit                 : PASS — hata yok
+  npm run lint                     : 232 hata / 31 uyarı — TAMAMI ÖNCEDEN VAR
+                                      OLAN taban çizgisi (232/30); bu oturum
+                                      0 yeni hata, 1 yeni uyarı ekledi (mevcut
+                                      computeGppKpi desenini izleyen
+                                      computeNetDurumTotals export'u için aynı
+                                      react-refresh uyarısı).
+  npm run test (vitest)            : PASS — 26 dosya, 139 test (13 yeni test
+                                      dahil), 0 başarısız.
+  npm run build                    : PASS — production build başarılı.
+  İzole MySQL doğrulaması          : BUG-01, BUG-04, BUG-05, BUG-06 için
+                                      gerçek MySQL (production'daki
+                                      PDO::ATTR_EMULATE_PREPARES=false ayarıyla
+                                      birebir) üzerinde ampirik önce/sonra testi.
+
+============================================================
+TAMAMLANAMAYAN / CANLI ORTAM GEREKTİREN AÇIK MADDELER
+============================================================
+
+1. BUG-04 migration'ının production'da çalıştırılması (Bakım Konsolu >
+   "Personel Tablolarını Oluştur") — üretim veritabanını değiştiren bir
+   aksiyon olduğu için bu oturumda otomatik çalıştırılmadı. Admin onayı/
+   tetiklemesi gerekiyor.
+2. Bu depodaki tüm kod düzeltmelerinin production'a FTP ile deploy edilmesi
+   (deploy-akinal.bat / scripts/deploy_ftp.py) — QA-B raporu canlı production
+   admin panelini test etti; git'teki düzeltmeler otomatik olarak canlıya
+   yansımaz.
+3. Kabul kriteri #6 (personel maliyetinin Gidenler/proje finansına otomatik
+   yansıması) — ak_employee_project_allocations (maliyet ATFI/raporlama
+   katmanı) ile ak_employee_financial_entries (gerçek ödeme/Gidenler kaynağı)
+   ayrı tablolardır; bunlar arasında otomatik senkronizasyon kodu bulunamadı.
+   Bunun kasıtlı bir tasarım mı (tahsisat = raporlama, ayrı bir "Personel
+   Gideri" kaydı ayrıca girilmeli) yoksa eksik bir entegrasyon mu olduğu,
+   migration çalıştırılıp canlı ortamda personel akışı uçtan uca yeniden
+   test edilmeden kesin olarak belirlenemez.
+4. QA-B raporundaki tüm senaryoların (BUG-02/03/08 dahil) gerçek "Cloud
+   Browser" ile production'a karşı regresyon testinin tekrarlanması —
+   bu oturumda üretim veritabanına veya bir tarayıcı oturumuna erişim
+   yoktu; tüm doğrulamalar izole yerel MySQL + Vitest ile yapıldı.
+
+Bu dört madde YALNIZCA gerçek üretim erişimi/yetkisi gerektirdiği için
+tamamlanamadı; kod tarafında yapılabilecek her şey tamamlandı, test edildi
+ve commit'lendi (bkz. AKINAL_ADMIN_E2E_DEMO_QA_FINAL_REPAIR_REPORT_2026-08-05_B.md).
