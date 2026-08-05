@@ -114,6 +114,12 @@ function compute_finance_summary(PDO $pdo): array
     // partially-paid rows aren't double-counted. Customer entries only (no GPP). Status here is
     // the same canonical fe_auto_status() value stored on each row (see finance-entry-helpers.php):
     // 'Gerçekleşti'/'Fazla Ödendi' (fully settled) are excluded — everything else has an open balance.
+    // Temporary migration safety filter: exclude Hakediş entries until cleanup migration is confirmed.
+    // These rows have already been copied into ak_government_progress_payments (summed separately
+    // below as $gppRow) but the source rows are not deleted until the cleanup migration runs — see
+    // migrations/government-progress-payments-cleanup.php. Without this filter, every migrated
+    // Hakediş row is counted twice (once here, once via $gppRow), inflating "Genel Bakış" income and
+    // net totals versus Gelenler/Net Durum, which already apply this same exclusion (gelenler.php).
     $custStmt = $pdo->prepare("
         SELECT
           COALESCE(SUM(amount_try), 0)     AS planned,
@@ -124,6 +130,7 @@ function compute_finance_summary(PDO $pdo): array
           SUM(CASE WHEN is_overdue = 1 THEN 1 ELSE 0 END) AS overdue_count,
           SUM(CASE WHEN status IN ('Planlanan', 'Gecikmiş', 'Kısmi Ödendi') THEN 1 ELSE 0 END) AS upcoming_count
         FROM ak_customer_financial_entries
+        WHERE title NOT LIKE '%Hakediş%'
     ");
     $custStmt->execute([':m' => $thisMonth]);
     $custRow = $custStmt->fetch() ?: [];
@@ -206,7 +213,7 @@ function fetch_customer_entries_overdue(PDO $pdo): array
         FROM ak_customer_financial_entries cfe
         LEFT JOIN ak_customers c ON c.id = cfe.customer_id
         LEFT JOIN ak_projects  p ON p.id = cfe.project_id
-        WHERE cfe.is_overdue = 1
+        WHERE cfe.is_overdue = 1 AND cfe.title NOT LIKE '%Hakediş%'
         ORDER BY cfe.entry_date ASC
         LIMIT 50
     ")->fetchAll() ?: [];
@@ -228,6 +235,7 @@ function fetch_customer_entries_upcoming(PDO $pdo): array
         LEFT JOIN ak_projects  p ON p.id = cfe.project_id
         WHERE cfe.status IN ('Planlanan','Kısmi Ödendi')
           AND cfe.entry_date BETWEEN :today AND :in30
+          AND cfe.title NOT LIKE '%Hakediş%'
         ORDER BY cfe.entry_date ASC
         LIMIT 50
     ");
@@ -255,7 +263,7 @@ function fetch_recent_movements(PDO $pdo): array
           FROM ak_customer_financial_entries cfe
           LEFT JOIN ak_projects p ON p.id = cfe.project_id
           LEFT JOIN ak_customers c ON c.id = cfe.customer_id
-          WHERE cfe.paid_amount_try > 0
+          WHERE cfe.paid_amount_try > 0 AND cfe.title NOT LIKE '%Hakediş%'
           UNION ALL
           SELECT efe.id, efe.title, e.full_name,
             efe.paid_amount_try, efe.paid_amount, efe.entry_date, 'Gider', 'employee',
@@ -340,7 +348,7 @@ function build_customer_cards(PDO $pdo): array
           COALESCE(SUM(CASE WHEN cfe.is_overdue = 1 THEN GREATEST(cfe.amount_try - cfe.paid_amount_try, 0) ELSE 0 END), 0) AS overdue_amount,
           COALESCE(SUM(CASE WHEN cfe.status = 'Planlanan' THEN cfe.amount_try ELSE 0 END), 0) AS upcoming_amount
         FROM ak_customers c
-        LEFT JOIN ak_customer_financial_entries cfe ON cfe.customer_id = c.id
+        LEFT JOIN ak_customer_financial_entries cfe ON cfe.customer_id = c.id AND cfe.title NOT LIKE '%Hakediş%'
         GROUP BY c.id, name
         ORDER BY remaining_receivable DESC, total_contract_value DESC
     ")->fetchAll() ?: [];
@@ -375,7 +383,7 @@ function build_project_cards(PDO $pdo): array
           COALESCE(SUM(CASE WHEN src = 'expense' AND paid_amount_try < amount_try THEN amount_try - paid_amount_try ELSE 0 END), 0) AS outstanding_payables
         FROM ak_projects p
         LEFT JOIN (
-          SELECT project_id, 'income'  AS src, amount_try, paid_amount_try FROM ak_customer_financial_entries
+          SELECT project_id, 'income'  AS src, amount_try, paid_amount_try FROM ak_customer_financial_entries WHERE title NOT LIKE '%Hakediş%'
           UNION ALL
           SELECT project_id, 'expense', amount_try, paid_amount_try FROM ak_employee_financial_entries
           UNION ALL
@@ -575,7 +583,7 @@ function build_financial_drilldowns(PDO $pdo): array
                   cfe.title AS label, cfe.paid_amount_try AS amount, cfe.entry_date AS row_date, 'Tahsilat' AS row_type
                 FROM ak_customer_financial_entries cfe
                 LEFT JOIN ak_customers c ON c.id = cfe.customer_id
-                WHERE cfe.paid_amount_try > 0 ORDER BY cfe.entry_date DESC LIMIT 8
+                WHERE cfe.paid_amount_try > 0 AND cfe.title NOT LIKE '%Hakediş%' ORDER BY cfe.entry_date DESC LIMIT 8
             "),
             'pending_payments' => fetch_dd($pdo, "
                 SELECT cfe.id, COALESCE(c.company_name, c.full_name, 'Müşteri') AS owner_name,
@@ -584,6 +592,7 @@ function build_financial_drilldowns(PDO $pdo): array
                 FROM ak_customer_financial_entries cfe
                 LEFT JOIN ak_customers c ON c.id = cfe.customer_id
                 WHERE cfe.status IN ('Planlanan','Kısmi Ödendi') AND cfe.amount_try > cfe.paid_amount_try
+                  AND cfe.title NOT LIKE '%Hakediş%'
                 ORDER BY cfe.entry_date ASC LIMIT 8
             "),
             'overdue_payments' => fetch_dd($pdo, "
@@ -592,7 +601,7 @@ function build_financial_drilldowns(PDO $pdo): array
                   cfe.entry_date AS row_date, 'Gecikmiş' AS row_type
                 FROM ak_customer_financial_entries cfe
                 LEFT JOIN ak_customers c ON c.id = cfe.customer_id
-                WHERE cfe.is_overdue = 1 ORDER BY cfe.entry_date ASC LIMIT 8
+                WHERE cfe.is_overdue = 1 AND cfe.title NOT LIKE '%Hakediş%' ORDER BY cfe.entry_date ASC LIMIT 8
             "),
         ],
         'project' => [
@@ -601,7 +610,7 @@ function build_financial_drilldowns(PDO $pdo): array
                   cfe.entry_date AS row_date, 'Gelir' AS row_type
                 FROM ak_customer_financial_entries cfe
                 LEFT JOIN ak_projects p ON p.id = cfe.project_id
-                WHERE cfe.paid_amount_try > 0 ORDER BY cfe.entry_date DESC LIMIT 8
+                WHERE cfe.paid_amount_try > 0 AND cfe.title NOT LIKE '%Hakediş%' ORDER BY cfe.entry_date DESC LIMIT 8
             "),
             'expense_rows' => fetch_dd($pdo, "
                 SELECT t.id, p.title AS owner_name, t.title AS label, t.paid_amount_try AS amount,
