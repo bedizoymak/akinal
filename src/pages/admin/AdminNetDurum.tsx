@@ -31,6 +31,19 @@ interface Movement {
   amount_try: number;
 }
 
+/**
+ * QA-B OBS-01: KPI totals must be computed from whatever row set is passed in — the caller is
+ * responsible for passing the currently filtered/searched rows (not the full unfiltered list),
+ * so a "QA DEMO" search narrows these totals the same way Gelenler/Gidenler's own summary cards
+ * already do. Pure function so the contract is independently testable (see
+ * src/test/net-durum-filtered-kpi.test.ts).
+ */
+export function computeNetDurumTotals(rows: Pick<Movement, "direction" | "amount_try">[]) {
+  const income = rows.filter((m) => m.direction === "gelir").reduce((s, m) => s + m.amount_try, 0);
+  const expense = rows.filter((m) => m.direction === "gider").reduce((s, m) => s + m.amount_try, 0);
+  return { income, expense, net: income - expense };
+}
+
 function todayLocalISO(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -89,7 +102,7 @@ export default function AdminNetDurum() {
 
   // Merge, clamp to <= today (never show future-dated rows regardless of URL tampering),
   // sort ascending by date then id for a stable running balance, then apply display filters.
-  const { movements, totals } = useMemo(() => {
+  const { movements } = useMemo(() => {
     const income: Movement[] = (gelenlerData?.entries ?? []).map((e) => ({
       id: e.id,
       entry_date: String(e.entry_date || "").slice(0, 10),
@@ -120,13 +133,16 @@ export default function AdminNetDurum() {
         return cmp !== 0 ? cmp : a.id.localeCompare(b.id);
       });
 
-    const totalIncome = all.filter((m) => m.direction === "gelir").reduce((s, m) => s + m.amount_try, 0);
-    const totalExpense = all.filter((m) => m.direction === "gider").reduce((s, m) => s + m.amount_try, 0);
-
-    return { movements: all, totals: { income: totalIncome, expense: totalExpense, net: totalIncome - totalExpense } };
+    return { movements: all };
   }, [gelenlerData?.entries, gidenlerData?.entries, today]);
 
-  const rows = useMemo(() => {
+  // The running "Bakiye" balance is always computed against the full, unfiltered movement
+  // history — a bank-statement balance must stay continuous regardless of which rows are
+  // currently displayed. The KPI cards, however, summarize whatever is actually filtered/
+  // searched into view (`filtered`, below) — matching how Gelenler/Gidenler's own summary
+  // cards already reconcile with their active filters, so a "QA DEMO" search here shows KPI
+  // totals for just those matching rows instead of silently staying at the global total.
+  const { rows, totals } = useMemo(() => {
     let balance = 0;
     const withBalance = movements.map((m) => {
       balance += m.direction === "gelir" ? m.amount_try : -m.amount_try;
@@ -145,7 +161,10 @@ export default function AdminNetDurum() {
       return true;
     });
 
-    return sortDesc ? [...filtered].reverse() : filtered;
+    return {
+      rows: sortDesc ? [...filtered].reverse() : filtered,
+      totals: computeNetDurumTotals(filtered),
+    };
   }, [movements, directionFilter, accountTypeFilter, dateFrom, q, sortDesc]);
 
   return (
@@ -154,15 +173,15 @@ export default function AdminNetDurum() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-border bg-card p-4 shadow-card-soft">
-          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> Toplam Gelir</div>
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> Toplam Gelir{hasActiveFilters && " (Filtrelenmiş)"}</div>
           <div className="mt-1 text-2xl font-extrabold tabular-nums text-emerald-600">{fmtTRY(totals.income)}</div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 shadow-card-soft">
-          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><TrendingDown className="h-3.5 w-3.5 text-red-600" /> Toplam Gider</div>
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><TrendingDown className="h-3.5 w-3.5 text-red-600" /> Toplam Gider{hasActiveFilters && " (Filtrelenmiş)"}</div>
           <div className="mt-1 text-2xl font-extrabold tabular-nums text-red-600">{fmtTRY(totals.expense)}</div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 shadow-card-soft">
-          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><Scale className="h-3.5 w-3.5" /> Net Bakiye</div>
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><Scale className="h-3.5 w-3.5" /> Net Bakiye{hasActiveFilters && " (Filtrelenmiş)"}</div>
           <div className={cn("mt-1 text-2xl font-extrabold tabular-nums", totals.net >= 0 ? "text-emerald-600" : "text-red-600")}>{fmtTRY(totals.net)}</div>
         </div>
       </div>
