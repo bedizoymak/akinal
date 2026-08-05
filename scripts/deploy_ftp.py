@@ -440,12 +440,28 @@ class Connection:
 
     # -- Directory management --
 
-    def ensure_dir(self, remote_dir: str) -> None:
-        """Walk path components and create any that are missing."""
+    def ensure_dir(self, remote_dir: str, *, dry_run: bool = False) -> None:
+        """Walk path components and create any that are missing.
+
+        Under dry_run, MKD is never issued (no mutation, matching how
+        upload() already gates STOR/MFMT). CWD is still attempted so
+        navigation state matches non-dry-run behavior for directories that
+        already exist; if CWD fails because the directory does not exist
+        yet (correctly not created, since we're only previewing), that
+        failure is swallowed rather than propagated — dry-run must never
+        surface an error caused by a mutation it deliberately skipped.
+        Non-dry-run behavior is unchanged from before this parameter existed.
+        """
         parts = remote_dir.strip("/").split("/")
         self.ftp.cwd("/")
         for part in parts:
             if not part:
+                continue
+            if dry_run:
+                try:
+                    self.ftp.cwd(part)
+                except Exception:
+                    return
                 continue
             try:
                 self.ftp.mkd(part)
@@ -769,7 +785,7 @@ def deploy_full(
     _total: int,
 ) -> None:
     """Recursively upload every file unconditionally."""
-    conn.ensure_dir(remote_dir)
+    conn.ensure_dir(remote_dir, dry_run=dry_run)
     conn.ftp.cwd(remote_dir)
     for item in iter_local(local_dir):
         remote_path = remote_join(remote_dir, item.name)
@@ -778,7 +794,7 @@ def deploy_full(
                 log("SKIP", f"{remote_path}  (excluded dir)")
                 stats.skipped += 1
                 continue
-            conn.ensure_dir(remote_path)
+            conn.ensure_dir(remote_path, dry_run=dry_run)
             deploy_full(conn, stats, item, remote_path,
                         dry_run=dry_run, _counter=_counter, _total=_total)
             conn.ftp.cwd(remote_dir)
@@ -865,7 +881,11 @@ def _diff_dir(
             log("DRY-RUN", f"would mkdir  {remote_dir}")
         stats.dirs_created += 1
     else:
-        conn.ensure_dir(remote_dir)  # still needed to set FTP CWD correctly
+        # Directory already exists remotely — only CWD navigation is needed,
+        # never MKD. Passing dry_run through here is what actually fixes the
+        # bug: this branch previously called ensure_dir() unconditionally,
+        # which issued MKD regardless of dry_run.
+        conn.ensure_dir(remote_dir, dry_run=dry_run)
 
     for item in iter_local(local_dir):
         remote_path = remote_join(remote_dir, item.name)
