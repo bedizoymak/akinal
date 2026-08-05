@@ -36,11 +36,8 @@ if (!is_dir($baseDir) && !mkdir($baseDir, 0755, true)) {
 }
 
 $safeName = preg_replace('/[^a-zA-Z0-9._-]+/', '-', $originalName) ?: 'image';
-$filename = date('YmdHis') . '-' . bin2hex(random_bytes(4)) . '-' . $safeName;
-$extension = '.' . $allowed[$mime];
-if (substr(strtolower($filename), -strlen($extension)) !== $extension) {
-    $filename .= '.' . $allowed[$mime];
-}
+$baseName = pathinfo($safeName, PATHINFO_FILENAME) ?: 'image';
+$filename = date('YmdHis') . '-' . bin2hex(random_bytes(4)) . '-' . $baseName . '.' . $allowed[$mime];
 
 $target = $baseDir . '/' . $filename;
 if (!move_uploaded_file($tmpName, $target)) {

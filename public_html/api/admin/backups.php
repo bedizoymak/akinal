@@ -33,7 +33,7 @@ $schedule = [
 $historyStmt = db()->query('SELECT * FROM ak_backup_runs ORDER BY started_at DESC LIMIT 5');
 $history = $historyStmt->fetchAll();
 
-$auditStmt = db()->query('SELECT * FROM ak_backup_audit_log ORDER BY created_at DESC LIMIT 100');
+$auditStmt = db()->query('SELECT * FROM ak_backup_audit_log ORDER BY created_at DESC LIMIT 5');
 $audit = $auditStmt->fetchAll();
 
 // Safe (path-free, exception-detail-free) five-state diagnostic: not_configured,
@@ -69,12 +69,16 @@ json_success([
     // This dashboard metric counts successfully uploaded packages still visible in Drive.
     // Keep the manifest classification intact: partial packages remain partial, while
     // incomplete/unknown folders are not counted. Retention deletion stays complete-only.
+    // Computed from the FULL classified list — never from the truncated display slice
+    // below — so this count always reflects true retained-package state.
     'retained_count' => count(array_filter($driveFolders, fn($f) => in_array($f['status'], ['complete', 'partial'], true))),
     'last_full_success' => $lastFullSuccess ?: null,
     'last_partial' => $lastPartial ?: null,
     'last_failure' => $lastFailure ?: null,
     'history' => $history,
     'audit_log' => $audit,
-    'drive_backups' => $driveFolders,
+    // Display-only slice (newest-first, already sorted above) — Drive listing,
+    // retention, and package contents are entirely unaffected by this limit.
+    'drive_backups' => array_slice($driveFolders, 0, 5),
     'drive_error' => $driveError,
 ]);
