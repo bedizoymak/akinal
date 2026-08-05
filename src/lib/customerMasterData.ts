@@ -16,16 +16,32 @@ export function normalizeCustomerNames(
     : { full_name: (fullName || "").trim(), company_name: "" };
 }
 
-export function normalizeTurkishPhone(value: string): string | null {
+function normalizeTurkishNationalDigits(value: string): string {
   let digits = value.replace(/\D/g, "");
   if (digits.startsWith("90") && digits.length === 12) digits = `0${digits.slice(2)}`;
-  if (digits.length === 10 && digits.startsWith("5")) digits = `0${digits}`;
+  if (digits.length === 10) digits = `0${digits}`;
+  return digits;
+}
+
+/**
+ * Accepts both mobile (05XXXXXXXXX) and landline (0[2-9]XXXXXXXXX) numbers — the primary
+ * "Telefon" contact field must not reject legitimate corporate landline numbers (see
+ * QA-B BUG-06). Mirrors normalize_customer_phone_national_number() in customers.php.
+ */
+export function normalizeTurkishPhone(value: string): string | null {
+  const digits = normalizeTurkishNationalDigits(value);
+  return /^0[2-9]\d{9}$/.test(digits) ? digits : null;
+}
+
+/** Mobile-only — used for WhatsApp, which requires a real mobile line. */
+export function normalizeTurkishMobile(value: string): string | null {
+  const digits = normalizeTurkishNationalDigits(value);
   return /^05\d{9}$/.test(digits) ? digits : null;
 }
 
 export function normalizeWhatsApp(value: string): string | null {
   if (!value.trim()) return "";
-  const phone = normalizeTurkishPhone(value);
+  const phone = normalizeTurkishMobile(value);
   return phone ? `90${phone.slice(1)}` : null;
 }
 

@@ -48,6 +48,7 @@ try {
 
     if ($method === 'POST') {
         ensure_account_type_columns();
+        ensure_contact_person_column();
         $input = read_admin_json_body();
         $id = uuid_v4();
         $payload = customer_payload($input);
@@ -62,6 +63,7 @@ try {
 
     if ($method === 'PATCH') {
         ensure_account_type_columns();
+        ensure_contact_person_column();
         $input = read_admin_json_body();
         $id = require_non_empty($input, 'id', 'Müşteri bulunamadı.');
         if (!fetch_customer($id)) {
@@ -211,6 +213,26 @@ function ensure_account_type_column(string $table, string $afterColumn): void
     db()->exec("ALTER TABLE {$table} ADD INDEX idx_{$table}_account_type (account_type)");
 }
 
+/**
+ * The Kurumsal "Yetkili Kişi" field ships in install-schema.php but that installer is gated
+ * and must be run manually — an environment that hasn't had it (re-)run yet would be missing
+ * the column, which is why the field was previously hard-disabled in the admin UI with a
+ * "Veritabanı alanı henüz tanımlı değil" placeholder instead of actually working. Idempotent:
+ * ALTER TABLE ... ADD COLUMN is a no-op (caught) if the column already exists.
+ */
+function ensure_contact_person_column(): void
+{
+    $statement = db()->query("SHOW COLUMNS FROM ak_customers LIKE 'contact_person'");
+    if ($statement && $statement->fetch()) {
+        return;
+    }
+    try {
+        db()->exec("ALTER TABLE ak_customers ADD COLUMN contact_person VARCHAR(150) NULL AFTER company_name");
+    } catch (PDOException $e) {
+        // 1060 = duplicate column — a concurrent request already added it, safe to ignore
+    }
+}
+
 function customer_payload(array $input): array
 {
     $customerType = nullable_string($input, 'customer_type') ?? 'Bireysel';
@@ -224,6 +246,7 @@ function customer_payload(array $input): array
     $isCorporate = $customerType === 'Kurumsal';
     $fullName = $isCorporate ? null : nullable_string($input, 'full_name');
     $companyName = $isCorporate ? nullable_string($input, 'company_name') : null;
+    $contactPerson = $isCorporate ? nullable_string($input, 'contact_person') : null;
     if ($isCorporate && $companyName === null) {
         json_error('Firma Resmi Ünvanı zorunludur.');
     }
@@ -255,6 +278,7 @@ function customer_payload(array $input): array
         'customer_type' => $customerType,
         'full_name' => $isCorporate ? null : $fullName,
         'company_name' => $isCorporate ? $companyName : null,
+        'contact_person' => $isCorporate ? $contactPerson : null,
         'phone' => $phone,
         'whatsapp' => $whatsapp,
         'email' => $email,
@@ -289,9 +313,13 @@ function replace_customer_projects(string $customerId, array $ids): void
 
 function normalize_customer_phone(string $value): string
 {
-    $nationalNumber = normalize_customer_mobile_national_number($value);
+    // The primary "Telefon" contact field accepts any valid Turkish landline OR mobile number
+    // (previously mobile-only, which silently/confusingly rejected legitimate corporate landline
+    // numbers such as 0216 900 00 02 — see QA-B BUG-06). WhatsApp remains mobile-only below,
+    // since a WhatsApp number must be a real mobile line.
+    $nationalNumber = normalize_customer_phone_national_number($value);
     if ($nationalNumber === null) {
-        json_error('Telefon 05XXXXXXXXX biçiminde 11 haneli olmalıdır.');
+        json_error('Telefon 0XXXXXXXXXX biçiminde 11 haneli olmalıdır (örn. 0212 555 44 33 veya 0532 555 44 33).');
     }
     return '0' . $nationalNumber;
 }
@@ -305,7 +333,25 @@ function normalize_customer_whatsapp(string $value): string
     return '90' . $nationalNumber;
 }
 
+/**
+ * Accepts both mobile (5XXXXXXXXX) and landline (2/3/4/8/9XXXXXXXXX) 10-digit national numbers.
+ */
+function normalize_customer_phone_national_number(string $value): ?string
+{
+    $digits = normalize_customer_national_digits($value);
+    return preg_match('/^[2-9]\d{9}$/', $digits) ? $digits : null;
+}
+
+/**
+ * Mobile-only 10-digit national number — used for WhatsApp, which requires a real mobile line.
+ */
 function normalize_customer_mobile_national_number(string $value): ?string
+{
+    $digits = normalize_customer_national_digits($value);
+    return preg_match('/^5\d{9}$/', $digits) ? $digits : null;
+}
+
+function normalize_customer_national_digits(string $value): string
 {
     $digits = preg_replace('/\D+/', '', $value) ?? '';
     if (strlen($digits) === 12 && substr($digits, 0, 2) === '90') {
@@ -313,7 +359,7 @@ function normalize_customer_mobile_national_number(string $value): ?string
     } elseif (strlen($digits) === 11 && substr($digits, 0, 1) === '0') {
         $digits = substr($digits, 1);
     }
-    return preg_match('/^5\d{9}$/', $digits) ? $digits : null;
+    return $digits;
 }
 
 function fetch_customer(string $id): ?array

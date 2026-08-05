@@ -6,17 +6,32 @@ import {
   isValidTaxOrIdentityNumber,
   normalizeCustomerContactPayload,
   normalizeCustomerNames,
+  normalizeTurkishMobile,
   normalizeTurkishPhone,
   normalizeWhatsApp,
 } from "@/lib/customerMasterData";
 import { whatsappLink } from "@/lib/finance";
 
 describe("customer master data normalization", () => {
-  it("normalizes supported Turkish phone input", () => {
+  it("normalizes supported Turkish phone input (mobile AND landline — QA-B BUG-06)", () => {
     expect(normalizeTurkishPhone("+90 (532) 123-45-67")).toBe("05321234567");
     expect(normalizeTurkishPhone("532 123 45 67")).toBe("05321234567");
     expect(normalizeTurkishPhone("05321234567")).toBe("05321234567");
-    expect(normalizeTurkishPhone("2121234567")).toBeNull();
+    // Landline numbers (e.g. an Istanbul 0216 corporate line) must be accepted by the general
+    // "Telefon" field — previously rejected with no visible feedback (QA-B BUG-06).
+    expect(normalizeTurkishPhone("2121234567")).toBe("02121234567");
+    expect(normalizeTurkishPhone("02169000002")).toBe("02169000002");
+    expect(normalizeTurkishPhone("0216 900 00 02")).toBe("02169000002");
+    // Still rejects garbage / wrong-length input.
+    expect(normalizeTurkishPhone("12345")).toBeNull();
+    expect(normalizeTurkishPhone("00169000002")).toBeNull();
+  });
+
+  it("restricts normalizeTurkishMobile to mobile numbers only (used for WhatsApp)", () => {
+    expect(normalizeTurkishMobile("05321234567")).toBe("05321234567");
+    expect(normalizeTurkishMobile("532 123 45 67")).toBe("05321234567");
+    // A landline must never validate as a mobile/WhatsApp number.
+    expect(normalizeTurkishMobile("02169000002")).toBeNull();
   });
 
   it("normalizes WhatsApp for deeplinks and formats display values", () => {
@@ -27,6 +42,8 @@ describe("customer master data normalization", () => {
     expect(formatTurkishPhone("905321234567")).toBe("0(532) 123 45 67");
     expect(normalizeWhatsApp("")).toBe("");
     expect(whatsappLink("05387220372", "Merhaba")).toBe("https://wa.me/905387220372?text=Merhaba");
+    // WhatsApp must still reject a landline even though the general phone field now accepts it.
+    expect(normalizeWhatsApp("02169000002")).toBeNull();
   });
 
   it("clears the irrelevant customer name field", () => {

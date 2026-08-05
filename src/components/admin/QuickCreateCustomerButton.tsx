@@ -25,6 +25,7 @@ const emptyForm = {
   customer_type: "Bireysel" as CustomerType,
   full_name: "",
   company_name: "",
+  contact_person: "",
   phone: "",
   whatsapp: "",
   email: "",
@@ -69,8 +70,12 @@ export function QuickCreateCustomerButton({ onCreated }: QuickCreateCustomerButt
     const email = form.email.trim();
     const taxNumber = form.tax_or_identity_number.trim();
 
-    if (!displayName || !phone) {
-      toast({ title: "Müşteri adı ve telefon zorunludur", variant: "destructive" });
+    if (!displayName) {
+      toast({ title: isCompany ? "Firma Resmi Ünvanı zorunludur" : "Ad Soyad zorunludur", variant: "destructive" });
+      return;
+    }
+    if (!phone) {
+      toast({ title: "Telefon 0XXXXXXXXXX biçiminde 11 haneli olmalıdır (örn. 0212 555 44 33 veya 0532 555 44 33)", variant: "destructive" });
       return;
     }
     if (whatsapp === null) { toast({ title: "WhatsApp numarası geçersiz", variant: "destructive" }); return; }
@@ -87,6 +92,7 @@ export function QuickCreateCustomerButton({ onCreated }: QuickCreateCustomerButt
     try {
       const customer = await createAdminCustomer({
         ...normalizedCustomer,
+        contact_person: isCompany ? form.contact_person.trim() || null : null,
         email,
         tax_or_identity_number: taxNumber,
         address: form.address.trim(),
@@ -146,7 +152,13 @@ export function QuickCreateCustomerButton({ onCreated }: QuickCreateCustomerButt
             {form.customer_type === "Kurumsal" && (
               <div>
                 <Label htmlFor="quick-customer-contact-person">Yetkili Kişi</Label>
-                <Input id="quick-customer-contact-person" name="contact_person" disabled placeholder="Veritabanı alanı henüz tanımlı değil" />
+                <Input
+                  id="quick-customer-contact-person"
+                  name="contact_person"
+                  placeholder="Ad Soyad"
+                  value={form.contact_person}
+                  onChange={(event) => setForm((current) => ({ ...current, contact_person: event.target.value }))}
+                />
               </div>
             )}
             <div>
@@ -155,6 +167,7 @@ export function QuickCreateCustomerButton({ onCreated }: QuickCreateCustomerButt
                 id="quick-customer-phone"
                 name="phone"
                 inputMode="tel"
+                placeholder="0212 555 44 33 veya 0532 555 44 33"
                 value={form.phone}
                 onChange={(event) => {
                   const value = event.target.value;

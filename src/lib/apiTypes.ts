@@ -414,6 +414,7 @@ export interface AdminCustomer {
   customer_type: string | null;
   full_name: string | null;
   company_name: string | null;
+  contact_person?: string | null;
   phone: string | null;
   whatsapp: string | null;
   email: string | null;

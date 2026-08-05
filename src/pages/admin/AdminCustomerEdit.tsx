@@ -20,7 +20,7 @@ import {
 } from "@/lib/customerMasterData";
 
 const empty = {
-  customer_type: "Bireysel", full_name: "", company_name: "",
+  customer_type: "Bireysel", full_name: "", company_name: "", contact_person: "",
   phone: "", whatsapp: "", email: "", tax_or_identity_number: "",
   address: "", city: "", district: "", status: "Aktif", notes: "",
 };
@@ -87,7 +87,7 @@ export default function AdminCustomerEdit() {
     const { phone, whatsapp } = normalizedCustomer;
     const email = (form.email || "").trim();
     const taxNumber = (form.tax_or_identity_number || "").trim();
-    if (!phone) { toast({ title: "Telefon 05XXXXXXXXX biçiminde 11 haneli olmalıdır", variant: "destructive" }); return; }
+    if (!phone) { toast({ title: "Telefon 0XXXXXXXXXX biçiminde 11 haneli olmalıdır (örn. 0212 555 44 33 veya 0532 555 44 33)", variant: "destructive" }); return; }
     if (whatsapp === null) { toast({ title: "WhatsApp numarası geçerli bir Türkiye cep telefonu olmalıdır", variant: "destructive" }); return; }
     if (isCorporate && !(form.company_name || "").trim()) { toast({ title: "Firma Resmi Ünvanı zorunludur", variant: "destructive" }); return; }
     if (!isCorporate && !(form.full_name || "").trim()) { toast({ title: "Ad Soyad zorunludur", variant: "destructive" }); return; }
@@ -151,8 +151,8 @@ export default function AdminCustomerEdit() {
             onChange={(e) => set(form.customer_type === "Kurumsal" ? "company_name" : "full_name", e.target.value)}
           />
         </div>
-        {form.customer_type === "Kurumsal" && <div><Label htmlFor="customer-contact-person">Yetkili Kişi</Label><Input id="customer-contact-person" name="contact_person" disabled placeholder="Veritabanı alanı henüz tanımlı değil" /></div>}
-        <div><Label htmlFor="customer-phone">Telefon *</Label><Input id="customer-phone" name="phone" inputMode="tel" value={form.phone || ""} onChange={(e) => changePhone(e.target.value)} onBlur={() => set("phone", formatTurkishPhone(form.phone))} /></div>
+        {form.customer_type === "Kurumsal" && <div><Label htmlFor="customer-contact-person">Yetkili Kişi</Label><Input id="customer-contact-person" name="contact_person" value={form.contact_person || ""} onChange={(e) => set("contact_person", e.target.value)} placeholder="Ad Soyad" /></div>}
+        <div><Label htmlFor="customer-phone">Telefon *</Label><Input id="customer-phone" name="phone" inputMode="tel" placeholder="0212 555 44 33 veya 0532 555 44 33" value={form.phone || ""} onChange={(e) => changePhone(e.target.value)} onBlur={() => set("phone", formatTurkishPhone(form.phone))} /></div>
         <div><Label htmlFor="customer-whatsapp">WhatsApp</Label><Input id="customer-whatsapp" name="whatsapp" inputMode="tel" value={form.whatsapp || ""} onChange={(e) => { setWhatsappEdited(true); set("whatsapp", e.target.value); }} onBlur={() => set("whatsapp", formatTurkishPhone(form.whatsapp))} /></div>
         <div><Label htmlFor="customer-email">E-posta</Label><Input id="customer-email" name="email" type="email" value={form.email || ""} onChange={(e) => set("email", e.target.value)} /></div>
         <div><Label htmlFor="customer-tax-number">T.C. Kimlik / Vergi No{form.customer_type === "Kurumsal" ? " *" : ""}</Label><Input id="customer-tax-number" name="tax_or_identity_number" inputMode="numeric" maxLength={11} value={form.tax_or_identity_number || ""} onChange={(e) => set("tax_or_identity_number", e.target.value.replace(/\D/g, ""))} /></div>

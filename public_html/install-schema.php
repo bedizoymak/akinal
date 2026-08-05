@@ -183,6 +183,7 @@ CREATE TABLE IF NOT EXISTS ak_customers (
   customer_type VARCHAR(100) NOT NULL DEFAULT 'Bireysel',
   full_name VARCHAR(255) NULL,
   company_name VARCHAR(255) NULL,
+  contact_person VARCHAR(150) NULL,
   phone VARCHAR(100) NOT NULL DEFAULT '',
   whatsapp VARCHAR(100) NULL,
   email VARCHAR(255) NULL,
