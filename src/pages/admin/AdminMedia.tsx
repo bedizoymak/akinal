@@ -1,5 +1,6 @@
 import { type DragEvent, useEffect, useRef, useState } from "react";
 import {
+  AlertTriangle,
   Copy,
   FolderOpen,
   Image as ImageIcon,
@@ -51,6 +52,16 @@ import { resolveImageUrl } from "@/lib/projects";
 import { cn } from "@/lib/utils";
 
 // ─── helpers ───────────────────────────────────────────────────────────────
+
+// P1-5: "in use" (is_protected) and "file actually exists" (file_missing)
+// are orthogonal — a row can be referenced by a project/setting while its
+// physical file is gone. isMissing combines the server-confirmed check
+// (local uploads only) with a client-side fallback (brokenUrls, populated
+// by the <img> onError handler) for anything the server couldn't verify —
+// e.g. external URLs, or the SPA's index.html masquerading as the image.
+export function isMediaImageMissing(image: Pick<AdminMediaImage, "file_missing" | "image_url">, brokenUrls: Set<string>): boolean {
+  return image.file_missing === true || brokenUrls.has(image.image_url);
+}
 
 function sourceLabel(image: AdminMediaImage) {
   if (image.source_label) return image.source_label;
@@ -377,6 +388,11 @@ export default function AdminMedia() {
   const [isDragging, setIsDragging] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminMediaImage | null>(null);
   const [showNewAlbumForm, setShowNewAlbumForm] = useState(false);
+  // Client-side fallback detection (P1-5): catches broken images the server
+  // couldn't verify (external URLs) or a browser-level load failure — the
+  // SPA's index.html fallback for a missing local file is HTML, not an
+  // image, so <img> reliably fires onError for it.
+  const [brokenUrls, setBrokenUrls] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -576,10 +592,25 @@ export default function AdminMedia() {
           ) : (
             <TooltipProvider>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-                {filtered.map((image) => (
+                {filtered.map((image) => {
+                  const isMissing = isMediaImageMissing(image, brokenUrls);
+                  return (
                   <div key={image.id || image.image_url} className="overflow-hidden rounded-md border border-border bg-card shadow-card-soft">
                     <div className="relative aspect-square bg-muted">
-                      <img src={resolveImageUrl(image.image_url)} alt={image.alt_text || image.title || ""} className="h-full w-full object-cover" loading="lazy" />
+                      {isMissing ? (
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-destructive">
+                          <AlertTriangle className="h-6 w-6" />
+                          <span className="text-[11px] font-semibold">Dosya eksik</span>
+                        </div>
+                      ) : (
+                        <img
+                          src={resolveImageUrl(image.image_url)}
+                          alt={image.alt_text || image.title || ""}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          onError={() => setBrokenUrls((prev) => (prev.has(image.image_url) ? prev : new Set(prev).add(image.image_url)))}
+                        />
+                      )}
                       <div className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-1 text-[11px] font-semibold text-white">
                         {sourceLabel(image)}
                       </div>
@@ -591,7 +622,9 @@ export default function AdminMedia() {
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>
-                            {image.protected_reason || "Bu görsel önce ilgili ayardan/projeden kaldırılmalı"}
+                            {isMissing
+                              ? "Bu görsel bir yerde referans gösteriliyor ancak fiziksel dosyası bulunamadı — önce yeniden yükleyin veya referansı kaldırın."
+                              : (image.protected_reason || "Bu görsel önce ilgili ayardan/projeden kaldırılmalı")}
                           </TooltipContent>
                         </Tooltip>
                       )}
@@ -639,7 +672,8 @@ export default function AdminMedia() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </TooltipProvider>
           )}

@@ -19,6 +19,7 @@ export function EmployeeRolesPanel({ employeeId }: Props) {
   const [roles, setRoles] = useState<AkRole[]>([]);
   const [employeeRoles, setEmployeeRoles] = useState<AkEmployeeRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedRoleId, setSelectedRoleId] = useState("");
@@ -29,18 +30,21 @@ export function EmployeeRolesPanel({ employeeId }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const [allRoles, empRoles] = await Promise.all([
-        getAdminRoles(true),
-        getEmployeeRoles(employeeId),
-      ]);
-      setRoles(allRoles);
-      setEmployeeRoles(empRoles);
-    } catch {
+    setLoadError(false);
+    // Independent settlement so a failure on one call (e.g. the employee-role
+    // table) never discards an otherwise-successful result from the other
+    // (e.g. the canonical roles list) — see P1-1.
+    const [rolesResult, empRolesResult] = await Promise.allSettled([
+      getAdminRoles(true),
+      getEmployeeRoles(employeeId),
+    ]);
+    if (rolesResult.status === "fulfilled") setRoles(rolesResult.value);
+    if (empRolesResult.status === "fulfilled") setEmployeeRoles(empRolesResult.value);
+    if (rolesResult.status === "rejected" || empRolesResult.status === "rejected") {
+      setLoadError(true);
       toast({ title: "Roller yüklenemedi.", variant: "destructive" });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }, [employeeId, toast]);
 
   useEffect(() => { load(); }, [load]);
@@ -116,7 +120,12 @@ export function EmployeeRolesPanel({ employeeId }: Props) {
         </Button>
       </div>
 
-      {activeRoles.length === 0 && historicRoles.length === 0 ? (
+      {loadError ? (
+        <div className="rounded-md border border-dashed border-destructive/40 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>Roller yüklenemedi.</span>
+          <Button size="sm" variant="outline" onClick={() => load()}>Tekrar Dene</Button>
+        </div>
+      ) : activeRoles.length === 0 && historicRoles.length === 0 ? (
         <div className="rounded-md border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
           Henüz rol atanmamış.
         </div>

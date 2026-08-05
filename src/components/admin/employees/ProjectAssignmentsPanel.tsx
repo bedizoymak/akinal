@@ -20,6 +20,7 @@ export function ProjectAssignmentsPanel({ employeeId }: Props) {
   const [assignments, setAssignments] = useState<AkEmployeeProjectAssignment[]>([]);
   const [projects, setProjects] = useState<PublicProject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ project_id: "", start_date: new Date().toISOString().slice(0, 10), notes: "" });
@@ -29,18 +30,20 @@ export function ProjectAssignmentsPanel({ employeeId }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const [assgns, projs] = await Promise.all([
-        getEmployeeAssignments(employeeId),
-        getAdminProjects(),
-      ]);
-      setAssignments(assgns);
-      setProjects(projs);
-    } catch {
+    setLoadError(false);
+    // Independent settlement so a failing assignments call never wipes out an
+    // otherwise-successful project list, and vice versa — see P1-1.
+    const [assgnsResult, projsResult] = await Promise.allSettled([
+      getEmployeeAssignments(employeeId),
+      getAdminProjects(),
+    ]);
+    if (assgnsResult.status === "fulfilled") setAssignments(assgnsResult.value);
+    if (projsResult.status === "fulfilled") setProjects(projsResult.value);
+    if (assgnsResult.status === "rejected" || projsResult.status === "rejected") {
+      setLoadError(true);
       toast({ title: "Proje atamaları yüklenemedi.", variant: "destructive" });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }, [employeeId, toast]);
 
   useEffect(() => { load(); }, [load]);
@@ -111,7 +114,12 @@ export function ProjectAssignmentsPanel({ employeeId }: Props) {
         </Button>
       </div>
 
-      {assignments.length === 0 ? (
+      {loadError ? (
+        <div className="rounded-md border border-dashed border-destructive/40 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>Proje atamaları yüklenemedi.</span>
+          <Button size="sm" variant="outline" onClick={() => load()}>Tekrar Dene</Button>
+        </div>
+      ) : assignments.length === 0 ? (
         <div className="rounded-md border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
           Henüz proje ataması yok.
         </div>

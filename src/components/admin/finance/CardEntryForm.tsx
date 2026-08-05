@@ -47,11 +47,16 @@ interface Props {
   title?: string;
   direction?: "income" | "expense";
   showInflation?: boolean;
+  // Account classification to preselect for a NEW entry (e.g. the active
+  // Resmi/Gayri Resmi tab it was opened from). Ignored when `initial` already
+  // carries an account_type (editing an existing entry). Defaults to "resmi"
+  // only when neither is provided. See P1-3.
+  defaultAccountType?: CardEntryAccountType;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-function defaultValues(initial?: Partial<CardFinancialEntry>): CardEntryFormValues {
+export function defaultValues(initial?: Partial<CardFinancialEntry>, defaultAccountType?: CardEntryAccountType): CardEntryFormValues {
   return {
     title: initial?.title ?? "",
     notes: initial?.notes ?? "",
@@ -61,7 +66,7 @@ function defaultValues(initial?: Partial<CardFinancialEntry>): CardEntryFormValu
     currency: (initial?.currency as CardEntryCurrency) ?? "TRY",
     exchange_rate_to_try: initial?.exchange_rate_to_try != null ? String(initial.exchange_rate_to_try) : "1",
     is_exchange_rate_manual: Boolean(initial?.is_exchange_rate_manual),
-    account_type: (initial?.account_type as CardEntryAccountType) ?? "resmi",
+    account_type: (initial?.account_type as CardEntryAccountType) ?? defaultAccountType ?? "resmi",
     payment_method: (initial?.payment_method as CardEntryPaymentMethod) ?? "Nakit",
     project_id: initial?.project_id ?? "",
     inflation_enabled: Boolean(initial?.inflation_enabled),
@@ -69,17 +74,17 @@ function defaultValues(initial?: Partial<CardFinancialEntry>): CardEntryFormValu
   };
 }
 
-export function CardEntryForm({ open, onClose, onSave, initial, projects, title, direction, showInflation }: Props) {
-  const [values, setValues] = useState<CardEntryFormValues>(defaultValues(initial));
+export function CardEntryForm({ open, onClose, onSave, initial, projects, title, direction, showInflation, defaultAccountType }: Props) {
+  const [values, setValues] = useState<CardEntryFormValues>(defaultValues(initial, defaultAccountType));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
-      setValues(defaultValues(initial));
+      setValues(defaultValues(initial, defaultAccountType));
       setError(null);
     }
-  }, [open, initial]);
+  }, [open, initial, defaultAccountType]);
 
   function set<K extends keyof CardEntryFormValues>(key: K, val: CardEntryFormValues[K]) {
     setValues((prev) => {

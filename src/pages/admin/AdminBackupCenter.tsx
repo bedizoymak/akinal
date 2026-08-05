@@ -37,7 +37,7 @@ function formatBytes(bytes: number | null | undefined): string {
   return `${value.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
-function formatDate(value: string | null | undefined): string {
+export function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
   // MySQL UTC timestamps arrive without an offset; Drive timestamps already
   // carry Z/offset information. Normalize the former to UTC so both sources

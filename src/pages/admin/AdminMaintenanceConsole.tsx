@@ -180,7 +180,7 @@ function ActionCard({
           <div className="font-semibold text-sm">{action.title}</div>
           <div className="mt-1 text-[12px] text-muted-foreground leading-relaxed">{action.description}</div>
         </div>
-        <Button size="sm" onClick={() => onRun(action)} className="shrink-0 gap-1.5">
+        <Button size="sm" onClick={() => onRun(action)} className="shrink-0 gap-1.5" aria-label={`Çalıştır: ${action.title}`} title={`Çalıştır: ${action.title}`}>
           <Play className="h-3.5 w-3.5" />
           Çalıştır
         </Button>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getProjectDetail, getPublishedProjects } from "@/lib/apiClient";
+import { getProjectDetail, getPublishedProjects, getAdminProject, getAdminProjectImages } from "@/lib/apiClient";
 import Seo from "@/components/site/Seo";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, MapPin, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
@@ -47,7 +47,15 @@ type ProjectSibling = {
   created_at: string;
 };
 
-export default function ProjectDetail() {
+// previewProjectId (P2-1): when set, this renders an AUTHENTICATED admin
+// preview of a project by id — including unpublished drafts — via the
+// admin-only endpoints (getAdminProject/getAdminProjectImages), instead of
+// the public getProjectDetail(slug) endpoint (which only ever returns
+// published projects, by design — never weakened here). Only reachable
+// through an /admin/* route, so it inherits the same admin-session gate as
+// every other admin page. When previewProjectId is absent, behavior is
+// byte-for-byte the original public page.
+export default function ProjectDetail({ previewProjectId }: { previewProjectId?: string } = {}) {
   const { slug } = useParams();
   const [project, setProject] = useState<ProjectDetailData | null>(null);
   const [images, setImages] = useState<ProjectImage[]>([]);
@@ -58,6 +66,29 @@ export default function ProjectDetail() {
   const { settings } = useSiteSettings();
 
   useEffect(() => {
+    if (previewProjectId) {
+      setLoading(true);
+      (async () => {
+        try {
+          const [projectData, imgs] = await Promise.all([
+            getAdminProject(previewProjectId),
+            getAdminProjectImages(previewProjectId),
+          ]);
+          setProject(projectData as unknown as ProjectDetailData | null);
+          setImages((imgs as ProjectImage[]) || []);
+          setSiblings([]);
+        } catch (error) {
+          console.error("Admin project preview API error:", error);
+          setProject(null);
+          setImages([]);
+          setSiblings([]);
+        } finally {
+          setLoading(false);
+        }
+      })();
+      return;
+    }
+
     if (!slug) return;
     setLoading(true);
     (async () => {
@@ -80,15 +111,25 @@ export default function ProjectDetail() {
         setLoading(false);
       }
     })();
-  }, [slug]);
+  }, [slug, previewProjectId]);
 
   if (loading) return <div className="container-narrow py-32 text-center text-muted-foreground">Yükleniyor...</div>;
   if (!project) return (
     <div className="container-narrow py-32 text-center">
       <h1 className="font-display text-3xl font-bold mb-4">Proje bulunamadı</h1>
-      <Button asChild><Link to="/projelerimiz">Projelere Dön</Link></Button>
+      {previewProjectId ? (
+        <Button asChild><Link to={`/admin/projeler/${previewProjectId}`}>Proje Düzenlemeye Dön</Link></Button>
+      ) : (
+        <Button asChild><Link to="/projelerimiz">Projelere Dön</Link></Button>
+      )}
     </div>
   );
+
+  const previewBanner = previewProjectId ? (
+    <div className="bg-amber-500 py-2 text-center text-sm font-semibold text-white">
+      Taslak Önizleme — bu sayfa yalnızca size görünür, proje henüz yayınlanmadı.
+    </div>
+  ) : null;
 
   const sliderImages: ProjectImage[] = images.length > 0 ? images : (project.cover_image_url ? [{ id: "cover", image_url: project.cover_image_url, title: project.title }] : []);
   const idx = siblings.findIndex((s) => s.id === project.id);
@@ -110,16 +151,19 @@ export default function ProjectDetail() {
 
   return (
     <>
-      <Seo
-        title={project.seo_title || project.title}
-        description={project.seo_description || project.short_description}
-        canonical={`/projelerimiz/${project.slug}`}
-        breadcrumbs={[
-          { name: "Ana Sayfa", path: "/" },
-          { name: "Projelerimiz", path: "/projelerimiz" },
-          { name: project.title, path: `/projelerimiz/${project.slug}` },
-        ]}
-      />
+      {previewBanner}
+      {!previewProjectId && (
+        <Seo
+          title={project.seo_title || project.title}
+          description={project.seo_description || project.short_description}
+          canonical={`/projelerimiz/${project.slug}`}
+          breadcrumbs={[
+            { name: "Ana Sayfa", path: "/" },
+            { name: "Projelerimiz", path: "/projelerimiz" },
+            { name: project.title, path: `/projelerimiz/${project.slug}` },
+          ]}
+        />
+      )}
 
       {/* Hero */}
       <section className="relative h-[60vh] md:h-[70vh] overflow-hidden bg-primary">

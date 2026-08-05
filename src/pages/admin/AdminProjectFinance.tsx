@@ -1,4 +1,5 @@
-import { useParams, Link } from "react-router-dom";
+import { useEffect } from "react";
+import { useParams, Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, TrendingDown, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -63,12 +64,22 @@ function StatementTable({ rows }: { rows: ProjectStatementRow[] }) {
 
 export default function AdminProjectFinance() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["project-statement", id],
     queryFn: () => getProjectStatement(id!),
     enabled: !!id,
   });
+
+  // Deep link support for the project list's "Giderler" button
+  // (/admin/projeler/:id/finans#giderler) — replaces the deprecated
+  // /admin/projeler/:id/giderler route (P1-2).
+  useEffect(() => {
+    if (!isLoading && location.hash === "#giderler") {
+      document.getElementById("giderler")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [isLoading, location.hash]);
 
   if (!id) return <div className="py-12 text-center text-sm text-muted-foreground">Proje bulunamadı.</div>;
 
@@ -158,7 +169,7 @@ export default function AdminProjectFinance() {
             )}
           </section>
 
-          <section>
+          <section id="giderler">
             <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-destructive">
               <TrendingDown className="h-4 w-4" /> Giderler ({expenseRows.length})
             </div>

@@ -37,6 +37,7 @@ export function ProjectEmployeeCostPanel({ projectId }: Props) {
   const [allocations, setAllocations] = useState<AkEmployeeProjectAllocation[]>([]);
   const [employees, setEmployees] = useState<AdminEmployee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -55,18 +56,20 @@ export function ProjectEmployeeCostPanel({ projectId }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const [allocs, emps] = await Promise.all([
-        getProjectAllocations(projectId),
-        getAdminEmployees(),
-      ]);
-      setAllocations(allocs);
-      setEmployees(emps);
-    } catch {
+    setLoadError(false);
+    // Independent settlement so a failing allocations call never wipes out an
+    // otherwise-successful employee list — P1-1.
+    const [allocsResult, empsResult] = await Promise.allSettled([
+      getProjectAllocations(projectId),
+      getAdminEmployees(),
+    ]);
+    if (allocsResult.status === "fulfilled") setAllocations(allocsResult.value);
+    if (empsResult.status === "fulfilled") setEmployees(empsResult.value);
+    if (allocsResult.status === "rejected" || empsResult.status === "rejected") {
+      setLoadError(true);
       toast({ title: "Personel maliyet verileri yüklenemedi.", variant: "destructive" });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }, [projectId, toast]);
 
   useEffect(() => { load(); }, [load]);
@@ -176,6 +179,11 @@ export function ProjectEmployeeCostPanel({ projectId }: Props) {
 
       {loading ? (
         <div className="py-4 text-sm text-muted-foreground">Yükleniyor...</div>
+      ) : loadError ? (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-dashed border-destructive/40 px-4 py-3 text-sm text-destructive">
+          <span>Personel maliyet verileri yüklenemedi.</span>
+          <Button size="sm" variant="outline" onClick={() => load()}>Tekrar Dene</Button>
+        </div>
       ) : allocations.length === 0 ? (
         <div className="rounded-md border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
           Henüz personel tahsisatı yok.

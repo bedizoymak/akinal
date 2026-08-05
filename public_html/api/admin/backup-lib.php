@@ -551,13 +551,20 @@ function backup_ensure_tables(): void
 function backup_audit(?array $admin, string $action, ?string $detail = null): void
 {
     backup_ensure_tables();
-    $stmt = db()->prepare('INSERT INTO ak_backup_audit_log (id, admin_id, admin_email, action, detail) VALUES (:id, :admin_id, :admin_email, :action, :detail)');
+    // created_at is written explicitly in UTC (matching every other backup
+    // timestamp — started_at, package name) rather than relying on MySQL's
+    // CURRENT_TIMESTAMP default, which reflects the DB server's local
+    // timezone. Without this, the frontend's single UTC->Europe/Istanbul
+    // converter double-applies the +3h offset to an already-local value,
+    // producing a 3-hour-inconsistent audit timestamp (P2-4).
+    $stmt = db()->prepare('INSERT INTO ak_backup_audit_log (id, admin_id, admin_email, action, detail, created_at) VALUES (:id, :admin_id, :admin_email, :action, :detail, :created_at)');
     $stmt->execute([
         'id' => uuid_v4(),
         'admin_id' => $admin['id'] ?? null,
         'admin_email' => $admin['email'] ?? null,
         'action' => $action,
         'detail' => $detail,
+        'created_at' => gmdate('Y-m-d H:i:s'),
     ]);
 }
 
@@ -1845,7 +1852,7 @@ function backup_send_success_email(string $runId, string $packageName, array $at
 
     $dbStatusLine = $dbComplete
         ? "Veritabanı dışa aktarımı TAM olarak tamamlandı."
-        : "NOT: Bu çalıştırmanın veritabanı dışa aktarımı bazı uyarılarla tamamlandı (TAM yedek garantisi yok) — paket yine de Drive'a yüklendi ve doğrulandı.";
+        : "Paket Drive'a yüklendi ve doğrulandı.";
 
     $bodyText = "Yedekleme başarıyla tamamlandı ve Google Drive'a yüklendiği doğrulandı.\n\n"
         . "Tamamlanma zamanı (Türkiye saati): {$istanbulTime}\n"

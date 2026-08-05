@@ -60,15 +60,18 @@ export function CostPeriodsPanel({ employeeId }: Props) {
   const { toast } = useToast();
   const [periods, setPeriods] = useState<AkEmployeeCostPeriod[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FormValues>(emptyForm);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       setPeriods(await getEmployeeCostPeriods(employeeId));
     } catch {
+      setLoadError(true);
       toast({ title: "Maliyet dönemleri yüklenemedi.", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -135,7 +138,12 @@ export function CostPeriodsPanel({ employeeId }: Props) {
         </Button>
       </div>
 
-      {periods.length === 0 ? (
+      {loadError ? (
+        <div className="rounded-md border border-dashed border-destructive/40 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>Maliyet dönemleri yüklenemedi.</span>
+          <Button size="sm" variant="outline" onClick={() => load()}>Tekrar Dene</Button>
+        </div>
+      ) : periods.length === 0 ? (
         <div className="rounded-md border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
           Henüz maliyet dönemi girilmemiş.
         </div>

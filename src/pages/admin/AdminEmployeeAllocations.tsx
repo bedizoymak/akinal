@@ -35,6 +35,7 @@ export default function AdminEmployeeAllocations() {
   const [allocations, setAllocations] = useState<AkEmployeeProjectAllocation[]>([]);
   const [projects, setProjects] = useState<PublicProject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -54,18 +55,21 @@ export default function AdminEmployeeAllocations() {
   const load = useCallback(async () => {
     if (!employeeId) return;
     setLoading(true);
-    try {
-      const [allocs, projs] = await Promise.all([
-        getEmployeeAllocations(employeeId),
-        getAdminProjects(),
-      ]);
-      setAllocations(allocs);
-      setProjects(projs);
-    } catch {
+    setLoadError(false);
+    // Independent settlement so a failing allocations call never wipes out an
+    // otherwise-successful project list (the same getAdminProjects() call
+    // that already works in the generic financial-movement dialog) — P1-1.
+    const [allocsResult, projsResult] = await Promise.allSettled([
+      getEmployeeAllocations(employeeId),
+      getAdminProjects(),
+    ]);
+    if (allocsResult.status === "fulfilled") setAllocations(allocsResult.value);
+    if (projsResult.status === "fulfilled") setProjects(projsResult.value);
+    if (allocsResult.status === "rejected" || projsResult.status === "rejected") {
+      setLoadError(true);
       toast({ title: "Tahsisat verileri yüklenemedi.", variant: "destructive" });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }, [employeeId, toast]);
 
   useEffect(() => { load(); }, [load]);
@@ -172,6 +176,11 @@ export default function AdminEmployeeAllocations() {
 
       {loading ? (
         <div className="py-8 text-center text-sm text-muted-foreground">Yükleniyor...</div>
+      ) : loadError ? (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-dashed border-destructive/40 px-4 py-8 text-center text-sm text-destructive">
+          <span>Tahsisat verileri yüklenemedi.</span>
+          <Button size="sm" variant="outline" onClick={() => load()}>Tekrar Dene</Button>
+        </div>
       ) : allocations.length === 0 ? (
         <div className="rounded-md border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
           Henüz tahsisat kaydı yok. "Tahsisat Ekle" ile başlayın.

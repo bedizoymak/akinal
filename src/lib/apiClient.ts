@@ -396,6 +396,10 @@ export type AdminMediaImage = ProjectImage & {
   can_delete?: boolean;
   is_protected?: boolean;
   protected_reason?: string | null;
+  // true = confirmed missing on disk, false = confirmed present, null =
+  // unknown/not checked (e.g. an external URL). Independent of is_protected
+  // — a row can be "in use" while its file is gone. See P1-5.
+  file_missing?: boolean | null;
   projects?: { title?: string | null; slug?: string | null };
   album_ids?: string[];
 };
@@ -1375,7 +1379,7 @@ export async function getProjectStatement(projectId: string): Promise<ProjectSta
 
 // ── Gelenler (global income view) ─────────────────────────────────────────────
 
-export async function getGelenler(params: { project_id?: string; customer_id?: string; account_type?: string; status?: string; date_from?: string; date_to?: string; q?: string } = {}): Promise<GelenlerResponse> {
+export async function getGelenler(params: { project_id?: string; customer_id?: string; account_type?: string; record_type?: string; status?: string; date_from?: string; date_to?: string; q?: string } = {}): Promise<GelenlerResponse> {
   const p = new URLSearchParams(Object.entries(params).filter(([, v]) => v).map(([k, v]) => [k, v as string]));
   return apiRequest<GelenlerResponse>(`/api/admin/gelenler.php${p.toString() ? "?" + p.toString() : ""}`, { method: "GET", credentials: "include" });
 }

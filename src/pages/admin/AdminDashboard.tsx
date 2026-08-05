@@ -50,7 +50,9 @@ import type {
 type RecentMovement = {
   id: string;
   label: string;
-  amount: number;
+  partyName?: string;
+  realizedAmountTry: number;
+  originalAmount: number;
   date: string;
   direction: EntryDirection;
   source: string;
@@ -153,14 +155,39 @@ function normalizeDirection(value: string | null | undefined): EntryDirection {
   return value === "Gider" ? "Gider" : "Gelir";
 }
 
-function normalizeGroup(value: string | null | undefined): GroupTag {
-  return value === "Gayri Resmi" ? "Gayri Resmi" : "Resmi";
+export function normalizeGroup(value: string | null | undefined): GroupTag {
+  return value === "gayri_resmi" ? "Gayri Resmi" : "Resmi";
 }
 
-function movementSource(cardType: string | null | undefined) {
+export function movementSource(cardType: string | null | undefined) {
   if (cardType === "employee") return "Personel";
-  if (cardType === "expense") return "Gider";
+  if (cardType === "supplier") return "Tedarikçi";
+  if (cardType === "expense_card") return "Masraf Kartı";
   return "Müşteri";
+}
+
+// Backend->frontend row mapping for a single "Son Hareketler" entry (P2-2).
+// Exported as a pure function so the customer/employee/supplier/expense-card
+// response shapes, realized-vs-planned amount, and direction can be locked
+// down independently of rendering.
+export function mapDashboardMovement(movement: AdminDashboardMovement): RecentMovement {
+  return {
+    // Composite identity (card_type + row id): the backend UNIONs four
+    // independently-keyed tables, so a bare row id is not a safe React key
+    // or API identity across branches — prefixing with card_type guarantees
+    // no collision as a matter of contract, not just UUID probability.
+    id: `${movement.card_type || "unknown"}:${movement.id}`,
+    label: movement.label || "Finansal hareket",
+    partyName: movement.party_name || undefined,
+    realizedAmountTry: Number(movement.realized_amount || 0),
+    originalAmount: Number(movement.original_amount || 0),
+    date: movement.date || "",
+    direction: normalizeDirection(movement.direction),
+    source: movementSource(movement.card_type),
+    currency: normalizeCurrency(movement.currency),
+    group: normalizeGroup(movement.account_type),
+    projectTitle: movement.project_title || undefined,
+  };
 }
 
 function LoadingDashboard() {
@@ -247,17 +274,7 @@ export default function AdminDashboard() {
       return { month: month.month, monthFull: month.monthFull, income, expenses, net };
     });
 
-    const recentMovements: RecentMovement[] = normalizedData.recentMovements.map((movement) => ({
-      id: movement.id,
-      label: movement.label || "Finansal hareket",
-      amount: Number(movement.amount || 0),
-      date: movement.date || "",
-      direction: normalizeDirection(movement.direction),
-      source: movementSource(movement.card_type),
-      currency: normalizeCurrency(movement.currency),
-      group: normalizeGroup(movement.group),
-      projectTitle: movement.project_title || undefined,
-    }));
+    const recentMovements: RecentMovement[] = normalizedData.recentMovements.map(mapDashboardMovement);
 
     return {
       summary: normalizedData.summary,
@@ -432,13 +449,20 @@ export default function AdminDashboard() {
                           <span className={cn("rounded-md px-2 py-0.5 text-xs font-semibold", isIncome ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>{movement.source}</span>
                           <span className="text-xs text-muted-foreground">{formatDate(movement.date)}</span>
                         </div>
-                        <div className="mt-2 whitespace-normal break-words font-semibold">{movement.label}</div>
+                        <div className="mt-2 whitespace-normal break-words font-semibold">
+                          {movement.label}{movement.partyName ? ` — ${movement.partyName}` : ""}
+                        </div>
                         <div className="mt-1 whitespace-normal break-words text-xs text-muted-foreground">
                           {movement.projectTitle || "Proje bağlantısı yok"} · {movement.group}
                         </div>
                       </div>
-                      <div className={cn("max-w-full shrink-0 self-end whitespace-normal break-words text-right text-lg font-extrabold tabular-nums sm:self-auto", isIncome ? "text-emerald-700" : "text-red-600")}>
-                        {isIncome ? "+" : "-"}{formatMoney(movement.amount, movement.currency)}
+                      <div className={cn("max-w-full shrink-0 self-end whitespace-normal break-words text-right sm:self-auto", isIncome ? "text-emerald-700" : "text-red-600")}>
+                        <div className="text-lg font-extrabold tabular-nums">
+                          {isIncome ? "+" : "-"}{formatMoney(movement.realizedAmountTry, "TRY")}
+                        </div>
+                        {movement.currency !== "TRY" && (
+                          <div className="text-xs text-muted-foreground">{formatMoney(movement.originalAmount, movement.currency)}</div>
+                        )}
                       </div>
                     </div>
                   );

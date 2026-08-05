@@ -116,6 +116,19 @@ function ImgTile({ img, onDelete, onSetCover, isCover }: any) {
   );
 }
 
+// Pure validation (P2-1): an image-less/description-less DRAFT is valid; the
+// same project is rejected only when wantsPublished is true. Exported for
+// direct unit testing of the draft-vs-publish contract without mounting the
+// full form.
+export function validateProjectSaveFields(
+  data: { cover_image_url?: string | null; short_description?: string | null },
+  wantsPublished: boolean
+): string | null {
+  if (wantsPublished && !data.cover_image_url) return "Yayınlamak için ana görsel yüklenmelidir.";
+  if (wantsPublished && !(data.short_description || "").trim()) return "Yayınlamak için kısa açıklama zorunludur.";
+  return null;
+}
+
 export default function AdminProjectEdit() {
   const { id } = useParams();
   const isNew = id === "yeni" || !id;
@@ -293,8 +306,12 @@ export default function AdminProjectEdit() {
       toast({ title: "Hata", description: "Seçilen ilçe, seçilen ile ait değil.", variant: "destructive" });
       return;
     }
-    if (!data.cover_image_url) { toast({ title: "Hata", description: "Ana görsel yüklenmelidir.", variant: "destructive" }); return; }
-    if (!data.short_description.trim()) { toast({ title: "Hata", description: "Kısa açıklama zorunludur.", variant: "destructive" }); return; }
+    // Image and short description are required to PUBLISH, but a draft may be
+    // saved without them — the form no longer accepts-then-silently-enforces
+    // fields it doesn't visually mark as required for a draft save (P2-1).
+    const wantsPublished = publish ?? data.is_published;
+    const publishError = validateProjectSaveFields(data, wantsPublished);
+    if (publishError) { toast({ title: "Hata", description: publishError, variant: "destructive" }); return; }
 
     const slug = (data.slug || turkishSlugify(data.title)).trim();
     const payload = { ...data, slug, location, is_published: publish ?? data.is_published };
@@ -346,7 +363,7 @@ export default function AdminProjectEdit() {
         actions={
           <>
           <Button asChild variant="outline" size="sm"><Link to="/admin/projeler"><ArrowLeft className="h-4 w-4" /> Projelere Dön</Link></Button>
-          {!isNew && data.slug && <Button asChild variant="outline" size="sm"><Link to={`/projelerimiz/${data.slug}`} target="_blank"><ExternalLink className="h-4 w-4 mr-1" /> Önizle</Link></Button>}
+          {!isNew && <Button asChild variant="outline" size="sm"><Link to={`/admin/projeler/${id}/onizleme`} target="_blank"><ExternalLink className="h-4 w-4 mr-1" /> Önizle</Link></Button>}
           <Button variant="outline" onClick={() => save(false)} disabled={saving}>Taslak Olarak Kaydet</Button>
           <Button onClick={() => save(true)} disabled={saving} className="bg-accent hover:bg-accent-glow text-accent-foreground">{saving ? "Kaydediliyor..." : "Yayınla"}</Button>
           </>
@@ -359,13 +376,13 @@ export default function AdminProjectEdit() {
             <h2 className="font-display text-lg font-bold">Temel Bilgiler</h2>
             <div><Label>Proje Adı *</Label><Input value={data.title} onChange={(e) => update("title", e.target.value)} /></div>
             <div><Label>URL Adresi (slug)</Label><Input value={data.slug} onChange={(e) => { setSlugTouched(true); update("slug", turkishSlugify(e.target.value)); }} placeholder="ornek-proje-adi" /></div>
-            <div><Label>Kısa Açıklama *</Label><Textarea value={data.short_description} onChange={(e) => update("short_description", e.target.value)} rows={3} /></div>
+            <div><Label>Kısa Açıklama * <span className="font-normal text-xs text-muted-foreground">(yayınlamak için zorunlu)</span></Label><Textarea value={data.short_description} onChange={(e) => update("short_description", e.target.value)} rows={3} /></div>
             <div><Label>Detaylı Açıklama</Label><Textarea value={data.detailed_description || ""} onChange={(e) => update("detailed_description", e.target.value)} rows={8} /></div>
           </section>
 
           <section className="p-6 bg-card border border-border rounded-md">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-lg font-bold">Galeri Görselleri</h2>
+              <h2 className="font-display text-lg font-bold">Galeri Görselleri * <span className="font-normal text-xs text-muted-foreground">(ilk görsel ana görsel olur — yayınlamak için zorunlu)</span></h2>
               <div className="flex gap-2">
                 <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => onFiles(e.target.files)} />
                 <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}><Upload className="h-4 w-4 mr-1" /> Görsel Yükle</Button>

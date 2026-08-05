@@ -27,6 +27,9 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
 const ACCOUNT_TYPES: { value: string; label: string }[] = [
   { value: "resmi", label: "Resmi" },
   { value: "gayri_resmi", label: "Gayri Resmi" },
+  // Government-progress rows carry no Resmi/Gayri Resmi classification —
+  // this maps to record_type=government (not account_type) below (P3-9).
+  { value: "government", label: "Devlet Hakedişi" },
 ];
 
 function fmtTRY(v: number | string) {
@@ -76,7 +79,8 @@ export default function AdminGelenler() {
       q: q || undefined,
       status: statusFilter === "all" ? undefined : statusFilter,
       project_id: projectFilter === "all" ? undefined : projectFilter,
-      account_type: accountTypeFilter === "all" ? undefined : accountTypeFilter,
+      account_type: accountTypeFilter === "all" || accountTypeFilter === "government" ? undefined : accountTypeFilter,
+      record_type: accountTypeFilter === "government" ? "government" : undefined,
       date_from: dateFrom || undefined,
       date_to: dateTo || undefined,
     }),

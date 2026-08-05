@@ -53,24 +53,25 @@ const GPP_STATUS_COLOR: Record<string, string> = {
   cancelled: "text-gray-500 bg-gray-50 border-gray-200",
 };
 
-type GppFormState = {
+// Stage, paid amount, and payment date are never accepted from the client on
+// card create/update (see government-progress-payments.php: gpp_payload()
+// hardcodes stage to "Belirtilmemiş" and paid_amount_try/paid_date are always
+// derived from ak_government_progress_payment_breakdowns/collections). This
+// dialog therefore only edits the plan-level fields that actually persist;
+// real stage tracking and collections are managed on the global Hakedişler
+// page's stage-collection flow (P0-4).
+export type GppFormState = {
   title: string;
-  stage: GovernmentPaymentStage;
   planned_amount_try: string;
-  paid_amount_try: string;
   due_date: string;
-  paid_date: string;
   notes: string;
   project_id: string;
 };
 
 const GppFormEmpty = (projectId = ""): GppFormState => ({
   title: "",
-  stage: "Belirtilmemiş",
   planned_amount_try: "",
-  paid_amount_try: "0",
   due_date: "",
-  paid_date: "",
   notes: "",
   project_id: projectId,
 });
@@ -111,15 +112,6 @@ function GppDialog({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label>Aşama</Label>
-              <Select value={form.stage} onValueChange={(v) => set("stage", v as GovernmentPaymentStage)}>
-                <SelectTrigger><SelectValue placeholder="Aşama seçin" /></SelectTrigger>
-                <SelectContent>
-                  {GPP_STAGES.map((s) => <SelectItem key={s} value={s}>{GPP_STAGE_LABELS[s]}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
               <Label>Proje</Label>
               <Select value={form.project_id} onValueChange={(v) => set("project_id", v)}>
                 <SelectTrigger><SelectValue placeholder="Proje (opsiyonel)" /></SelectTrigger>
@@ -129,31 +121,22 @@ function GppDialog({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label>Planlanan Tutar (TL) *</Label>
-              <Input type="number" min="0" step="0.01" value={form.planned_amount_try} onChange={(e) => set("planned_amount_try", e.target.value)} required />
-            </div>
-            <div className="space-y-1">
-              <Label>Ödenen Tutar (TL)</Label>
-              <Input type="number" min="0" step="0.01" value={form.paid_amount_try} onChange={(e) => set("paid_amount_try", e.target.value)} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>Vade Tarihi</Label>
               <Input type="date" value={form.due_date} onChange={(e) => set("due_date", e.target.value)} />
             </div>
-            <div className="space-y-1">
-              <Label>Ödeme Tarihi</Label>
-              <Input type="date" value={form.paid_date} onChange={(e) => set("paid_date", e.target.value)} />
-            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Planlanan Tutar (TL) *</Label>
+            <Input type="number" min="0" step="0.01" value={form.planned_amount_try} onChange={(e) => set("planned_amount_try", e.target.value)} required />
           </div>
           <div className="space-y-1">
             <Label>Notlar</Label>
             <Input value={form.notes} onChange={(e) => set("notes", e.target.value)} />
           </div>
+          <p className="text-xs text-muted-foreground">
+            Aşama seçimi ve tahsilat kaydı, doğrulanmış ödeme tarihi ve tutar için "Hakedişler" ana sayfasındaki tahsilat akışından yapılır.
+          </p>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>İptal</Button>
             <Button type="submit" disabled={saving}>{saving ? "Kaydediliyor..." : "Kaydet"}</Button>
@@ -164,16 +147,13 @@ function GppDialog({
   );
 }
 
-function GppFormToPayload(form: GppFormState, customerId: string): GovernmentProgressPaymentPayload {
+export function GppFormToPayload(form: GppFormState, customerId: string): GovernmentProgressPaymentPayload {
   return {
     customer_id: customerId,
     project_id: form.project_id && form.project_id !== "__none" ? form.project_id : null,
     title: form.title,
-    stage: form.stage,
     planned_amount_try: parseFloat(form.planned_amount_try) || 0,
-    paid_amount_try: parseFloat(form.paid_amount_try) || 0,
     due_date: form.due_date || null,
-    paid_date: form.paid_date || null,
     notes: form.notes || null,
   };
 }
@@ -264,11 +244,8 @@ export default function AdminCustomerDetail() {
     () => gppEditing
       ? {
           title: gppEditing.title,
-          stage: gppEditing.stage,
           planned_amount_try: String(gppEditing.planned_amount_try),
-          paid_amount_try: String(gppEditing.paid_amount_try),
           due_date: gppEditing.due_date || "",
-          paid_date: gppEditing.paid_date || "",
           notes: gppEditing.notes || "",
           project_id: gppEditing.project_id || "",
         }
@@ -687,6 +664,7 @@ export default function AdminCustomerDetail() {
                     onInflationSave={handleInflationSave}
                     title="Tahsilat Hareketleri"
                     showInflation
+                    defaultAccountType={account.value}
                   />
                 </div>
 

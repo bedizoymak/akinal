@@ -125,16 +125,19 @@ export default function AdminNotifications() {
                     <span className={`text-[10px] px-1.5 py-0.5 rounded border ${priorityClass(n.priority)}`}>{n.priority}</span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded border bg-muted text-muted-foreground">{n.type}</span>
                     {!n.is_read && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-600 text-white">Okunmadı</span>}
+                    {n.synthetic && <span className="text-[10px] px-1.5 py-0.5 rounded border bg-blue-50 text-blue-700 border-blue-200" title="Bu bildirim her sayfa yüklemesinde otomatik hesaplanır, kalıcı olarak işaretlenemez.">Otomatik</span>}
                   </div>
                   <p className="text-sm text-muted-foreground">{n.message}</p>
                   <div className="text-xs text-muted-foreground mt-1">{formatDate(n.created_at)}</div>
                 </div>
-                <div className="flex gap-1">
-                  {!n.is_read && (
-                    <Button size="sm" variant="ghost" onClick={() => markRead(n.id)}><Check className="h-4 w-4" /></Button>
-                  )}
-                  <Button size="sm" variant="ghost" onClick={() => remove(n.id)} aria-label="Bildirimi sil"><Trash2 className="h-4 w-4 text-red-600" /></Button>
-                </div>
+                {!n.synthetic && (
+                  <div className="flex gap-1">
+                    {!n.is_read && (
+                      <Button size="sm" variant="ghost" onClick={() => markRead(n.id)}><Check className="h-4 w-4" /></Button>
+                    )}
+                    <Button size="sm" variant="ghost" onClick={() => remove(n.id)} aria-label="Bildirimi sil"><Trash2 className="h-4 w-4 text-red-600" /></Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

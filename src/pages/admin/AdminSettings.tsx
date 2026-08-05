@@ -67,6 +67,35 @@ function isValidHttpUrl(value: string) {
   return /^https?:\/\//i.test(value);
 }
 
+// Accepts either a clean Google Maps embed URL or a pasted <iframe> snippet
+// (in which case only its src attribute is kept) and returns just the URL —
+// never raw iframe markup/attributes. See P1-4.
+export function extractMapEmbedSrc(raw: string): string {
+  const value = raw.trim();
+  if (!value) return "";
+  const srcMatch = value.match(/src\s*=\s*"([^"]+)"/i) || value.match(/src\s*=\s*'([^']+)'/i);
+  if (srcMatch) return srcMatch[1].trim();
+  // A bare URL with copied attributes glued on (no src="" wrapper) — cut at
+  // the first whitespace or quote so trailing `" width="600" ...` is dropped.
+  const bareMatch = value.match(/^https?:\/\/\S+/i);
+  if (bareMatch) return bareMatch[0].split(/["'\s]/)[0];
+  return value;
+}
+
+// Only accept Google's own maps-embed host, reject script/event-handler
+// content, and require https — a clean, safe, previewable embed URL.
+export function isValidGoogleMapsEmbedUrl(value: string): boolean {
+  if (!value) return true;
+  if (/<script|javascript:|on\w+\s*=/i.test(value)) return false;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return false;
+    return url.hostname === "www.google.com" || url.hostname === "maps.google.com";
+  } catch {
+    return false;
+  }
+}
+
 function getStatusLabel(tone: StatusTone) {
   if (tone === "success") return "Tamamlandı";
   if (tone === "warning") return "Kontrol Gerekli";
@@ -102,16 +131,17 @@ function SettingField({
   warning?: string;
   count?: boolean;
 }) {
+  const fieldId = `setting-${field}`;
   return (
     <div>
       <div className="mb-1 flex items-center justify-between gap-3">
-        <Label>{label}</Label>
+        <Label htmlFor={fieldId}>{label}</Label>
         {count && <span className="text-xs text-muted-foreground">{value.length} karakter</span>}
       </div>
       {textarea ? (
-        <Textarea rows={3} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
+        <Textarea id={fieldId} name={field} rows={3} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
       ) : (
-        <Input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
+        <Input id={fieldId} name={field} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
       )}
       <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{FIELD_HELPERS[field]}</p>
       {warning && (
@@ -185,7 +215,8 @@ export default function AdminSettings() {
   const dirty = useMemo(() => JSON.stringify(data) !== JSON.stringify(originalData), [data, originalData]);
 
   function up(field: keyof Omit<SiteSettings, "id">, value: string) {
-    setData((current) => (current ? { ...current, [field]: value } : current));
+    const normalized = field === "map_embed_url" ? extractMapEmbedSrc(value) : value;
+    setData((current) => (current ? { ...current, [field]: normalized } : current));
   }
 
   const validation = useMemo(() => {
@@ -204,7 +235,14 @@ export default function AdminSettings() {
 
     if (!isValidEmail(textValue(data.email))) critical.push("E-posta adresi geçerli görünmüyor.");
 
-    (["map_embed_url", "instagram_url", "facebook_url", "linkedin_url"] as const).forEach((field) => {
+    const mapValue = textValue(data.map_embed_url);
+    if (mapValue && /<script|javascript:|on\w+\s*=/i.test(mapValue)) {
+      critical.push("Harita bağlantısı güvenli olmayan içerik barındırıyor ve kaydedilemez.");
+    } else if (mapValue && !isValidGoogleMapsEmbedUrl(mapValue)) {
+      warnings.map_embed_url = "Geçerli bir Google Haritalar yerleştirme bağlantısı olmalıdır (https://www.google.com/maps/embed?...).";
+    }
+
+    (["instagram_url", "facebook_url", "linkedin_url"] as const).forEach((field) => {
       const value = textValue(data[field]);
       if (value && !isValidHttpUrl(value)) {
         warnings[field] = "Bağlantı http:// veya https:// ile başlamalıdır.";
@@ -303,7 +341,7 @@ export default function AdminSettings() {
   const whatsappUrl = getWhatsAppLink(data.whatsapp_number, data.whatsapp_message);
   const domainPreview = typeof window !== "undefined" ? window.location.origin : "https://akinalinsaat.com";
   const mapUrl = textValue(data.map_embed_url);
-  const canPreviewMap = Boolean(mapUrl && isValidHttpUrl(mapUrl));
+  const canPreviewMap = Boolean(mapUrl && isValidGoogleMapsEmbedUrl(mapUrl));
 
   function resetChanges() {
     setData(originalData);
@@ -552,7 +590,7 @@ export default function AdminSettings() {
                 ["Site alt bölümü firma bilgileri", "Aktif", "success"],
                 ["Telefon / WhatsApp butonları", "Aktif", "success"],
                 ["İletişim sayfası", "Aktif", "success"],
-                ["Harita", textValue(data.map_embed_url) ? "Aktif" : "Eksik", textValue(data.map_embed_url) ? "success" : "danger"],
+                ["Harita", canPreviewMap ? "Aktif" : mapUrl ? "Geçersiz Bağlantı" : "Eksik", canPreviewMap ? "success" : mapUrl ? "warning" : "danger"],
                 ["Genel SEO", "Kısmi", "warning"],
                 ["Site Bağlantıları Hazırlığı", "Teknik altyapı hazır / Google tarafından otomatik belirlenir", "success"],
                 ["Sayfa bazlı SEO", "Gelecek geliştirme", "warning"],

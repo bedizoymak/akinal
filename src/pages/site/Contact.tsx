@@ -45,6 +45,7 @@ export default function Contact() {
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
   const [turnstileReady, setTurnstileReady] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const turnstileRef = useRef<HTMLDivElement | null>(null);
   const widgetId = useRef<number | null>(null);
   const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
@@ -52,7 +53,21 @@ export default function Contact() {
   useEffect(() => {
     if (!siteKey) {
       setTurnstileError("Güvenlik doğrulaması yapılandırılmamış. Lütfen telefon veya WhatsApp üzerinden bize ulaşın.");
+      return;
     }
+
+    // Hard timeout: if the Cloudflare script/widget never becomes ready (blocked
+    // by network policy, ad blocker, or a CSP mismatch, none of which reliably
+    // fire the script's own load/error events), stop showing "yükleniyor..."
+    // forever and surface an actionable, retryable failure state instead.
+    const readyTimeout = window.setTimeout(() => {
+      setTurnstileReady((ready) => {
+        if (!ready) {
+          setTurnstileError("Güvenlik doğrulaması yüklenemedi. Lütfen tekrar deneyin.");
+        }
+        return ready;
+      });
+    }, 10000);
 
     let renderTimeout: number | undefined;
     function renderTurnstile() {
@@ -161,7 +176,8 @@ export default function Contact() {
     if (import.meta.env.DEV) {
       console.debug("Turnstile debug:", { siteKeyPresent: !!siteKey, scriptTagExists: true });
     }
-  }, [siteKey]);
+    return () => window.clearTimeout(readyTimeout);
+  }, [siteKey, retryKey]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -286,8 +302,23 @@ export default function Contact() {
               </div>
             </div>
             <div className="mt-5">
-              <div ref={turnstileRef} />
-              {turnstileError && <p className="mt-3 text-sm text-destructive">{turnstileError}</p>}
+              {!turnstileError && <div ref={turnstileRef} />}
+              {turnstileError && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-sm text-destructive">{turnstileError}</p>
+                  {siteKey && (
+                    <Button type="button" size="sm" variant="outline" onClick={() => {
+                      setTurnstileError(null);
+                      setTurnstileReady(false);
+                      setTurnstileToken("");
+                      widgetId.current = null;
+                      setRetryKey((k) => k + 1);
+                    }}>
+                      Tekrar Dene
+                    </Button>
+                  )}
+                </div>
+              )}
               {!turnstileError && !turnstileReady && <p className="mt-3 text-sm text-muted-foreground">Güvenlik doğrulaması yükleniyor...</p>}
             </div>
             <Button type="submit" disabled={submitting || !siteKey} aria-busy={submitting} className="mt-5 w-full bg-accent hover:bg-accent-glow text-accent-foreground font-semibold">

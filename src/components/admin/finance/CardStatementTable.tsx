@@ -7,7 +7,7 @@ import { Pencil, Plus, Trash2, TrendingUp, X } from "lucide-react";
 import { EntryStatusBadge } from "./EntryStatusBadge";
 import { CurrencyAmount } from "./CurrencyAmount";
 import { CardEntryForm, type CardEntryFormValues } from "./CardEntryForm";
-import type { CardFinancialEntry } from "@/lib/apiTypes";
+import type { CardFinancialEntry, CardEntryAccountType } from "@/lib/apiTypes";
 
 interface Project {
   id: string;
@@ -25,6 +25,9 @@ interface Props {
   loading?: boolean;
   title?: string;
   showInflation?: boolean;
+  // Account classification to preselect when adding a NEW entry from this
+  // table (e.g. the Resmi/Gayri Resmi tab it's rendered under). See P1-3.
+  defaultAccountType?: CardEntryAccountType;
 }
 
 function fmtDate(d: string) {
@@ -41,7 +44,7 @@ function fmtPct(v: number) {
 
 export function CardStatementTable({
   entries, projects, direction, onAdd, onEdit, onDelete, onInflationSave,
-  loading, title, showInflation,
+  loading, title, showInflation, defaultAccountType,
 }: Props) {
   const [formOpen, setFormOpen] = useState(false);
   const [editEntry, setEditEntry] = useState<CardFinancialEntry | null>(null);
@@ -344,6 +347,7 @@ export function CardStatementTable({
           }
         }}
         initial={editEntry ?? undefined}
+        defaultAccountType={defaultAccountType}
         projects={projects}
         direction={direction}
         showInflation={showInflation}

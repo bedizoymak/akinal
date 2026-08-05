@@ -18,6 +18,7 @@ export type Notification = {
   related_payment_plan_id: string | null;
   is_read: boolean;
   created_at: string;
+  synthetic?: boolean;
 };
 
 export const NOTIFICATION_TYPES = [

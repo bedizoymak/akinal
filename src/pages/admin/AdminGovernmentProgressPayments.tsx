@@ -54,6 +54,19 @@ const STAGE_LABELS: Record<string, string> = {
 
 const STATUSES: GovernmentPaymentStatus[] = ["planned", "partial", "paid", "cancelled"];
 
+// Summary KPI totals — must always be computed from whichever row list is
+// passed in (the active filtered set), never a separately-scoped "all rows"
+// list, or the KPIs silently drift from the visible cards (P2-5).
+export function computeGppKpi(rows: GovernmentProgressPayment[]) {
+  const all = rows.filter((r) => r.status !== "cancelled");
+  const planned = all.reduce((s, r) => s + (Number(r.planned_amount_try) || 0), 0);
+  const paid    = all.reduce((s, r) => s + (Number(r.paid_amount_try) || 0), 0);
+  const allBds  = all.flatMap((r) => r.breakdowns ?? []);
+  const totalStages     = allBds.length || all.length;
+  const completedStages = allBds.length > 0 ? allBds.filter((b) => b.status === "paid").length : all.filter((r) => r.status === "paid").length;
+  return { planned, paid, pending: Math.max(0, planned - paid), completedStages, totalStages };
+}
+
 const STATUS_LABELS: Record<GovernmentPaymentStatus, string> = {
   planned:   "Planlandı",
   partial:   "Kısmi Ödendi",
@@ -626,15 +639,11 @@ export default function AdminGovernmentProgressPayments() {
     });
   }, [payments, q, stageFilter, statusFilter, projectFilter]);
 
-  const kpi = useMemo(() => {
-    const all = (payments as GovernmentProgressPayment[]).filter((r) => r.status !== "cancelled");
-    const planned = all.reduce((s, r) => s + (Number(r.planned_amount_try) || 0), 0);
-    const paid    = all.reduce((s, r) => s + (Number(r.paid_amount_try) || 0), 0);
-    const allBds  = all.flatMap((r) => r.breakdowns ?? []);
-    const totalStages     = allBds.length || all.length;
-    const completedStages = allBds.length > 0 ? allBds.filter((b) => b.status === "paid").length : all.filter((r) => r.status === "paid").length;
-    return { planned, paid, pending: Math.max(0, planned - paid), completedStages, totalStages };
-  }, [payments]);
+  // Summary KPIs must reflect the same active search/project/stage/status
+  // filters as the visible card list — previously this used the full
+  // unfiltered `payments` list, so filtering down to one project still
+  // showed the global totals (P2-5).
+  const kpi = useMemo(() => computeGppKpi(filtered), [filtered]);
 
   const initial = useMemo(() => editing ? formFromRecord(editing) : emptyForm(), [editing]);
 

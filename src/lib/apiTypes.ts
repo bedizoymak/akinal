@@ -388,12 +388,14 @@ export interface AdminDashboardPaymentPlan {
 export interface AdminDashboardMovement {
   id: string;
   label: string | null;
-  amount: number | string;
+  party_name: string | null;
+  realized_amount: number | string;
+  original_amount: number | string;
   date: string | null;
   direction: string | null;
   card_type: string | null;
+  account_type: string | null;
   currency: string | null;
-  group: string | null;
   status: string | null;
   project_title: string | null;
 }
@@ -619,6 +621,10 @@ export interface AdminNotification {
   related_payment_plan_id: string | null;
   is_read: boolean | number;
   created_at: string;
+  // true only for live-derived upcoming/overdue-collection alerts (P2-3) —
+  // computed fresh on every GET, never persisted, so read/delete on these
+  // has no lasting effect. Absent/false for real ak_notifications rows.
+  synthetic?: boolean;
 }
 
 export interface AdminFinancialEntry {
@@ -733,7 +739,11 @@ export interface GovernmentProgressPaymentPayload {
   project_id?: string | null;
   customer_id?: string | null;
   title: string;
-  stage: GovernmentPaymentStage;
+  // Server always hardcodes stage to "Belirtilmemiş" on create/update — real
+  // per-stage tracking lives in ak_government_progress_payment_breakdowns.
+  // Optional here so callers that only manage plan-level fields (customer
+  // detail's Hakediş dialog) don't need to fabricate a value that's ignored.
+  stage?: GovernmentPaymentStage;
   stage_percentage?: number;
   planned_amount_try: number | string;
   paid_amount_try?: number | string;

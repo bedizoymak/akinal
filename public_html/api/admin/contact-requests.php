@@ -21,8 +21,13 @@ try {
         }
 
         if ($query !== '') {
-            $where[] = '(full_name LIKE :query OR phone LIKE :query OR email LIKE :query OR service_type LIKE :query OR message LIKE :query)';
-            $params['query'] = '%' . $query . '%';
+            $where[] = '(full_name LIKE :query1 OR phone LIKE :query2 OR email LIKE :query3 OR service_type LIKE :query4 OR message LIKE :query5)';
+            $like = '%' . $query . '%';
+            $params['query1'] = $like;
+            $params['query2'] = $like;
+            $params['query3'] = $like;
+            $params['query4'] = $like;
+            $params['query5'] = $like;
         }
 
         $sql = 'SELECT id, full_name, phone, email, service_type, message, status, created_at FROM ak_contact_requests';
@@ -74,5 +79,6 @@ try {
     header('Allow: GET, PATCH, DELETE');
     json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
+    error_log('contact-requests.php: ' . $exception->getMessage());
     json_error('İletişim talepleri işlenemedi.', 500);
 }

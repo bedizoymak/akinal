@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Phone, Mail, Search, Inbox } from "lucide-react";
+import { Trash2, Phone, Mail, Search, Inbox, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdminEmptyState, AdminPageHeader } from "@/components/admin/AdminPage";
 import { deleteAdminContactRequest, getAdminContactRequests, updateAdminContactRequestStatus } from "@/lib/apiClient";
@@ -22,10 +22,16 @@ export default function AdminContacts() {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("all");
   const [open, setOpen] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const { toast } = useToast();
 
   async function load() {
-    setItems(await getAdminContactRequests({ q, status: filter }));
+    try {
+      setLoadError(false);
+      setItems(await getAdminContactRequests({ q, status: filter }));
+    } catch {
+      setLoadError(true);
+    }
   }
   useEffect(() => { load(); }, [q, filter]);
 
@@ -61,7 +67,14 @@ export default function AdminContacts() {
         </SelectContent></Select>
       </div>
 
-      {filtered.length === 0 ? (
+      {loadError ? (
+        <AdminEmptyState
+          title="Talepler yüklenemedi"
+          description="Sunucu isteği başarısız oldu. Lütfen tekrar deneyin."
+          icon={AlertTriangle}
+          action={<Button size="sm" variant="outline" onClick={() => load()}>Tekrar Dene</Button>}
+        />
+      ) : filtered.length === 0 ? (
         <AdminEmptyState title="Talep bulunamadı" description="Filtreye uygun iletişim talebi yok. Yeni talepler web sitesi formundan geldiğinde burada görünür." icon={Inbox} />
       ) : (
         <div className="space-y-2">

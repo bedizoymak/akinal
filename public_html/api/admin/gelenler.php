@@ -14,6 +14,11 @@ try {
     $customerId  = trim((string) ($_GET['customer_id']  ?? ''));
     $currency    = trim((string) ($_GET['currency']     ?? ''));
     $accountType = trim((string) ($_GET['account_type'] ?? ''));
+    // Independent of account_type (P3-9): government-progress rows carry no
+    // Resmi/Gayri Resmi classification (see gelenler_fetch_gpp() below), so
+    // they need their own filterable record type rather than being silently
+    // excluded whenever any account_type filter is active.
+    $recordType  = trim((string) ($_GET['record_type']  ?? ''));
     $status      = trim((string) ($_GET['status']       ?? ''));
     $dateFrom    = trim((string) ($_GET['date_from']    ?? ''));
     $dateTo      = trim((string) ($_GET['date_to']      ?? ''));
@@ -48,27 +53,37 @@ try {
 
     $cfeWhereClause = 'WHERE ' . implode(' AND ', $cfeWhere);
 
-    $cfeEntries = fe_fetch_all("
-        SELECT
-          cfe.*,
-          COALESCE(c.company_name, c.full_name) AS owner_name,
-          p.title AS project_title,
-          'customer' AS source_type,
-          'Müşteri'  AS source_label
-        FROM ak_customer_financial_entries cfe
-        LEFT JOIN ak_customers c ON c.id = cfe.customer_id
-        LEFT JOIN ak_projects  p ON p.id = cfe.project_id
-        {$cfeWhereClause}
-        ORDER BY cfe.entry_date DESC, cfe.created_at DESC
-        LIMIT 1000
-    ", $cfeParams);
+    // record_type=government asks for GPP rows only; anything else (including
+    // "all"/unset) includes customer entries as before.
+    $cfeEntries = [];
+    if ($recordType !== 'government') {
+        $cfeEntries = fe_fetch_all("
+            SELECT
+              cfe.*,
+              COALESCE(c.company_name, c.full_name) AS owner_name,
+              p.title AS project_title,
+              'customer' AS source_type,
+              'Müşteri'  AS source_label
+            FROM ak_customer_financial_entries cfe
+            LEFT JOIN ak_customers c ON c.id = cfe.customer_id
+            LEFT JOIN ak_projects  p ON p.id = cfe.project_id
+            {$cfeWhereClause}
+            ORDER BY cfe.entry_date DESC, cfe.created_at DESC
+            LIMIT 1000
+        ", $cfeParams);
+    }
 
     // ── Government progress payments ──────────────────────────────────────────
 
     $gppEntries = [];
 
-    if (gelenler_table_exists('ak_government_progress_payments')) {
-        $gppEntries = gelenler_fetch_gpp($projectId, $customerId, $accountType, $status, $dateFrom, $dateTo, $q);
+    // record_type=customer explicitly excludes GPP rows. record_type=government
+    // always includes them regardless of any account_type (they have none).
+    // Otherwise (unset/"all"), account_type still excludes GPP as before —
+    // a Resmi/Gayri Resmi filter should never surface unclassified rows.
+    if ($recordType !== 'customer' && gelenler_table_exists('ak_government_progress_payments')) {
+        $gppAccountType = $recordType === 'government' ? '' : $accountType;
+        $gppEntries = gelenler_fetch_gpp($projectId, $customerId, $gppAccountType, $status, $dateFrom, $dateTo, $q);
     }
 
     // ── Merge, sort by entry_date DESC then created_at DESC, limit 1000 ───────

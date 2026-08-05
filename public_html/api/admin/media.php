@@ -175,6 +175,11 @@ function add_media_image(array &$images, array &$seen, array $row): void
     $row['can_delete'] = $row['can_delete'] ?? true;
     $row['is_protected'] = $row['is_protected'] ?? ($row['can_delete'] === false);
     $row['protected_reason'] = $row['protected_reason'] ?? ($row['is_protected'] ? 'Bu görsel önce ilgili ayardan/projeden kaldırılmalı' : null);
+    // File-existence health, independent of is_protected (P1-5): a row can be
+    // "in use" (referenced by a project/setting) while its physical file is
+    // gone — those are two orthogonal facts. Only checked for our own local
+    // uploads; external URLs are left as null (unknown, not asserted healthy).
+    $row['file_missing'] = is_safe_project_upload_url($url) ? !local_upload_file_exists($url) : null;
     $images[] = $row;
 }
 
@@ -381,6 +386,20 @@ function is_safe_project_upload_url(string $url): bool
 {
     $path = parse_url($url, PHP_URL_PATH) ?: $url;
     return preg_match('#^/uploads/project-images/[^/]+\.(jpe?g|png|webp|gif)$#i', $path) === 1;
+}
+
+function local_upload_file_exists(string $url): bool
+{
+    $path = parse_url($url, PHP_URL_PATH) ?: $url;
+    $baseDir = dirname(__DIR__, 2) . '/uploads/project-images';
+    $base = realpath($baseDir);
+    if ($base === false) {
+        return false;
+    }
+    $file = realpath($baseDir . '/' . basename($path));
+    // realpath() also resolves symlinks/.. — confirm the resolved file is
+    // still inside the uploads directory before trusting it.
+    return $file !== false && strncmp($file, $base, strlen($base)) === 0 && is_file($file);
 }
 
 function media_source_label(string $sourceType): string

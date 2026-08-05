@@ -128,6 +128,26 @@ function compute_finance_summary(PDO $pdo): array
     $custStmt->execute([':m' => $thisMonth]);
     $custRow = $custStmt->fetch() ?: [];
 
+    // Realized government-progress stage collections — same canonical source
+    // gelenler.php sums into its "Gelenler"/"Net Durum" totals. Table is only
+    // present once the GPP feature has been installed, so guard its absence.
+    $gppRow = ['planned' => 0, 'paid' => 0, 'month_paid' => 0];
+    $gppExists = $pdo->prepare(
+        'SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :t LIMIT 1'
+    );
+    $gppExists->execute(['t' => 'ak_government_progress_payments']);
+    if ($gppExists->fetchColumn()) {
+        $gppStmt = $pdo->prepare("
+            SELECT
+              COALESCE(SUM(planned_amount_try), 0) AS planned,
+              COALESCE(SUM(paid_amount_try), 0)    AS paid,
+              COALESCE(SUM(CASE WHEN COALESCE(due_date, DATE(created_at)) >= :m THEN paid_amount_try ELSE 0 END), 0) AS month_paid
+            FROM ak_government_progress_payments
+        ");
+        $gppStmt->execute([':m' => $thisMonth]);
+        $gppRow = $gppStmt->fetch() ?: $gppRow;
+    }
+
     $expStmt = $pdo->prepare("
         SELECT
           COALESCE(SUM(amount_try), 0)     AS planned,
@@ -153,14 +173,18 @@ function compute_finance_summary(PDO $pdo): array
         ) t
     ")->fetch() ?: [];
 
+    $incomePlanned  = ($custRow['planned'] ?? 0) + ($gppRow['planned'] ?? 0);
+    $incomePaid     = ($custRow['paid'] ?? 0) + ($gppRow['paid'] ?? 0);
+    $incomeMonthPaid = ($custRow['month_paid'] ?? 0) + ($gppRow['month_paid'] ?? 0);
+
     return [
-        'total_income_planned'  => dash_float($custRow['planned'] ?? 0),
-        'total_income_paid'     => dash_float($custRow['paid'] ?? 0),
+        'total_income_planned'  => dash_float($incomePlanned),
+        'total_income_paid'     => dash_float($incomePaid),
         'total_expense_planned' => dash_float($expRow['planned'] ?? 0),
         'total_expense_paid'    => dash_float($expRow['paid'] ?? 0),
-        'realized_profit'       => dash_float(($custRow['paid'] ?? 0) - ($expRow['paid'] ?? 0)),
-        'planned_profit'        => dash_float(($custRow['planned'] ?? 0) - ($expRow['planned'] ?? 0)),
-        'month_income_paid'     => dash_float($custRow['month_paid'] ?? 0),
+        'realized_profit'       => dash_float($incomePaid - ($expRow['paid'] ?? 0)),
+        'planned_profit'        => dash_float($incomePlanned - ($expRow['planned'] ?? 0)),
+        'month_income_paid'     => dash_float($incomeMonthPaid),
         'month_expense_paid'    => dash_float($expRow['month_paid'] ?? 0),
         'overdue_receivable'    => dash_float($custRow['overdue_remaining'] ?? 0),
         'upcoming_receivable'   => dash_float($custRow['upcoming'] ?? 0),
@@ -213,27 +237,51 @@ function fetch_customer_entries_upcoming(PDO $pdo): array
 
 function fetch_recent_movements(PDO $pdo): array
 {
+    // Every row is a REALIZED movement (paid_amount_try > 0) — a planned-only
+    // receivable/expense is not a "recent hareket" (P2-2). The realized
+    // amount (not the planned amount) is the primary figure, and each row
+    // carries its real source type, account classification, party name, and
+    // original currency/amount instead of being hardcoded to
+    // customer/Resmi (the dashboard previously never selected account_type
+    // or the true card_type at all).
     return $pdo->query("
-        SELECT id, label, amount, `date`, direction, card_type, currency, status, project_title
+        SELECT id, label, party_name, realized_amount, original_amount, currency, `date`,
+               direction, card_type, account_type, status, project_title
         FROM (
-          SELECT cfe.id, cfe.title AS label, cfe.amount_try AS amount, cfe.entry_date AS `date`,
-            'Gelir' AS direction, 'customer' AS card_type, cfe.currency, cfe.status, p.title AS project_title, cfe.created_at
+          SELECT cfe.id, cfe.title AS label, COALESCE(c.company_name, c.full_name) AS party_name,
+            cfe.paid_amount_try AS realized_amount, cfe.paid_amount AS original_amount,
+            cfe.entry_date AS `date`, 'Gelir' AS direction, 'customer' AS card_type,
+            cfe.account_type, cfe.currency, cfe.status, p.title AS project_title, cfe.created_at
           FROM ak_customer_financial_entries cfe
           LEFT JOIN ak_projects p ON p.id = cfe.project_id
+          LEFT JOIN ak_customers c ON c.id = cfe.customer_id
+          WHERE cfe.paid_amount_try > 0
           UNION ALL
-          SELECT efe.id, efe.title, efe.amount_try, efe.entry_date, 'Gider', 'employee', efe.currency, efe.status, p.title, efe.created_at
+          SELECT efe.id, efe.title, e.full_name,
+            efe.paid_amount_try, efe.paid_amount, efe.entry_date, 'Gider', 'employee',
+            efe.account_type, efe.currency, efe.status, p.title, efe.created_at
           FROM ak_employee_financial_entries efe
           LEFT JOIN ak_projects p ON p.id = efe.project_id
+          LEFT JOIN ak_employees e ON e.id = efe.employee_id
+          WHERE efe.paid_amount_try > 0
           UNION ALL
-          SELECT sfe.id, sfe.title, sfe.amount_try, sfe.entry_date, 'Gider', 'supplier', sfe.currency, sfe.status, p.title, sfe.created_at
+          SELECT sfe.id, sfe.title, s.name,
+            sfe.paid_amount_try, sfe.paid_amount, sfe.entry_date, 'Gider', 'supplier',
+            sfe.account_type, sfe.currency, sfe.status, p.title, sfe.created_at
           FROM ak_supplier_financial_entries sfe
           LEFT JOIN ak_projects p ON p.id = sfe.project_id
+          LEFT JOIN ak_suppliers s ON s.id = sfe.supplier_id
+          WHERE sfe.paid_amount_try > 0
           UNION ALL
-          SELECT ecfe.id, ecfe.title, ecfe.amount_try, ecfe.entry_date, 'Gider', 'expense_card', ecfe.currency, ecfe.status, p.title, ecfe.created_at
+          SELECT ecfe.id, ecfe.title, ec.name,
+            ecfe.paid_amount_try, ecfe.paid_amount, ecfe.entry_date, 'Gider', 'expense_card',
+            ecfe.account_type, ecfe.currency, ecfe.status, p.title, ecfe.created_at
           FROM ak_expense_card_financial_entries ecfe
           LEFT JOIN ak_projects p ON p.id = ecfe.project_id
+          LEFT JOIN ak_expense_cards ec ON ec.id = ecfe.expense_card_id
+          WHERE ecfe.paid_amount_try > 0
         ) m
-        ORDER BY `date` DESC, created_at DESC
+        ORDER BY `date` DESC, created_at DESC, card_type ASC, id ASC
         LIMIT 10
     ")->fetchAll() ?: [];
 }
