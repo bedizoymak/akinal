@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -78,12 +78,20 @@ export function CardEntryForm({ open, onClose, onSave, initial, projects, title,
   const [values, setValues] = useState<CardEntryFormValues>(defaultValues(initial, defaultAccountType));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const wasOpen = useRef(false);
 
+  // Reset only on the closed→open transition, never while the dialog stays open.
+  // `initial`/`defaultAccountType` can receive a new object/prop reference from the
+  // parent (e.g. a background query refetch of the projects/entries list) without the
+  // dialog itself closing — resetting on every such change previously wiped whatever
+  // the user had already typed (title, amount, and in particular the date field),
+  // silently replacing it with today's date / an empty value on save.
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpen.current) {
       setValues(defaultValues(initial, defaultAccountType));
       setError(null);
     }
+    wasOpen.current = open;
   }, [open, initial, defaultAccountType]);
 
   function set<K extends keyof CardEntryFormValues>(key: K, val: CardEntryFormValues[K]) {

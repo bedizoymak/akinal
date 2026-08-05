@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CardStatementTable } from "@/components/admin/finance/CardStatementTable";
@@ -91,7 +91,16 @@ function GppDialog({
 }) {
   const [form, setForm] = useState<GppFormState>(initial);
   const [saving, setSaving] = useState(false);
-  useEffect(() => { if (open) setForm(initial); }, [open, initial]);
+  const wasOpen = useRef(false);
+  // Reset only on the closed→open transition. `initial` is recomputed (new object
+  // reference) whenever the parent's project list or edit target changes identity;
+  // resetting on every such change — even while the dialog stayed open — wiped the
+  // user's already-typed Vade Tarihi (and other fields) back to empty before Kaydet
+  // was ever clicked. See CardEntryForm.tsx for the same pattern/fix.
+  useEffect(() => {
+    if (open && !wasOpen.current) setForm(initial);
+    wasOpen.current = open;
+  }, [open, initial]);
   const set = (k: keyof GppFormState, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   async function submit(e: React.FormEvent) {
