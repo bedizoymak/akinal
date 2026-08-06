@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Plus, Edit, Trash2, Eye, Download, Phone, MessageCircle, Users, Wallet, AlertTriangle, CheckCircle2, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { CUSTOMER_TYPES, accountType, allocateCollectionsToPlans, customerDisplayName, displayLabel, formatTRY, exportCSV, whatsappLink, summarizeCustomerLedgerEntries, summarizePaymentPlansWithCanonicalState } from "@/lib/finance";
 import { formatTurkishPhone } from "@/lib/customerMasterData";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ export default function AdminCustomers() {
   const [projectFilter, setProjectFilter] = useState("all");
   const [balanceFilter, setBalanceFilter] = useState("all");
   const { toast } = useToast();
+  const { confirmDelete, dialog: confirmDeleteDialog } = useConfirmDelete();
   const navigate = useNavigate();
 
   async function load() {
@@ -89,15 +91,20 @@ export default function AdminCustomers() {
     clearAccounts: enriched.filter((customer) => customer.balance <= 0).length,
   };
 
-  async function remove(id: string, name: string) {
-    if (!confirm(`"${name}" müşteri kaydını silmek istediğinize emin misiniz? Bu işlem bağlı ödeme planlarını ve tahsilatları da etkileyebilir.`)) return;
-    try {
-      await deleteAdminCustomer(id);
-      toast({ title: "Müşteri silindi" });
-      await load();
-    } catch (error) {
-      toast({ title: "Müşteri silinemedi", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });
-    }
+  function remove(id: string, name: string) {
+    confirmDelete({
+      title: "Müşteri kaydını sil",
+      description: `"${name}" müşteri kaydı silinecek. Bağlı ödeme planları, tahsilat kayıtları ve proje ilişkileri de birlikte silinir. Bu işlem geri alınamaz.`,
+      onConfirm: async () => {
+        try {
+          await deleteAdminCustomer(id);
+          toast({ title: "Müşteri silindi" });
+          await load();
+        } catch (error) {
+          toast({ title: "Müşteri silinemedi", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });
+        }
+      },
+    });
   }
 
   function downloadCSV() {
@@ -224,6 +231,7 @@ export default function AdminCustomers() {
         </div>
         </>
       )}
+      {confirmDeleteDialog}
     </div>
   );
 }

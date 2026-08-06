@@ -8,6 +8,7 @@ import { EntryStatusBadge } from "./EntryStatusBadge";
 import { CurrencyAmount } from "./CurrencyAmount";
 import { CardEntryForm, type CardEntryFormValues } from "./CardEntryForm";
 import type { CardFinancialEntry, CardEntryAccountType } from "@/lib/apiTypes";
+import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 
 interface Project {
   id: string;
@@ -59,10 +60,17 @@ export function CardStatementTable({
   const totalPlanned = entries.reduce((s, e) => s + Number(e.amount_try), 0);
   const totalPaid = entries.reduce((s, e) => s + Number(e.paid_amount_try), 0);
 
-  async function handleDelete(id: string) {
-    if (!confirm("Bu kayıt silinsin mi?")) return;
-    setDeletingId(id);
-    try { await onDelete(id); } finally { setDeletingId(null); }
+  const { confirmDelete, dialog: confirmDeleteDialog } = useConfirmDelete();
+
+  function handleDelete(entry: CardFinancialEntry) {
+    confirmDelete({
+      title: "Kaydı sil",
+      description: `"${entry.title}" kaydı (${fmtTRY(entry.amount_try)}) kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
+      onConfirm: async () => {
+        setDeletingId(entry.id);
+        try { await onDelete(entry.id); } finally { setDeletingId(null); }
+      },
+    });
   }
 
   function openInflationPanel(e: CardFinancialEntry) {
@@ -178,7 +186,7 @@ export function CardStatementTable({
                             variant="ghost"
                             className="h-7 w-7 text-destructive hover:text-destructive"
                             disabled={deletingId === e.id}
-                            onClick={() => handleDelete(e.id)}
+                            onClick={() => handleDelete(e)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -352,6 +360,7 @@ export function CardStatementTable({
         direction={direction}
         showInflation={showInflation}
       />
+      {confirmDeleteDialog}
     </div>
   );
 }

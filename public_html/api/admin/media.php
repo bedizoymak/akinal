@@ -294,6 +294,7 @@ function delete_filesystem_media(string $id): void
         }
         ensure_media_not_protected((string) $image['image_url']);
         delete_upload_file_by_url((string) $image['image_url'], true);
+        delete_media_album_memberships($id);
         return;
     }
 
@@ -315,6 +316,27 @@ function media_path_for_db_id(string $id): ?string
     return is_array($row) ? (string) ($row['image_url'] ?? '') : null;
 }
 
+/**
+ * Removes any ak_media_album_items rows (album membership, including the Favoriler album)
+ * pointing at a media id that no longer exists. Every media deletion path below must call this
+ * with the exact id string the frontend used to assign that image to an album (collect_media_
+ * images()'s `id` field — a DB UUID for ak_project_images rows, or a synthetic `fs:...` id for
+ * filesystem-only entries). Without this, deleting an image left its album/favorite membership
+ * rows behind, so album and favorite counters (fetch_albums_with_counts() in media-albums.php)
+ * kept counting images that no longer exist — QA-B/C BUG-06.
+ */
+function delete_media_album_memberships(string $mediaId): void
+{
+    if ($mediaId === '') {
+        return;
+    }
+    try {
+        db()->prepare('DELETE FROM ak_media_album_items WHERE media_id = :id')->execute(['id' => $mediaId]);
+    } catch (Throwable $e) {
+        // ak_media_album_items table not yet migrated — nothing to clean up.
+    }
+}
+
 function delete_db_media(string $id): ?string
 {
     $stmt = db()->prepare('SELECT image_url FROM ak_project_images WHERE id = :id LIMIT 1');
@@ -324,13 +346,54 @@ function delete_db_media(string $id): ?string
         return null;
     }
 
-    db()->prepare('DELETE FROM ak_project_images WHERE id = :id')->execute(['id' => $id]);
+    // inTransaction() check lets this join an already-open transaction (e.g. a caller
+    // or test harness that wraps the whole request) instead of throwing on PDO's lack
+    // of nested-transaction support, while still being atomic in the normal request path.
+    $pdo = db();
+    $ownsTransaction = !$pdo->inTransaction();
+    if ($ownsTransaction) {
+        $pdo->beginTransaction();
+    }
+    try {
+        $pdo->prepare('DELETE FROM ak_project_images WHERE id = :id')->execute(['id' => $id]);
+        delete_media_album_memberships($id);
+        if ($ownsTransaction) {
+            $pdo->commit();
+        }
+    } catch (Throwable $e) {
+        if ($ownsTransaction) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
     return (string) ($row['image_url'] ?? '');
 }
 
 function delete_db_media_by_url(string $url): void
 {
-    db()->prepare('DELETE FROM ak_project_images WHERE image_url = :url')->execute(['url' => $url]);
+    $ids = db()->prepare('SELECT id FROM ak_project_images WHERE image_url = :url');
+    $ids->execute(['url' => $url]);
+    $matchedIds = $ids->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+    $pdo = db();
+    $ownsTransaction = !$pdo->inTransaction();
+    if ($ownsTransaction) {
+        $pdo->beginTransaction();
+    }
+    try {
+        $pdo->prepare('DELETE FROM ak_project_images WHERE image_url = :url')->execute(['url' => $url]);
+        foreach ($matchedIds as $matchedId) {
+            delete_media_album_memberships((string) $matchedId);
+        }
+        if ($ownsTransaction) {
+            $pdo->commit();
+        }
+    } catch (Throwable $e) {
+        if ($ownsTransaction) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
 }
 
 function ensure_media_not_protected(string $url): void

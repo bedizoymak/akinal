@@ -22,9 +22,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Edit, Mail, MapPin, MessageCircle, Phone, Plus, Trash2 } from "lucide-react";
-import { accountType, allocateCollectionsToPlans, customerDisplayName, derivePlanStatus, displayLabel, formatTRY, daysUntil, safeNumber, summarizeCustomerLedgerEntries, todayIsoLocal, whatsappLink } from "@/lib/finance";
+import { accountType, allocateCollectionsToPlans, cardEntriesToLedgerEntries, customerDisplayName, derivePlanStatus, describeGppCascadeDelete, displayLabel, formatTRY, daysUntil, safeNumber, summarizeCustomerLedgerEntries, sumUpcomingRemaining, todayIsoLocal, whatsappLink } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirmDelete } from "@/hooks/useConfirmDelete";
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AdminPageHeader } from "@/components/admin/AdminPage";
 import { getAdminCustomerDetail } from "@/lib/apiClient";
@@ -137,7 +138,7 @@ function GppDialog({
           </div>
           <div className="space-y-1">
             <Label>Planlanan Tutar (TL) *</Label>
-            <Input type="number" min="0" step="0.01" value={form.planned_amount_try} onChange={(e) => set("planned_amount_try", e.target.value)} required />
+            <Input type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" value={form.planned_amount_try} onChange={(e) => set("planned_amount_try", e.target.value)} required />
           </div>
           <div className="space-y-1">
             <Label>Notlar</Label>
@@ -225,11 +226,11 @@ export default function AdminCustomerDetail() {
   const [allProjects, setAllProjects] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [pays, setPays] = useState<any[]>([]);
-  const [financialEntries, setFinancialEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { confirmDelete, dialog: confirmDeleteDialog } = useConfirmDelete();
   const today = todayIsoLocal();
 
   const { data: customerEntries = [] } = useQuery({
@@ -274,11 +275,17 @@ export default function AdminCustomerDetail() {
     await refetchGovt();
   }
 
-  async function handleGppDelete(gpp: GovernmentProgressPayment) {
-    if (!confirm(`"${gpp.title}" hakediş kaydını silmek istiyor musunuz?`)) return;
-    await deleteGovernmentProgressPayment(gpp.id);
-    toast({ title: "Hakediş silindi." });
-    await refetchGovt();
+  function handleGppDelete(gpp: GovernmentProgressPayment) {
+    const cascadeNote = describeGppCascadeDelete(gpp.breakdowns?.length ?? 0, gpp.collections?.length ?? 0);
+    confirmDelete({
+      title: "Hakediş kaydını sil",
+      description: `"${gpp.title}" hakediş kaydı kalıcı olarak silinecek.${cascadeNote} Bu işlem geri alınamaz.`,
+      onConfirm: async () => {
+        await deleteGovernmentProgressPayment(gpp.id);
+        toast({ title: "Hakediş silindi." });
+        await refetchGovt();
+      },
+    });
   }
 
   const gppSummary = useMemo(() => {
@@ -374,7 +381,6 @@ export default function AdminCustomerDetail() {
       setProjects((data.projects || []).filter((p) => linkedIds.includes(p.id)));
       setPlans(data.payment_plans || []);
       setPays(data.payments || []);
-      setFinancialEntries(data.financial_entries || []);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Lütfen tekrar deneyin.";
       setLoadError(message);
@@ -410,6 +416,7 @@ export default function AdminCustomerDetail() {
     const usingNewEntries = (customerEntries as any[]).length > 0;
     const sourcePlans = usingNewEntries ? effectivePlans : plans;
     const sourcePays  = usingNewEntries ? [] : pays;
+    const ledgerEntries = cardEntriesToLedgerEntries(customerEntries as any[]);
     return ACCOUNT_TABS.reduce((result, account) => {
       const accountPlans = sourcePlans.filter((plan: any) => accountType(plan.account_type) === account.value);
       const accountPays = sourcePays.filter((payment: any) => accountType(payment.account_type) === account.value);
@@ -447,17 +454,19 @@ export default function AdminCustomerDetail() {
         const paid = safeNumber(plan.paid);
         return dueDate > today && paid <= 0 && plan.computed !== "Ödendi" && plan.computed !== "İptal";
       });
-      const ledgerSummary = summarizeCustomerLedgerEntries(financialEntries, {
-        group: account.value === "resmi" ? "Resmi" : "Gayri Resmi",
-        today,
-      });
+      const groupTag = account.value === "resmi" ? "Resmi" : "Gayri Resmi";
+      const ledgerSummary = summarizeCustomerLedgerEntries(ledgerEntries, { group: groupTag, today });
+      // "Yaklaşan Ödeme" is computed separately from ledgerSummary.upcoming — see
+      // sumUpcomingRemaining()'s doc comment for why (QA-B/C BUG-09: partial-payment
+      // remainders and multi-row sums are lost in the synthetic Planlandı/Gerçekleşti split).
+      const upcomingRemaining = sumUpcomingRemaining(customerEntries as any[], { group: groupTag, today });
       result[account.value] = {
         totalDue: ledgerSummary.hasEntries ? ledgerSummary.planned : totalDue,
         totalPaid: ledgerSummary.hasEntries ? ledgerSummary.paid : totalPaid,
         totalAmount: ledgerSummary.hasEntries ? ledgerSummary.totalAmount : totalAmount,
         balance: ledgerSummary.hasEntries ? ledgerSummary.remaining : balance,
         overdue: ledgerSummary.hasEntries ? ledgerSummary.overdue : overdue,
-        upcoming: ledgerSummary.hasEntries ? ledgerSummary.upcoming : upcoming,
+        upcoming: ledgerSummary.hasEntries ? upcomingRemaining : upcoming,
         plans: enrichedPlans,
         accountSummaryPlans,
         futurePlans,
@@ -466,7 +475,7 @@ export default function AdminCustomerDetail() {
       };
       return result;
     }, {} as Record<string, any>);
-  }, [effectivePlans, customerEntries, plans, pays, financialEntries, today]);
+  }, [effectivePlans, customerEntries, plans, pays, today]);
 
   const accountPaymentCharts = useMemo(() => {
     const buildChart = (summary: any, accountLabel: string, colors: { paid: string; remaining: string }) => {
@@ -799,6 +808,7 @@ export default function AdminCustomerDetail() {
         initial={gppInitial}
         projects={allProjectsForEntries}
       />
+      {confirmDeleteDialog}
     </div>
   );
 }

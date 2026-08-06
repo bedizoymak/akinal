@@ -12,6 +12,14 @@ function fmtTRY(v: number | string | null | undefined) {
   return "₺" + Number(v ?? 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// fmtTRY already renders a negative number with its own leading "-" (locale-formatted), so
+// prefixing a literal "+" at the call site produced "+₺-200.000,00" for a negative difference
+// (QA-B/C BUG-04). This formats the sign exactly once: "+₺X" / "−₺X" / "₺0,00".
+function fmtSignedTRY(v: number) {
+  if (v === 0) return fmtTRY(0);
+  return (v > 0 ? "+" : "−") + fmtTRY(Math.abs(v));
+}
+
 function fmtDate(d: string) {
   try { return new Date(d + "T00:00:00").toLocaleDateString("tr-TR"); } catch { return d; }
 }
@@ -144,7 +152,7 @@ export default function AdminProjectFinance() {
                   <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-700">Müşteri Geliri — TÜFE Güncelleme</div>
                   <div className="mt-1.5 break-words text-base font-bold leading-tight tabular-nums text-orange-700">{fmtTRY(summary.customer_income_inflation_adjusted)}</div>
                   <div className="mt-0.5 text-[10px] text-orange-600">
-                    +{fmtTRY(summary.customer_income_inflation_adjusted - summary.customer_income_planned)} fark
+                    {fmtSignedTRY(summary.customer_income_inflation_adjusted - summary.customer_income_planned)} fark
                   </div>
                 </div>
               )}

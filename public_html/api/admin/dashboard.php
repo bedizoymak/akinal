@@ -132,19 +132,32 @@ function compute_finance_summary(PDO $pdo): array
     // balance > 0"; `amount_try > paid_amount_try` gates which rows count so a fully-settled
     // overdue row (remaining = 0) is correctly excluded.
     $today = date('Y-m-d');
+    // Realized ("paid") totals apply an explicit entry_date <= today cutoff, matching
+    // /admin/net-durum's own rule (AdminNetDurum.tsx: `m.entry_date <= today`) exactly. Genel
+    // Bakış's "Toplam Tahsilat"/"Net Durum" cards link straight to Net Durum and claim the same
+    // "gerçekleşen gelir eksi gider" scope, so a future-dated-but-already-paid row (e.g. an
+    // advance collected today against a receivable entered with a later entry_date) must not
+    // inflate one screen's realized total while the other correctly excludes it — previously the
+    // only difference between the two screens was this cutoff, producing a real reported
+    // discrepancy of exactly one future-dated row's paid amount (QA-B/C BUG-02). "Bu Ay Tahsilat"
+    // gets the same upper bound so a later-this-month row doesn't count as already collected
+    // before its date arrives either.
     $custStmt = $pdo->prepare("
         SELECT
           COALESCE(SUM(amount_try), 0)     AS planned,
-          COALESCE(SUM(paid_amount_try), 0) AS paid,
-          COALESCE(SUM(CASE WHEN entry_date >= :m THEN paid_amount_try ELSE 0 END), 0) AS month_paid,
-          COALESCE(SUM(CASE WHEN entry_date < :today1 AND amount_try > paid_amount_try THEN GREATEST(amount_try - paid_amount_try, 0) ELSE 0 END), 0) AS overdue_remaining,
+          COALESCE(SUM(CASE WHEN entry_date <= :today1 THEN paid_amount_try ELSE 0 END), 0) AS paid,
+          COALESCE(SUM(CASE WHEN entry_date >= :m AND entry_date <= :today2 THEN paid_amount_try ELSE 0 END), 0) AS month_paid,
+          COALESCE(SUM(CASE WHEN entry_date < :today3 AND amount_try > paid_amount_try THEN GREATEST(amount_try - paid_amount_try, 0) ELSE 0 END), 0) AS overdue_remaining,
           COALESCE(SUM(CASE WHEN status IN ('Planlanan', 'Gecikmiş', 'Kısmi Ödendi') THEN GREATEST(amount_try - paid_amount_try, 0) ELSE 0 END), 0) AS upcoming,
-          SUM(CASE WHEN entry_date < :today2 AND amount_try > paid_amount_try THEN 1 ELSE 0 END) AS overdue_count,
+          SUM(CASE WHEN entry_date < :today4 AND amount_try > paid_amount_try THEN 1 ELSE 0 END) AS overdue_count,
           SUM(CASE WHEN status IN ('Planlanan', 'Gecikmiş', 'Kısmi Ödendi') THEN 1 ELSE 0 END) AS upcoming_count
         FROM ak_customer_financial_entries
         WHERE title NOT LIKE '%Hakediş%'
     ");
-    $custStmt->execute([':m' => $thisMonth, ':today1' => $today, ':today2' => $today]);
+    $custStmt->execute([
+        ':m' => $thisMonth,
+        ':today1' => $today, ':today2' => $today, ':today3' => $today, ':today4' => $today,
+    ]);
     $custRow = $custStmt->fetch() ?: [];
 
     // Realized government-progress stage collections — same canonical source
@@ -159,19 +172,19 @@ function compute_finance_summary(PDO $pdo): array
         $gppStmt = $pdo->prepare("
             SELECT
               COALESCE(SUM(planned_amount_try), 0) AS planned,
-              COALESCE(SUM(paid_amount_try), 0)    AS paid,
-              COALESCE(SUM(CASE WHEN COALESCE(due_date, DATE(created_at)) >= :m THEN paid_amount_try ELSE 0 END), 0) AS month_paid
+              COALESCE(SUM(CASE WHEN COALESCE(due_date, DATE(created_at)) <= :today1 THEN paid_amount_try ELSE 0 END), 0) AS paid,
+              COALESCE(SUM(CASE WHEN COALESCE(due_date, DATE(created_at)) >= :m AND COALESCE(due_date, DATE(created_at)) <= :today2 THEN paid_amount_try ELSE 0 END), 0) AS month_paid
             FROM ak_government_progress_payments
         ");
-        $gppStmt->execute([':m' => $thisMonth]);
+        $gppStmt->execute([':m' => $thisMonth, ':today1' => $today, ':today2' => $today]);
         $gppRow = $gppStmt->fetch() ?: $gppRow;
     }
 
     $expStmt = $pdo->prepare("
         SELECT
           COALESCE(SUM(amount_try), 0)     AS planned,
-          COALESCE(SUM(paid_amount_try), 0) AS paid,
-          COALESCE(SUM(CASE WHEN entry_date >= :m THEN paid_amount_try ELSE 0 END), 0) AS month_paid
+          COALESCE(SUM(CASE WHEN entry_date <= :today1 THEN paid_amount_try ELSE 0 END), 0) AS paid,
+          COALESCE(SUM(CASE WHEN entry_date >= :m AND entry_date <= :today2 THEN paid_amount_try ELSE 0 END), 0) AS month_paid
         FROM (
           SELECT amount_try, paid_amount_try, entry_date FROM ak_employee_financial_entries
           UNION ALL
@@ -180,7 +193,7 @@ function compute_finance_summary(PDO $pdo): array
           SELECT amount_try, paid_amount_try, entry_date FROM ak_expense_card_financial_entries
         ) exp
     ");
-    $expStmt->execute([':m' => $thisMonth]);
+    $expStmt->execute([':m' => $thisMonth, ':today1' => $today, ':today2' => $today]);
     $expRow = $expStmt->fetch() ?: [];
 
     $cntRow = $pdo->query("

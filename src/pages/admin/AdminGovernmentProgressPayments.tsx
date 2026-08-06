@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Edit, Trash2, Search, Building2, FolderOpen, CalendarDays, PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { formatTRY, todayIsoLocal } from "@/lib/finance";
+import { useConfirmDelete } from "@/hooks/useConfirmDelete";
+import { describeGppCascadeDelete, formatTRY, todayIsoLocal } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 import {
@@ -199,7 +200,7 @@ export function GppDialog({ open, onClose, onSave, initial, editing, customers, 
             <div className="space-y-1">
               <Label>Tutar (TL) *</Label>
               <Input
-                type="number" min="0" step="0.01"
+                type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off"
                 value={form.planned_amount_try}
                 onChange={(e) => set("planned_amount_try", e.target.value)}
                 required
@@ -272,8 +273,8 @@ export function BreakdownDialog({ open, onClose, onSave, breakdown }: {
             <span className="ml-3 text-muted-foreground">Oran:</span> <span className="font-medium">%{breakdown.stage_percentage}</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1"><Label>Planlanan Tutar (TL)</Label><Input type="number" min="0" step="0.01" value={form.planned_amount_try} onChange={(e) => set("planned_amount_try", e.target.value)} /></div>
-            <div className="space-y-1"><Label>Ödenen Tutar (TL)</Label><Input type="number" min="0" step="0.01" value={form.paid_amount_try} onChange={(e) => set("paid_amount_try", e.target.value)} /></div>
+            <div className="space-y-1"><Label>Planlanan Tutar (TL)</Label><Input type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" value={form.planned_amount_try} onChange={(e) => set("planned_amount_try", e.target.value)} /></div>
+            <div className="space-y-1"><Label>Ödenen Tutar (TL)</Label><Input type="number" min="0" step="0.01" inputMode="decimal" autoComplete="off" value={form.paid_amount_try} onChange={(e) => set("paid_amount_try", e.target.value)} /></div>
           </div>
           <div className="space-y-1">
             <Label>Durum</Label>
@@ -609,6 +610,7 @@ function GppCard({ r, onEdit, onDelete, onEditBreakdown, onAddCollection, onDele
 export default function AdminGovernmentProgressPayments() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { confirmDelete, dialog: confirmDeleteDialog } = useConfirmDelete();
 
   const [q, setQ] = useState("");
   const [stageFilter, setStageFilter] = useState("all");
@@ -680,15 +682,21 @@ export default function AdminGovernmentProgressPayments() {
     }
   }
 
-  async function handleDelete(r: GovernmentProgressPayment) {
-    if (!confirm(`"${r.title}" hakediş kaydını silmek istiyor musunuz?`)) return;
-    try {
-      await deleteGovernmentProgressPayment(r.id);
-      toast({ title: "Hakediş silindi." });
-      await qc.invalidateQueries({ queryKey: ["government-progress-payments"] });
-    } catch (err) {
-      toast({ title: "Silme hatası", description: errMsg(err), variant: "destructive" });
-    }
+  function handleDelete(r: GovernmentProgressPayment) {
+    const cascadeNote = describeGppCascadeDelete(r.breakdowns?.length ?? 0, r.collections?.length ?? 0);
+    confirmDelete({
+      title: "Hakediş kaydını sil",
+      description: `"${r.title}" hakediş kaydı kalıcı olarak silinecek.${cascadeNote} Bu işlem geri alınamaz.`,
+      onConfirm: async () => {
+        try {
+          await deleteGovernmentProgressPayment(r.id);
+          toast({ title: "Hakediş silindi." });
+          await qc.invalidateQueries({ queryKey: ["government-progress-payments"] });
+        } catch (err) {
+          toast({ title: "Silme hatası", description: errMsg(err), variant: "destructive" });
+        }
+      },
+    });
   }
 
   async function handleSaveBreakdown(b: GppBreakdown, form: BdForm) {
@@ -728,8 +736,15 @@ export default function AdminGovernmentProgressPayments() {
     }
   }
 
-  async function handleDeleteCollection(c: GppCollection) {
-    if (!confirm(`"${c.title}" tahsilat kaydını silmek istiyor musunuz?`)) return;
+  function handleDeleteCollection(c: GppCollection) {
+    confirmDelete({
+      title: "Tahsilat kaydını sil",
+      description: `"${c.title}" tahsilat kaydı (${formatTRY(c.amount_try)}) kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
+      onConfirm: () => handleDeleteCollectionConfirmed(c),
+    });
+  }
+
+  async function handleDeleteCollectionConfirmed(c: GppCollection) {
     try {
       await deleteGppCollection(c.id);
       toast({ title: "Tahsilat silindi." });
@@ -821,6 +836,7 @@ export default function AdminGovernmentProgressPayments() {
       <GppDialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditing(null); }} onSave={handleSave} initial={initial} editing={editing} customers={customers} projects={projects} />
       <BreakdownDialog open={bdDialogOpen} onClose={() => { setBdDialogOpen(false); setEditingBd(null); }} onSave={handleSaveBreakdown} breakdown={editingBd} />
       <CollectionDialog open={colDialogOpen} onClose={() => { setColDialogOpen(false); setColTarget(null); }} onSave={handleSaveCollection} gpp={colTarget} />
+      {confirmDeleteDialog}
     </div>
   );
 }

@@ -653,6 +653,119 @@ export function summarizePaymentPlansWithCanonicalState(
   }, { planned: 0, paid: 0, remaining: 0, overdue: 0, activeCount: 0 });
 }
 
+/**
+ * Converts freshly-fetched card-based customer financial entries (the
+ * CardFinancialEntry shape returned by getCustomerFinancialEntries /
+ * customer-financial-entries.php) into the synthetic Planlandı/Gerçekleşti
+ * row pairs summarizeCustomerLedgerEntries() expects — mirroring
+ * map_cfe_entries_to_legacy() in customers.php exactly (one "Planlandı" row
+ * carrying the full amount_try, plus a "Gerçekleşti" row carrying the full,
+ * UNCAPPED paid_amount_try whenever paid > 0).
+ *
+ * Exists because customers.php's own `financial_entries` field is fetched
+ * once per page load and never refreshed after adding/editing/deleting an
+ * entry (only the customer-financial-entries.php-backed query is
+ * invalidated) — feeding summarizeCustomerLedgerEntries() straight from
+ * that stale snapshot silently fell back to a legacy min(paid, amount)
+ * calculation for any customer whose newest entry wasn't in the snapshot
+ * yet, which is what hid an overpayment's real value from the customer
+ * detail KPI cards (QA-B/C BUG-03). Recomputing from the same live entries
+ * the on-page table already renders keeps both in sync by construction.
+ */
+export function cardEntriesToLedgerEntries(
+  entries: Array<{
+    id: string;
+    customer_id?: string | null;
+    project_id?: string | null;
+    entry_date?: string | null;
+    amount_try?: number | string | null;
+    paid_amount_try?: number | string | null;
+    account_type?: string | null;
+  }>,
+): FinancialEntryLike[] {
+  const result: FinancialEntryLike[] = [];
+  for (const row of entries) {
+    const groupTag: GroupTag = accountType(row.account_type) === "resmi" ? "Resmi" : "Gayri Resmi";
+    const amount = safeNumber(row.amount_try);
+    const paid = safeNumber(row.paid_amount_try);
+    const date = row.entry_date ?? null;
+    result.push({
+      amount,
+      direction: "Gelir",
+      status: "Planlandı",
+      currency_tag: "TRY",
+      group_tag: groupTag,
+      customer_id: row.customer_id,
+      entry_date: date,
+      due_date: date,
+    });
+    if (paid > 0) {
+      result.push({
+        amount: paid,
+        direction: "Gelir",
+        status: "Gerçekleşti",
+        currency_tag: "TRY",
+        group_tag: groupTag,
+        customer_id: row.customer_id,
+        entry_date: date,
+        due_date: date,
+      });
+    }
+  }
+  return result;
+}
+
+/**
+ * "Yaklaşan Ödeme": the SUM of remaining balance (amount_try - paid_amount_try, never negative)
+ * across every future-or-today-dated, not-fully-settled card entry — including the unpaid
+ * remainder of a PARTIALLY paid record, not just fully-unpaid ones.
+ *
+ * summarizeCustomerLedgerEntries()'s own `upcoming` field cannot express this: it splits each
+ * real record into a synthetic "Planlandı" row carrying the FULL nominal amount (needed so
+ * `planned` stays the true planned total per BUG-03) and a separate "Gerçekleşti" row, so there
+ * is no single row left representing "this specific record's remaining balance" — and on top of
+ * that it only ever returns the single NEAREST upcoming row's amount, not a sum of all of them.
+ * Operating directly on the raw entries (before that synthetic split) avoids both problems.
+ *
+ * QA-B/C BUG-09: a demo customer's card read ₺400.000 instead of the correct ₺430.000 because
+ * a partially-paid future row's ₺30.000 open remainder was dropped entirely.
+ */
+export function sumUpcomingRemaining(
+  entries: Array<{
+    entry_date?: string | null;
+    amount_try?: number | string | null;
+    paid_amount_try?: number | string | null;
+    account_type?: string | null;
+  }>,
+  options: { group?: GroupTag | "all"; today?: string } = {},
+): number {
+  const group = options.group ?? "all";
+  const today = options.today ?? new Date().toISOString().slice(0, 10);
+  return entries.reduce((sum, entry) => {
+    if (group !== "all") {
+      const rowGroup: GroupTag = accountType(entry.account_type) === "resmi" ? "Resmi" : "Gayri Resmi";
+      if (rowGroup !== group) return sum;
+    }
+    const dueDate = String(entry.entry_date || "");
+    // Same window summarizeCustomerLedgerEntries() already used for `upcoming`: today or later.
+    if (dueDate === "" || dueDate < today) return sum;
+    const remaining = Math.max(0, safeNumber(entry.amount_try) - safeNumber(entry.paid_amount_try));
+    return sum + remaining;
+  }, 0);
+}
+
+// QA-C BUG-10: deleting a government progress payment cascades to its breakdown stages and
+// collections. The confirm dialog must preview that cascade with real counts (never a fabricated
+// number) so the admin knows what else disappears — shared so Devlet Hakedişleri and the customer
+// detail Hakediş tab show identical wording.
+export function describeGppCascadeDelete(breakdownCount: number, collectionCount: number): string {
+  const parts: string[] = [];
+  if (breakdownCount > 0) parts.push(`${breakdownCount} aşama`);
+  if (collectionCount > 0) parts.push(`${collectionCount} tahsilat kaydı`);
+  if (parts.length === 0) return "";
+  return ` Buna bağlı ${parts.join(" ve ")} da birlikte silinecek.`;
+}
+
 export function summarizeCustomerLedgerEntries(
   entries: FinancialEntryLike[],
   options: { currency?: CurrencyTag; group?: GroupTag | "all"; today?: string } = {},

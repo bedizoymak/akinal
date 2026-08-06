@@ -6,6 +6,12 @@ require_once __DIR__ . '/canonical-read-flags.php';
 
 require_admin();
 
+// Must be declared before the dispatch block below runs — unlike function definitions, a
+// top-level `const` is a runtime statement evaluated in file order, not hoisted, so declaring
+// it further down (after the GET handler that references it) throws "Undefined constant" the
+// moment GET actually executes.
+const NOTIFICATIONS_PAYMENT_REMINDER_TYPES = ['Yaklaşan Ödeme', 'Bugünkü Tahsilat', 'Geciken Ödeme'];
+
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 try {
@@ -22,6 +28,17 @@ try {
 
         $persisted = fetch_all_notifications('SELECT * FROM ak_notifications ORDER BY created_at DESC');
         $derived   = notifications_derive_receivable_alerts();
+
+        // A persisted payment-reminder row (type Yaklaşan Ödeme/Bugünkü Tahsilat/Geciken Ödeme,
+        // written by the opt-in notifications_sync_payment_notifications() sync) becomes an
+        // orphan the moment its source receivable is paid off, cancelled, or the record itself
+        // is deleted — nothing currently purges it automatically (that write only happens via
+        // an explicit POST no cron/UI calls yet). Filtering it out here, at read time, is not a
+        // write (GET must never INSERT/UPDATE/DELETE, per the comment above) — it just makes a
+        // stale persisted reminder behave like a derived one: it stops being shown/counted the
+        // moment its source stops qualifying, without needing any destructive cleanup migration
+        // to run first (QA-B/C BUG-07).
+        $persisted = filter_out_orphan_payment_notifications($persisted);
 
         // Deterministic dedup: if a persisted row already represents the same
         // receivable+type+day (e.g. a prior explicit sync — see
@@ -219,6 +236,52 @@ function notifications_derive_receivable_alerts(): array
         ];
     }
     return $alerts;
+}
+
+/**
+ * Read-time filter (no writes) — removes persisted payment-reminder rows whose source
+ * receivable no longer exists or is no longer eligible (paid, cancelled, out of the alert
+ * window). Uses the exact same eligibility set notifications_derive_receivable_alerts() /
+ * notifications_sync_payment_notifications() compute, so a row is never shown here that
+ * wouldn't also be (re-)derived fresh right now. Non-reminder-type notifications (e.g. contact
+ * request alerts) are left untouched — this only applies to the three receivable-reminder types.
+ */
+function filter_out_orphan_payment_notifications(array $persisted): array
+{
+    $hasReminderRow = false;
+    foreach ($persisted as $row) {
+        if (in_array((string) ($row['type'] ?? ''), NOTIFICATIONS_PAYMENT_REMINDER_TYPES, true)) {
+            $hasReminderRow = true;
+            break;
+        }
+    }
+    if (!$hasReminderRow) {
+        return $persisted;
+    }
+
+    $today = date('Y-m-d');
+    $windowEnd = date('Y-m-d', strtotime('+7 days'));
+    $eligibleIds = [];
+    foreach (notifications_fetch_open_receivables() as $row) {
+        $classified = notifications_classify_receivable(
+            (string) ($row['title'] ?? ''),
+            (string) ($row['due_date'] ?? ''),
+            (float) ($row['remaining_amount'] ?? 0),
+            $today,
+            $windowEnd
+        );
+        if ($classified !== null) {
+            $eligibleIds[(string) $row['id']] = true;
+        }
+    }
+
+    return array_values(array_filter($persisted, static function (array $row) use ($eligibleIds): bool {
+        if (!in_array((string) ($row['type'] ?? ''), NOTIFICATIONS_PAYMENT_REMINDER_TYPES, true)) {
+            return true;
+        }
+        $planId = (string) ($row['related_payment_plan_id'] ?? '');
+        return $planId !== '' && isset($eligibleIds[$planId]);
+    }));
 }
 
 /**

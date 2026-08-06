@@ -455,10 +455,10 @@ export default function AdminInflationCalculator() {
               </colgroup>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-left">Dönem</TableHead>
-                  <TableHead className="!text-center">Endeks Değeri</TableHead>
-                  <TableHead className="!text-center">Yıllık Değişim</TableHead>
-                  <TableHead className="!text-center">Aylık Değişim</TableHead>
+                  <TableHead className="text-left">Dönem (Ay/Yıl)</TableHead>
+                  <TableHead className="!text-center">Endeks Değeri (Ay Sonu)</TableHead>
+                  <TableHead className="!text-center">Yıllık Değişim (Aynı Ay, Önceki Yıl)</TableHead>
+                  <TableHead className="!text-center">Aylık Değişim (Önceki Aya Göre)</TableHead>
                   <TableHead className="!text-center">Kaynak</TableHead>
                 </TableRow>
               </TableHeader>
@@ -498,6 +498,13 @@ export default function AdminInflationCalculator() {
                 })}
               </TableBody>
             </Table>
+          )}
+          {!loadingIdx && indices.length > 0 && (
+            <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+              Endeks değeri, ilgili ayın SONUNDAKİ kümülatif TÜFE seviyesini gösterir (baz: Ocak = 100).
+              "Baz" rozetli satır hesaplamanın başlangıç dönemi, "hedef" rozetli satır bitiş dönemidir;
+              vurgulanan satırlar (koyu arka plan) bu iki dönem arasında bileşik hesaplamaya dahil edilen aylardır.
+            </p>
           )}
         </CardContent>
       </Card>

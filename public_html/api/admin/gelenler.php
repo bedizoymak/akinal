@@ -248,18 +248,30 @@ function gelenler_fetch_gpp(
 
 function gelenler_summary(array $entries): array
 {
-    $planned = 0.0;
-    $paid    = 0.0;
-    $overdue = 0;
+    $planned    = 0.0;
+    $paid       = 0.0;
+    $remaining  = 0.0;
+    $overpaid   = 0.0;
+    $overdue    = 0;
     foreach ($entries as $row) {
-        $planned += (float) $row['amount_try'];
-        $paid    += (float) $row['paid_amount_try'];
+        $rowPlanned = (float) $row['amount_try'];
+        $rowPaid    = (float) $row['paid_amount_try'];
+        $planned   += $rowPlanned;
+        $paid      += $rowPaid;
+        // Aggregate outstanding receivable is summed PER ROW, clamped at 0 — never
+        // SUM(planned) - SUM(paid) globally. That aggregate-then-subtract form lets one
+        // customer's overpayment silently cancel out another customer's real open debt in the
+        // consolidated total (QA-B/C BUG-08). The overpaid portion is tracked separately so it
+        // stays visible instead of just vanishing from every total.
+        $remaining += max(0.0, $rowPlanned - $rowPaid);
+        $overpaid  += max(0.0, $rowPaid - $rowPlanned);
         if (!empty($row['is_overdue'])) $overdue++;
     }
     return [
         'total_planned'   => round($planned, 2),
         'total_paid'      => round($paid, 2),
-        'total_remaining' => round($planned - $paid, 2),
+        'total_remaining' => round($remaining, 2),
+        'total_overpaid'  => round($overpaid, 2),
         'overdue_count'   => $overdue,
         'row_count'       => count($entries),
     ];

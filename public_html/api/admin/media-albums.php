@@ -181,13 +181,30 @@ function ensure_favorites_album(): void
 
 function fetch_albums_with_counts(): array
 {
+    // Deleting an image (media.php) now also deletes its ak_media_album_items rows going
+    // forward, but rows orphaned by earlier deletions (before that fix existed) can still be
+    // sitting in the table — that's exactly what inflated album/Favoriler counters past the
+    // real image count (QA-B/C BUG-06). Rather than requiring a destructive cleanup migration
+    // just to get an accurate number, only count items whose media_id still resolves to a row
+    // in ak_project_images. Non-DB media ids (`fs:...`, `site-setting:...`, `project-cover:...`
+    // — the latter two are always "protected" and can never be deleted via media.php, so they
+    // can't orphan that way) are left uncounted-toward-validation here and instead always
+    // counted, matching their previous behavior, since there is no single SQL-queryable table to
+    // validate them against.
     $stmt = db()->query(
-        'SELECT a.id, a.name, a.color, a.sort_order, a.is_favorite, a.created_at,
-                COUNT(i.media_id) AS item_count
+        "SELECT a.id, a.name, a.color, a.sort_order, a.is_favorite, a.created_at,
+                COUNT(CASE
+                        WHEN i.media_id REGEXP '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+                        THEN pi.id
+                        ELSE i.media_id
+                      END) AS item_count
          FROM ak_media_albums a
          LEFT JOIN ak_media_album_items i ON i.album_id = a.id
+         LEFT JOIN ak_project_images pi
+           ON pi.id = i.media_id
+          AND i.media_id REGEXP '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
          GROUP BY a.id
-         ORDER BY a.is_favorite DESC, a.sort_order ASC, a.created_at ASC'
+         ORDER BY a.is_favorite DESC, a.sort_order ASC, a.created_at ASC"
     );
     $albums = $stmt->fetchAll() ?: [];
     foreach ($albums as &$album) {

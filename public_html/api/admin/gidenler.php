@@ -182,21 +182,31 @@ function fetch_gidenler_rows(
 
 function gidenler_summary(array $entries): array
 {
-    $planned = 0.0;
-    $paid    = 0.0;
-    $byType  = ['employee' => 0.0, 'supplier' => 0.0, 'expense_card' => 0.0];
-    $overdue = 0;
+    $planned   = 0.0;
+    $paid      = 0.0;
+    $remaining = 0.0;
+    $overpaid  = 0.0;
+    $byType    = ['employee' => 0.0, 'supplier' => 0.0, 'expense_card' => 0.0];
+    $overdue   = 0;
     foreach ($entries as $row) {
-        $planned += (float) $row['amount_try'];
-        $paid    += (float) $row['paid_amount_try'];
+        $rowPlanned = (float) $row['amount_try'];
+        $rowPaid    = (float) $row['paid_amount_try'];
+        $planned   += $rowPlanned;
+        $paid      += $rowPaid;
+        // Same per-row clamped rule as gelenler_summary() — SUM(planned) - SUM(paid) would let
+        // one overpaid record cancel out another's real outstanding payable in the consolidated
+        // total (QA-B/C BUG-08's rule applied consistently to the payable side too).
+        $remaining += max(0.0, $rowPlanned - $rowPaid);
+        $overpaid  += max(0.0, $rowPaid - $rowPlanned);
         $t = (string) ($row['source_type'] ?? '');
-        if (isset($byType[$t])) $byType[$t] += (float) $row['paid_amount_try'];
+        if (isset($byType[$t])) $byType[$t] += $rowPaid;
         if ($row['is_overdue']) $overdue++;
     }
     return [
         'total_planned'          => round($planned, 2),
         'total_paid'             => round($paid, 2),
-        'total_remaining'        => round($planned - $paid, 2),
+        'total_remaining'        => round($remaining, 2),
+        'total_overpaid'         => round($overpaid, 2),
         'by_source_type_paid'    => array_map(fn($v) => round($v, 2), $byType),
         'overdue_count'          => $overdue,
         'row_count'              => count($entries),

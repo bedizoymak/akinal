@@ -7,6 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { CardFinancialEntry, CardEntryCurrency, CardEntryAccountType, CardEntryPaymentMethod } from "@/lib/apiTypes";
+import { FieldErrorText, fieldErrorClass, focusFirstError } from "@/components/admin/FieldError";
+import { cn } from "@/lib/utils";
+
+const FIELD_ORDER = ["entry-title", "entry-date", "entry-project", "entry-amount"];
 import { todayIsoLocal } from "@/lib/finance";
 
 const CURRENCIES: { value: CardEntryCurrency; label: string }[] = [
@@ -77,6 +81,7 @@ export function CardEntryForm({ open, onClose, onSave, initial, projects, title,
   const [values, setValues] = useState<CardEntryFormValues>(defaultValues(initial, defaultAccountType));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const wasOpen = useRef(false);
 
   // Reset only on the closed→open transition, never while the dialog stays open.
@@ -89,6 +94,7 @@ export function CardEntryForm({ open, onClose, onSave, initial, projects, title,
     if (open && !wasOpen.current) {
       setValues(defaultValues(initial, defaultAccountType));
       setError(null);
+      setFieldErrors({});
     }
     wasOpen.current = open;
   }, [open, initial, defaultAccountType]);
@@ -105,10 +111,21 @@ export function CardEntryForm({ open, onClose, onSave, initial, projects, title,
   }
 
   async function handleSave() {
-    if (!values.title.trim()) { setError("Başlık zorunludur."); return; }
-    if (!values.project_id) { setError("Proje seçimi zorunludur."); return; }
-    if (!values.entry_date) { setError("Tarih zorunludur."); return; }
-    if (!values.amount || isNaN(Number(values.amount)) || Number(values.amount) <= 0) { setError("Geçerli bir tutar girin."); return; }
+    // Every check runs — no early return — so a single Kaydet click surfaces every problem at
+    // once instead of the user re-submitting once per fixed field (QA-B/C BUG-11).
+    const errors: Record<string, string> = {};
+    if (!values.title.trim()) errors["entry-title"] = "Başlık zorunludur.";
+    if (!values.entry_date) errors["entry-date"] = "Tarih zorunludur.";
+    if (!values.project_id) errors["entry-project"] = "Proje seçimi zorunludur.";
+    if (!values.amount || isNaN(Number(values.amount)) || Number(values.amount) <= 0) errors["entry-amount"] = "Geçerli bir tutar girin.";
+
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      focusFirstError(errors, FIELD_ORDER);
+      setError(null);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -137,25 +154,28 @@ export function CardEntryForm({ open, onClose, onSave, initial, projects, title,
 
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <Label>Başlık *</Label>
-              <Input value={values.title} onChange={(e) => set("title", e.target.value)} placeholder="Tahsilat / Ödeme başlığı" />
+              <Label htmlFor="entry-title">Başlık *</Label>
+              <Input id="entry-title" autoComplete="off" value={values.title} onChange={(e) => set("title", e.target.value)} placeholder="Tahsilat / Ödeme başlığı" aria-invalid={Boolean(fieldErrors["entry-title"])} className={cn(fieldErrorClass(Boolean(fieldErrors["entry-title"])))} />
+              <FieldErrorText message={fieldErrors["entry-title"]} />
             </div>
 
             <div>
-              <Label>Tarih *</Label>
-              <Input type="date" value={values.entry_date} onChange={(e) => set("entry_date", e.target.value)} />
+              <Label htmlFor="entry-date">Tarih *</Label>
+              <Input id="entry-date" type="date" value={values.entry_date} onChange={(e) => set("entry_date", e.target.value)} aria-invalid={Boolean(fieldErrors["entry-date"])} className={cn(fieldErrorClass(Boolean(fieldErrors["entry-date"])))} />
+              <FieldErrorText message={fieldErrors["entry-date"]} />
             </div>
 
             <div>
-              <Label>Proje *</Label>
+              <Label htmlFor="entry-project">Proje *</Label>
               <Select value={values.project_id} onValueChange={(v) => set("project_id", v)}>
-                <SelectTrigger><SelectValue placeholder="Proje seç" /></SelectTrigger>
+                <SelectTrigger id="entry-project" aria-invalid={Boolean(fieldErrors["entry-project"])} className={cn(fieldErrorClass(Boolean(fieldErrors["entry-project"])))}><SelectValue placeholder="Proje seç" /></SelectTrigger>
                 <SelectContent>
                   {projects.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <FieldErrorText message={fieldErrors["entry-project"]} />
             </div>
 
             <div>
@@ -174,6 +194,8 @@ export function CardEntryForm({ open, onClose, onSave, initial, projects, title,
                 <Input
                   type="number"
                   step="0.0001"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={values.exchange_rate_to_try}
                   onChange={(e) => { set("exchange_rate_to_try", e.target.value); set("is_exchange_rate_manual", true); }}
                   placeholder="1.00"
@@ -182,13 +204,14 @@ export function CardEntryForm({ open, onClose, onSave, initial, projects, title,
             )}
 
             <div>
-              <Label>Toplam Tutar ({values.currency}) *</Label>
-              <Input type="number" step="0.01" value={values.amount} onChange={(e) => set("amount", e.target.value)} placeholder="0.00" />
+              <Label htmlFor="entry-amount">Toplam Tutar ({values.currency}) *</Label>
+              <Input id="entry-amount" type="number" step="0.01" inputMode="decimal" autoComplete="off" value={values.amount} onChange={(e) => set("amount", e.target.value)} placeholder="0.00" aria-invalid={Boolean(fieldErrors["entry-amount"])} className={cn(fieldErrorClass(Boolean(fieldErrors["entry-amount"])))} />
+              <FieldErrorText message={fieldErrors["entry-amount"]} />
             </div>
 
             <div>
               <Label>Ödenen / Tahsil Edilen ({values.currency})</Label>
-              <Input type="number" step="0.01" value={values.paid_amount} onChange={(e) => set("paid_amount", e.target.value)} placeholder="0.00" />
+              <Input type="number" step="0.01" inputMode="decimal" autoComplete="off" value={values.paid_amount} onChange={(e) => set("paid_amount", e.target.value)} placeholder="0.00" />
             </div>
 
             <div>
@@ -214,7 +237,7 @@ export function CardEntryForm({ open, onClose, onSave, initial, projects, title,
 
             <div className="col-span-2">
               <Label>Notlar</Label>
-              <Textarea value={values.notes} onChange={(e) => set("notes", e.target.value)} rows={2} placeholder="İsteğe bağlı not" />
+              <Textarea autoComplete="off" value={values.notes} onChange={(e) => set("notes", e.target.value)} rows={2} placeholder="İsteğe bağlı not" />
             </div>
 
             {showInflation && (

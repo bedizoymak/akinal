@@ -273,8 +273,26 @@ function fetch_project_statement_rows(string $projectId): array
         $row['signed_paid_amount_try'] = $sign * $paidTry;
         $row['exchange_rate_to_try']   = (float) $row['exchange_rate_to_try'];
         $row['is_exchange_rate_manual'] = (int)  $row['is_exchange_rate_manual'];
-        $row['is_overdue']             = (int)   $row['is_overdue'];
         $row['sign']                   = $sign;
+
+        // Recompute status/is_overdue live instead of trusting the stored columns (customer/
+        // employee/supplier/expense_card rows only — the government block already computes its
+        // own live CASE above). `status`/`is_overdue` are written once at create/update time
+        // (finance-entry-helpers.php fe_payload()) and never refreshed afterwards, so a row whose
+        // due date has since passed keeps a stale "Planlanan" forever until someone re-saves it.
+        // Gelenler/Gidenler already self-correct on every load via fe_enrich() — this UNION query
+        // bypasses fe_enrich() entirely, which is exactly why Proje Finans's gelir satırları
+        // stopped showing "Gecikmiş" for rows Gelenler already flagged correctly (QA-B/C BUG-05).
+        // Reusing fe_auto_status()/fe_is_overdue() (the same functions fe_enrich() calls) keeps
+        // this screen's definition of "overdue" identical to Gelenler/Gidenler's, not a parallel
+        // reimplementation.
+        if ($row['source_type'] !== 'government') {
+            $entryDate = (string) ($row['entry_date'] ?? '');
+            $row['status']     = fe_auto_status($amount, $paid, $entryDate);
+            $row['is_overdue'] = fe_is_overdue($amount, $paid, $entryDate);
+        } else {
+            $row['is_overdue'] = (int) $row['is_overdue'];
+        }
 
         // Add inflation adjustment for planned customer receivable rows only
         $inflationFields = inflation_null_fields();
@@ -331,9 +349,21 @@ function compute_statement_summary(array $rows): array
                     if ($adj !== null) {
                         $customerIncomeInflationAdjusted += (float) $adj;
                         $hasInflationData = true;
-                    } else {
-                        // Paid entries contribute their paid amount to the inflation-adjusted total
+                    } elseif (in_array($row['status'], ['Gerçekleşti', 'Fazla Ödendi'], true)) {
+                        // Settled rows: the collected amount already IS the row's current value —
+                        // no further inflation adjustment applies to money already received.
                         $customerIncomeInflationAdjusted += $paid;
+                    } else {
+                        // Still-open row (Planlanan/Gecikmiş/Kısmi Ödendi) whose inflation
+                        // adjustment could not be computed (missing TCMB index data for the
+                        // period, or entry_date <= created_at so "inflation forward" has no
+                        // defined target — calculate_inflation_adjustment() returns null in
+                        // both cases). Falling back to $paid here previously collapsed this
+                        // row's contribution to ₺0 (or its partial payment) instead of its
+                        // nominal value, silently pulling the whole KPI below the planned total
+                        // — the fallback floor must be the nominal planned amount, never a
+                        // smaller/zero substitute (QA-B/C BUG-04).
+                        $customerIncomeInflationAdjusted += $planned;
                     }
                 }
             }
