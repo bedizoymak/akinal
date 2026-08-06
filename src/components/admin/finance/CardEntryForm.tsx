@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { CardFinancialEntry, CardEntryCurrency, CardEntryAccountType, CardEntryPaymentMethod } from "@/lib/apiTypes";
+import { todayIsoLocal } from "@/lib/finance";
 
 const CURRENCIES: { value: CardEntryCurrency; label: string }[] = [
   { value: "TRY", label: "₺ Türk Lirası" },
@@ -54,13 +55,11 @@ interface Props {
   defaultAccountType?: CardEntryAccountType;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
-
 export function defaultValues(initial?: Partial<CardFinancialEntry>, defaultAccountType?: CardEntryAccountType): CardEntryFormValues {
   return {
     title: initial?.title ?? "",
     notes: initial?.notes ?? "",
-    entry_date: initial?.entry_date ?? today(),
+    entry_date: initial?.entry_date ?? todayIsoLocal(),
     amount: initial?.amount != null ? String(initial.amount) : "",
     paid_amount: initial?.paid_amount != null ? String(initial.paid_amount) : "0",
     currency: (initial?.currency as CardEntryCurrency) ?? "TRY",

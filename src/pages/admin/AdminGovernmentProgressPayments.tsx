@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Edit, Trash2, Search, Building2, FolderOpen, CalendarDays, PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { formatTRY } from "@/lib/finance";
+import { formatTRY, todayIsoLocal } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { AdminMetricCard, AdminPageHeader } from "@/components/admin/AdminPage";
 import {
@@ -118,7 +118,7 @@ function formToPayload(form: FormState): GovernmentProgressPaymentPayload {
 
 // ── Parent dialog ─────────────────────────────────────────────────────────────
 
-function GppDialog({ open, onClose, onSave, initial, editing, customers, projects }: {
+export function GppDialog({ open, onClose, onSave, initial, editing, customers, projects }: {
   open: boolean; onClose: () => void;
   onSave: (f: FormState) => Promise<void>; initial: FormState;
   editing: GovernmentProgressPayment | null;
@@ -128,7 +128,17 @@ function GppDialog({ open, onClose, onSave, initial, editing, customers, project
   const [form, setForm] = useState<FormState>(initial);
   const [titleEdited, setTitleEdited] = useState(false);
   const [saving, setSaving] = useState(false);
-  useEffect(() => { if (open) { setForm(initial); setTitleEdited(!!editing); } }, [open, initial, editing]);
+  const wasOpen = useRef(false);
+  // Reset only on the closed→open transition, never while the dialog stays open.
+  // `initial` can receive a new object reference from the parent (e.g. a background
+  // refetch of the projects/payments list resolving mid-edit) without the dialog
+  // itself closing — resetting on every such change previously wiped whatever the
+  // admin had already typed, including Vade Tarihi, back to the default before
+  // Kaydet was ever clicked. See CardEntryForm.tsx for the same pattern/fix.
+  useEffect(() => {
+    if (open && !wasOpen.current) { setForm(initial); setTitleEdited(!!editing); }
+    wasOpen.current = open;
+  }, [open, initial, editing]);
 
   const hasBreakdowns = editing != null && (editing.breakdowns ?? []).length > 0;
 
@@ -227,13 +237,20 @@ function bdFromRecord(b: GppBreakdown): BdForm {
   return { planned_amount_try: String(b.planned_amount_try), paid_amount_try: String(b.paid_amount_try), due_date: b.due_date ?? "", paid_date: b.paid_date ?? "", status: b.status, notes: b.notes ?? "" };
 }
 
-function BreakdownDialog({ open, onClose, onSave, breakdown }: {
+export function BreakdownDialog({ open, onClose, onSave, breakdown }: {
   open: boolean; onClose: () => void;
   onSave: (b: GppBreakdown, f: BdForm) => Promise<void>; breakdown: GppBreakdown | null;
 }) {
   const [form, setForm] = useState<BdForm>({ planned_amount_try: "", paid_amount_try: "0", due_date: "", paid_date: "", status: "planned", notes: "" });
   const [saving, setSaving] = useState(false);
-  useEffect(() => { if (open && breakdown) setForm(bdFromRecord(breakdown)); }, [open, breakdown]);
+  const wasOpen = useRef(false);
+  // Reset only on the closed→open transition — see GppDialog above for why resetting
+  // on every `breakdown` reference change (e.g. a background payments-list refetch
+  // while this dialog stays open) previously wiped a just-typed Vade/Ödeme Tarihi.
+  useEffect(() => {
+    if (open && !wasOpen.current && breakdown) setForm(bdFromRecord(breakdown));
+    wasOpen.current = open;
+  }, [open, breakdown]);
   const set = (k: keyof BdForm, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   async function submit(e: React.FormEvent) {
@@ -286,7 +303,7 @@ type ColForm = { breakdown_id: string; title: string; collection_date: string; n
 const emptyColForm = (): ColForm => ({
   breakdown_id: "",
   title: "",
-  collection_date: new Date().toISOString().slice(0, 10),
+  collection_date: todayIsoLocal(),
   notes: "",
 });
 

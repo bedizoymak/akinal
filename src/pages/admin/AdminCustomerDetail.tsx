@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Edit, Mail, MapPin, MessageCircle, Phone, Plus, Trash2 } from "lucide-react";
-import { accountType, allocateCollectionsToPlans, customerDisplayName, derivePlanStatus, displayLabel, formatTRY, daysUntil, safeNumber, summarizeCustomerLedgerEntries, whatsappLink } from "@/lib/finance";
+import { accountType, allocateCollectionsToPlans, customerDisplayName, derivePlanStatus, displayLabel, formatTRY, daysUntil, safeNumber, summarizeCustomerLedgerEntries, todayIsoLocal, whatsappLink } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -230,7 +230,7 @@ export default function AdminCustomerDetail() {
   const [loadError, setLoadError] = useState("");
   const qc = useQueryClient();
   const { toast } = useToast();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIsoLocal();
 
   const { data: customerEntries = [] } = useQuery({
     queryKey: ["customer-financial-entries", id],

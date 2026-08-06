@@ -82,7 +82,7 @@ try {
             $amount = round($remaining, 2);
 
             $title = require_non_empty($input, 'title', 'Başlık zorunludur.');
-            $date  = require_non_empty($input, 'collection_date', 'Tahsilat tarihi zorunludur.');
+            $date  = require_iso_date($input, 'collection_date', 'Geçerli bir tahsilat tarihi zorunludur.');
             $notes = nullable_string($input, 'notes');
 
             // Parent overpayment guard (breakdown guard already satisfied since amount = remaining).
@@ -145,7 +145,7 @@ try {
 
             $gppId = $crow['government_progress_payment_id'];
             $title = array_key_exists('title', $input) ? require_non_empty($input, 'title', 'Başlık zorunludur.') : $crow['title'];
-            $date  = array_key_exists('collection_date', $input) ? require_non_empty($input, 'collection_date', 'Tarih zorunludur.') : $crow['collection_date'];
+            $date  = array_key_exists('collection_date', $input) ? require_iso_date($input, 'collection_date', 'Geçerli bir tarih zorunludur.') : $crow['collection_date'];
             $notes = array_key_exists('notes', $input) ? nullable_string($input, 'notes') : $crow['notes'];
 
             db()->beginTransaction();
@@ -196,8 +196,8 @@ try {
                 'planned_amount_try' => $planned,
                 'paid_amount_try'    => $paid,
                 'status'             => $status,
-                'due_date'           => array_key_exists('due_date', $input)  ? nullable_string($input, 'due_date')  : $brow['due_date'],
-                'paid_date'          => array_key_exists('paid_date', $input) ? nullable_string($input, 'paid_date') : $brow['paid_date'],
+                'due_date'           => array_key_exists('due_date', $input)  ? nullable_iso_date($input, 'due_date', 'Geçerli bir vade tarihi girin.')  : $brow['due_date'],
+                'paid_date'          => array_key_exists('paid_date', $input) ? nullable_iso_date($input, 'paid_date', 'Geçerli bir ödeme tarihi girin.') : $brow['paid_date'],
                 'notes'              => array_key_exists('notes', $input)     ? nullable_string($input, 'notes')     : $brow['notes'],
             ];
 
@@ -589,7 +589,7 @@ function gpp_payload(array $input, float $existingPaid = 0.0): array
         'stage_percentage'   => 0.0,
         'planned_amount_try' => $planned,
         'paid_amount_try'    => $paid,
-        'due_date'           => nullable_string($input, 'due_date'),
+        'due_date'           => nullable_iso_date($input, 'due_date', 'Geçerli bir vade tarihi girin.'),
         'paid_date'          => null,
         'status'             => $status,
         'notes'              => nullable_string($input, 'notes'),

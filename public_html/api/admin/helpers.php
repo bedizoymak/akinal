@@ -1,6 +1,12 @@
 <?php
 declare(strict_types=1);
 
+// Pin PHP's default timezone so date('Y-m-d') (used to classify entries as
+// Planlanan/Gecikmiş relative to "today" — see fe_auto_status()/fe_is_overdue()
+// in finance-entry-helpers.php) always reflects the business's Turkey-local
+// calendar day, regardless of the shared host's php.ini default (often UTC).
+date_default_timezone_set('Europe/Istanbul');
+
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../auth.php';
 
@@ -63,6 +69,25 @@ function require_allowed_value(array $input, string $key, array $allowed, string
 function require_iso_date(array $input, string $key, string $message): string
 {
     $value = require_non_empty($input, $key, $message);
+    $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+    if (!$date || $date->format('Y-m-d') !== $value) {
+        json_error($message);
+    }
+    return $value;
+}
+
+/**
+ * Same format validation as require_iso_date(), but for optional date-only
+ * fields (e.g. Vade Tarihi): a missing/empty value returns null instead of
+ * erroring, while a non-empty-but-malformed value still errors explicitly
+ * rather than being written to the DB as-is.
+ */
+function nullable_iso_date(array $input, string $key, string $message): ?string
+{
+    $value = nullable_string($input, $key);
+    if ($value === null) {
+        return null;
+    }
     $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
     if (!$date || $date->format('Y-m-d') !== $value) {
         json_error($message);

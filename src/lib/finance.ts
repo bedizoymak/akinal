@@ -183,12 +183,31 @@ export function customerDisplayName(c: { customer_type?: string; full_name?: str
   return c.full_name || c.company_name || "İsimsiz";
 }
 
+// Returns the browser's local calendar date as YYYY-MM-DD. Unlike
+// `new Date().toISOString().slice(0, 10)`, this never crosses a UTC day
+// boundary that doesn't match the admin's local calendar day (e.g. between
+// 00:00-03:00 Europe/Istanbul time, the UTC date is still "yesterday",
+// which would silently pre-fill/compare against the wrong day).
+export function todayIsoLocal(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function daysUntil(date: string): number {
   if (!date) return 0;
+  const [y, m, d] = date.slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return 0;
+  // Construct both sides from local Y/M/D components (not `new Date(isoString)`,
+  // which parses date-only strings as UTC midnight and can land on the wrong
+  // local calendar day, then get "confirmed" by setHours(0,0,0,0) — a day-shift
+  // bug for any timezone with a negative UTC offset).
+  const target = new Date(y, m - 1, d);
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const d = new Date(date); d.setHours(0, 0, 0, 0);
-  if (Number.isNaN(d.getTime())) return 0;
-  return Math.round((d.getTime() - today.getTime()) / 86400000);
+  if (Number.isNaN(target.getTime())) return 0;
+  return Math.round((target.getTime() - today.getTime()) / 86400000);
 }
 
 export function statusBadgeClass(status: string): string {
