@@ -56,6 +56,7 @@ const NAV_GROUPS = [
     title: "Tedarik ve Giderler",
     items: [
       { to: "/admin/tedarikciler", label: "Tedarikçiler", description: "Tedarikçi ve alt yüklenici kartları", icon: Building2 },
+      { to: "/admin/masraf-kalemleri", label: "Masraf Kalemleri", description: "Gider kategori ve kalem tanımları", icon: Tags },
       { to: "/admin/gider-kartlari", label: "Masraf Kartları", description: "Proje masraf kartları", icon: Tags },
     ],
   },
@@ -111,6 +112,7 @@ const PAGE_META: PageMeta[] = [
   { path: "/admin/net-durum", title: "Net Durum", group: "Genel" },
   { path: "/admin/tahsilatlar", title: "Tahsilatlar", group: "Cari ve Tahsilat" },
   { path: "/admin/giderler", title: "Giderler", group: "Tedarik ve Giderler" },
+  { path: "/admin/masraf-kalemleri", title: "Masraf Kalemleri", group: "Tedarik ve Giderler" },
   { path: "/admin/gider-kartlari", title: "Masraf Kartları", group: "Tedarik ve Giderler" },
   { path: "/admin/raporlar", title: "Raporlar", group: "Raporlar" },
   { path: "/admin/tedarikciler/yeni", title: "Yeni Tedarikçi", group: "Tedarik ve Giderler" },

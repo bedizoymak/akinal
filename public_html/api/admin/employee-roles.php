@@ -7,18 +7,17 @@ require_admin();
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
+// ak_employee_roles/ak_roles ship in install-schema.php but that installer is gated
+// and must be run manually — an environment that hasn't had it (re-)run yet would
+// otherwise 500 on every method here. See employee-personnel-tables-apply.php.
+require_admin_tables(['ak_employee_roles', 'ak_roles'], 'Personel rol tabloları henüz oluşturulmadı. Lütfen sistem yöneticisiyle iletişime geçin.');
+
 try {
     // GET /api/admin/employee-roles.php?employee_id=:id
     if ($method === 'GET') {
         $employeeId = trim((string) ($_GET['employee_id'] ?? ''));
         if ($employeeId === '') {
             json_error('employee_id zorunludur.');
-        }
-        // ak_employee_roles/ak_roles ship in install-schema.php but that installer is gated
-        // and must be run manually — an environment that hasn't had it (re-)run yet would
-        // otherwise 500 here instead of showing an empty roles list.
-        if (!er_table_exists('ak_employee_roles') || !er_table_exists('ak_roles')) {
-            json_success(['employee_roles' => [], 'table_missing' => true]);
         }
         $stmt = db()->prepare(
             'SELECT er.employee_id, er.role_id, er.assigned_at, er.ended_at,
@@ -136,13 +135,4 @@ try {
     json_error('İstek yöntemi desteklenmiyor.', 405);
 } catch (Throwable $exception) {
     json_error('Personel rol işlemi tamamlanamadı.', 500);
-}
-
-function er_table_exists(string $table): bool
-{
-    $stmt = db()->prepare(
-        'SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :t LIMIT 1'
-    );
-    $stmt->execute(['t' => $table]);
-    return (bool) $stmt->fetchColumn();
 }

@@ -110,6 +110,37 @@ const ACTIONS: MaintenanceAction[] = [
       );
     },
   },
+  {
+    id: "expense-master-data-apply",
+    title: "Masraf Master Veri Tablolarını Oluştur",
+    description:
+      "ak_expense_categories, ak_expense_items ve gider ilişkisi sütunlarını oluşturur. Mevcut veri etkilenmez.",
+    warning:
+      "İdempotent: tablo, sütun, indeks ve kısıtlar zaten varsa tekrar eklenmez.",
+    endpoint: "/api/admin/migrations/expense-master-data-apply.php",
+    method: "POST",
+    confirmMessage:
+      "Bu işlem production veritabanında masraf master veri tablolarını ve ilişki sütunlarını doğrulayacak. Devam edilsin mi?",
+    renderResult: (data) => {
+      const d = data as { tables_created?: Record<string, boolean>; columns_added?: boolean; indexes_verified?: boolean; constraints_verified?: boolean } | null;
+      if (!d) return null;
+      return (
+        <div className="grid grid-cols-2 gap-2 mt-2 sm:grid-cols-4">
+          {[
+            { label: "Kategoriler", value: d.tables_created?.ak_expense_categories ? "Hazır" : "—" },
+            { label: "Kalemler", value: d.tables_created?.ak_expense_items ? "Hazır" : "—" },
+            { label: "Sütunlar", value: d.columns_added ? "Doğrulandı" : "—" },
+            { label: "İlişkiler", value: d.constraints_verified ? "Doğrulandı" : "—" },
+          ].map((item) => (
+            <div key={item.label} className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-center">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{item.label}</div>
+              <div className="mt-0.5 text-xs font-bold">{item.value}</div>
+            </div>
+          ))}
+        </div>
+      );
+    },
+  },
 ];
 
 // ── Utilities ─────────────────────────────────────────────────────────────────

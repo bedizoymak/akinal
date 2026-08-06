@@ -38,6 +38,16 @@ try {
         // customer receivable = any row whose fe_auto_status() (finance-entry-helpers.php) is
         // not a fully-settled status. Drives the dashboard's "Beklenen Tahsilat" card link.
         $cfeWhere[] = "cfe.status IN ('Planlanan', 'Gecikmiş', 'Kısmi Ödendi')";
+    } elseif ($status === 'Gecikmiş') {
+        // Also synthetic, not a literal status match: fe_auto_status() only ever assigns the
+        // 'Gecikmiş' string to a fully-UNPAID overdue row — a partially paid overdue row is always
+        // stored as 'Kısmi Ödendi' regardless of its due date (see finance-entry-helpers.php
+        // fe_auto_status()). Filtering on the stored status string would silently drop partially
+        // paid overdue receivables from this destination page even after the dashboard's "Vadesi
+        // Geçen Alacak" card (dashboard.php) correctly counts them via the same live date/balance
+        // rule. Recomputed here identically so the card total and this list can never diverge.
+        $cfeWhere[] = 'cfe.entry_date < :gecikmis_today AND cfe.amount_try > cfe.paid_amount_try';
+        $cfeParams['gecikmis_today'] = date('Y-m-d');
     } elseif ($status !== '') {
         $cfeWhere[] = 'cfe.status = :status';
         $cfeParams['status'] = $status;

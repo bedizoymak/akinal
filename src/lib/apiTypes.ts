@@ -482,10 +482,35 @@ export interface AdminExpense {
   customer_id: string | null;
   title: string | null;
   category: string | null;
+  category_id?: string | null;
+  expense_item_id?: string | null;
   amount: number | string;
   expense_date: string | null;
   description: string | null;
   document_url: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface ExpenseCategoryMasterRecord {
+  id: string;
+  name: string;
+  description?: string | null;
+  is_active: number | boolean;
+  sort_order?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface ExpenseItemMasterRecord {
+  id: string;
+  category_id: string | null;
+  category_name?: string | null;
+  name: string;
+  description?: string | null;
+  default_unit?: string | null;
+  default_vat_rate?: number | null;
+  is_active: number | boolean;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -785,6 +810,13 @@ export interface AdminExpensesResponse {
   expenses: AdminExpense[];
   customers: AdminCustomer[];
   projects: Pick<PublicProject, "id" | "title">[];
+  categories?: ExpenseCategoryMasterRecord[];
+  items?: ExpenseItemMasterRecord[];
+}
+
+export interface ExpenseMasterDataResponse {
+  categories: ExpenseCategoryMasterRecord[];
+  items: ExpenseItemMasterRecord[];
 }
 
 export interface AdminExpenseCardsResponse {

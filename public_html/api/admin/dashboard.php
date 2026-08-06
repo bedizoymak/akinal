@@ -120,19 +120,31 @@ function compute_finance_summary(PDO $pdo): array
     // migrations/government-progress-payments-cleanup.php. Without this filter, every migrated
     // Hakediş row is counted twice (once here, once via $gppRow), inflating "Genel Bakış" income and
     // net totals versus Gelenler/Net Durum, which already apply this same exclusion (gelenler.php).
+    // "Vadesi Geçen Alacak" (overdue_remaining/overdue_count) must reflect *today's* comparison
+    // against entry_date, not the stored `is_overdue` column. `is_overdue` (finance-entry-helpers.php
+    // fe_is_overdue()) is written once at create/update time and never refreshed afterwards — a
+    // receivable that wasn't yet overdue when last saved (e.g. partially paid on time, or created
+    // with a future due date) keeps a stale is_overdue=0 forever once its due date passes, silently
+    // vanishing from this card even though it plainly qualifies. Recomputing the date comparison
+    // live here (bound to PHP's Europe/Istanbul-pinned "today", not MySQL's CURDATE()/session
+    // timezone) makes the card self-correcting on every load instead of depending on someone
+    // re-saving the row. GREATEST(amount_try - paid_amount_try, 0) already implements "remaining
+    // balance > 0"; `amount_try > paid_amount_try` gates which rows count so a fully-settled
+    // overdue row (remaining = 0) is correctly excluded.
+    $today = date('Y-m-d');
     $custStmt = $pdo->prepare("
         SELECT
           COALESCE(SUM(amount_try), 0)     AS planned,
           COALESCE(SUM(paid_amount_try), 0) AS paid,
           COALESCE(SUM(CASE WHEN entry_date >= :m THEN paid_amount_try ELSE 0 END), 0) AS month_paid,
-          COALESCE(SUM(CASE WHEN is_overdue = 1 THEN GREATEST(amount_try - paid_amount_try, 0) ELSE 0 END), 0) AS overdue_remaining,
+          COALESCE(SUM(CASE WHEN entry_date < :today1 AND amount_try > paid_amount_try THEN GREATEST(amount_try - paid_amount_try, 0) ELSE 0 END), 0) AS overdue_remaining,
           COALESCE(SUM(CASE WHEN status IN ('Planlanan', 'Gecikmiş', 'Kısmi Ödendi') THEN GREATEST(amount_try - paid_amount_try, 0) ELSE 0 END), 0) AS upcoming,
-          SUM(CASE WHEN is_overdue = 1 THEN 1 ELSE 0 END) AS overdue_count,
+          SUM(CASE WHEN entry_date < :today2 AND amount_try > paid_amount_try THEN 1 ELSE 0 END) AS overdue_count,
           SUM(CASE WHEN status IN ('Planlanan', 'Gecikmiş', 'Kısmi Ödendi') THEN 1 ELSE 0 END) AS upcoming_count
         FROM ak_customer_financial_entries
         WHERE title NOT LIKE '%Hakediş%'
     ");
-    $custStmt->execute([':m' => $thisMonth]);
+    $custStmt->execute([':m' => $thisMonth, ':today1' => $today, ':today2' => $today]);
     $custRow = $custStmt->fetch() ?: [];
 
     // Realized government-progress stage collections — same canonical source
@@ -203,7 +215,9 @@ function compute_finance_summary(PDO $pdo): array
 
 function fetch_customer_entries_overdue(PDO $pdo): array
 {
-    return $pdo->query("
+    // Same live date comparison as compute_finance_summary()'s overdue_remaining/overdue_count —
+    // see the comment there. Feeds the "Vadesi Geçen Alacak" card's record list/count fallback.
+    $stmt = $pdo->prepare("
         SELECT
           cfe.id, cfe.title, cfe.entry_date AS `date`, cfe.amount_try AS amount,
           cfe.paid_amount_try AS paid_amount, cfe.status, cfe.account_type,
@@ -213,10 +227,12 @@ function fetch_customer_entries_overdue(PDO $pdo): array
         FROM ak_customer_financial_entries cfe
         LEFT JOIN ak_customers c ON c.id = cfe.customer_id
         LEFT JOIN ak_projects  p ON p.id = cfe.project_id
-        WHERE cfe.is_overdue = 1 AND cfe.title NOT LIKE '%Hakediş%'
+        WHERE cfe.entry_date < :today AND cfe.amount_try > cfe.paid_amount_try AND cfe.title NOT LIKE '%Hakediş%'
         ORDER BY cfe.entry_date ASC
         LIMIT 50
-    ")->fetchAll() ?: [];
+    ");
+    $stmt->execute([':today' => date('Y-m-d')]);
+    return $stmt->fetchAll() ?: [];
 }
 
 function fetch_customer_entries_upcoming(PDO $pdo): array

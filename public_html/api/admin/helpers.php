@@ -119,3 +119,38 @@ function require_upload_size(array $file, int $maxBytes): void
         json_error('Dosya boyutu izin verilen sınırı aşıyor.');
     }
 }
+
+/**
+ * True when $table exists in the current database schema. Shared by the personnel
+ * endpoints (roles.php, employee-roles.php, employee-cost-periods.php,
+ * employee-project-assignments.php, employee-project-allocations.php) to detect
+ * whether the optional ak_roles/ak_employee_* migration (employee-personnel-tables-
+ * apply.php, run from Bakım Konsolu) has been applied on this environment yet.
+ */
+function admin_table_exists(string $table): bool
+{
+    $stmt = db()->prepare(
+        'SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :t LIMIT 1'
+    );
+    $stmt->execute(['t' => $table]);
+    return (bool) $stmt->fetchColumn();
+}
+
+/**
+ * Fails the request with a distinct, machine-readable TABLE_MISSING error
+ * (503, success:false) when any of $tables is absent, for every HTTP method
+ * (GET/POST/PATCH/DELETE) alike. Previously GET alone degraded to
+ * success:true + table_missing:true — a silent-success shape the frontend
+ * could not distinguish from a legitimately empty list, so the "yüklenemedi"
+ * state never rendered and dropdowns just looked empty — while POST/PATCH/
+ * DELETE fell through to the generic catch-all 500. Centralizing the check
+ * here gives every method the same explicit, retryable error contract.
+ */
+function require_admin_tables(array $tables, string $message): void
+{
+    foreach ($tables as $table) {
+        if (!admin_table_exists($table)) {
+            json_error($message, 503, ['code' => 'TABLE_MISSING', 'table' => $table]);
+        }
+    }
+}

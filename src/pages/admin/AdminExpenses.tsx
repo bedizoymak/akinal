@@ -12,8 +12,10 @@ import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from "@/components/
 import { QuickCreateCustomerButton } from "@/components/admin/QuickCreateCustomerButton";
 import { QuickCreateExpenseCategoryButton } from "@/components/admin/QuickCreateExpenseCategoryButton";
 import { createAdminExpense, deleteAdminExpense, getAdminExpensesData, updateAdminExpense, uploadAdminExpenseDocument } from "@/lib/apiClient";
+import type { ExpenseCategoryMasterRecord, ExpenseItemMasterRecord } from "@/lib/apiTypes";
+import { getSelectableExpenseItemOptions } from "@/lib/expenseMasterData";
 
-const empty = { project_id: "", customer_id: "", title: "", category: "Malzeme", amount: "", expense_date: new Date().toISOString().slice(0, 10), description: "", document_url: "" };
+const empty = { project_id: "", customer_id: "", title: "", category: "Malzeme", category_id: "", expense_item_id: "", amount: "", expense_date: new Date().toISOString().slice(0, 10), description: "", document_url: "" };
 
 export default function AdminExpenses() {
   const [items, setItems] = useState<any[]>([]);
@@ -29,6 +31,10 @@ export default function AdminExpenses() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [masterCategories, setMasterCategories] = useState<ExpenseCategoryMasterRecord[]>([]);
+  const [masterItems, setMasterItems] = useState<ExpenseItemMasterRecord[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
 
   async function load() {
@@ -36,6 +42,8 @@ export default function AdminExpenses() {
     try {
       const data = await getAdminExpensesData();
       setItems(data.expenses || []); setCustomers(data.customers || []); setProjects(data.projects || []);
+      setMasterCategories(data.categories || []);
+      setMasterItems(data.items || []);
     } catch (error) {
       toast({ title: "Gider verileri alınamadı", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });
     } finally {
@@ -45,7 +53,23 @@ export default function AdminExpenses() {
   useEffect(() => { load(); }, []);
 
   function openNew() { setForm({ ...empty, project_id: filterProject !== "all" ? filterProject : "" }); setEditId(null); setOpen(true); }
-  function openEdit(it: any) { setForm({ ...it, project_id: it.project_id || "", customer_id: it.customer_id || "", description: it.description || "", document_url: it.document_url || "", amount: String(it.amount) }); setEditId(it.id); setOpen(true); }
+  function openEdit(it: any) {
+    const categoryId = it.category_id || "";
+    const expenseItemId = it.expense_item_id || "";
+    setForm({
+      ...it,
+      project_id: it.project_id || "",
+      customer_id: it.customer_id || "",
+      description: it.description || "",
+      document_url: it.document_url || "",
+      amount: String(it.amount),
+      category: it.category || "",
+      category_id: categoryId,
+      expense_item_id: expenseItemId,
+    });
+    setEditId(it.id);
+    setOpen(true);
+  }
   function handleCustomerCreated(customer: any) {
     setCustomers((current) => [customer, ...current.filter((item) => item.id !== customer.id)]);
     setForm((current: any) => ({ ...current, customer_id: customer.id }));
@@ -86,13 +110,23 @@ export default function AdminExpenses() {
   }
 
   async function remove(id: string) {
-    if (!confirm("Bu gider kaydını silmek istediğinize emin misiniz?")) return;
+    const target = items.find((item) => item.id === id);
+    if (!target) return;
+    setDeleteTarget(target);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await deleteAdminExpense(id);
+      await deleteAdminExpense(deleteTarget.id);
       toast({ title: "Silindi" });
       await load();
+      setDeleteTarget(null);
     } catch (error) {
       toast({ title: "Gider silinemedi", description: error instanceof Error ? error.message : "Lütfen tekrar deneyin.", variant: "destructive" });
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -109,11 +143,18 @@ export default function AdminExpenses() {
     return true;
   });
 
-  const categoryOptions = useMemo(() => Array.from(new Set([
-    ...EXPENSE_CATEGORIES,
-    ...items.map((item) => item.category).filter(Boolean),
-    ...customCategories,
-  ])), [customCategories, items]);
+  const categoryOptions = useMemo(() => {
+    const activeCategoryNames = masterCategories.filter((category) => Number(category.is_active) === 1).map((category) => category.name);
+    const currentCategoryName = form.category && !activeCategoryNames.includes(form.category) ? form.category : null;
+    return Array.from(new Set([
+      ...activeCategoryNames,
+      ...EXPENSE_CATEGORIES,
+      ...items.map((item) => item.category).filter(Boolean),
+      ...customCategories,
+      ...(currentCategoryName ? [currentCategoryName] : []),
+    ]));
+  }, [customCategories, form.category, items, masterCategories]);
+  const filteredItemOptions = useMemo(() => getSelectableExpenseItemOptions(masterItems, masterCategories, form.category_id || null, form.expense_item_id || null), [form.category_id, form.expense_item_id, masterCategories, masterItems]);
   const thisMonth = new Date().toISOString().slice(0, 7);
   const expenseSummary = summarizeLegacyExpenseRowsWithCanonicalAdapter(filtered, { month: thisMonth });
   const total = expenseSummary.total;
@@ -230,8 +271,38 @@ export default function AdminExpenses() {
                 <Label>Gider Kategorisi</Label>
                 <QuickCreateExpenseCategoryButton existingCategories={categoryOptions} onCreated={handleCategoryCreated} />
               </div>
-              <Select value={form.category} onValueChange={(v) => setForm((f: any) => ({ ...f, category: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{categoryOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+              <Select value={form.category || ""} onValueChange={(value) => {
+                const matchedCategory = masterCategories.find((category) => category.name === value);
+                setForm((current: any) => ({
+                  ...current,
+                  category: value,
+                  category_id: matchedCategory ? matchedCategory.id : "",
+                  expense_item_id: "",
+                }));
+              }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{categoryOptions.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Masraf Kalemi</Label>
+              <Select value={form.expense_item_id || "none"} onValueChange={(value) => {
+                const nextValue = value === "none" ? "" : value;
+                const matchedItem = masterItems.find((item) => item.id === nextValue);
+                const resolvedCategoryId = matchedItem?.category_id ?? form.category_id ?? "";
+                const resolvedCategoryName = masterCategories.find((category) => category.id === resolvedCategoryId)?.name ?? form.category ?? "";
+                setForm((current: any) => ({
+                  ...current,
+                  expense_item_id: nextValue,
+                  category_id: resolvedCategoryId,
+                  category: resolvedCategoryName,
+                }));
+              }}>
+                <SelectTrigger><SelectValue placeholder="Seçim yapın" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Seçilmedi —</SelectItem>
+                  {filteredItemOptions.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+                </SelectContent>
               </Select>
             </div>
             <div><Label>Tutar *</Label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm((f: any) => ({ ...f, amount: e.target.value }))} /></div>
@@ -250,6 +321,20 @@ export default function AdminExpenses() {
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? "Kaydediliyor..." : "Kaydet"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Gider kaydını sil</DialogTitle></DialogHeader>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <p>Bu gider kaydını silmek istediğinize emin misiniz?</p>
+            {deleteTarget ? <div className="rounded-md border border-border bg-muted/40 p-3 text-foreground">{deleteTarget.title}</div> : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>İptal</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>{deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Sil</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

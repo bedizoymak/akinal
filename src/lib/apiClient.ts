@@ -12,6 +12,7 @@ import type {
   AdminExpenseCard,
   AdminExpenseCardsResponse,
   AdminExpensesResponse,
+  ExpenseMasterDataResponse,
   AdminEmployee,
   AdminEmployeesResponse,
   AdminFinancialEntry,
@@ -777,6 +778,13 @@ export async function getAdminExpensesData(): Promise<AdminExpensesResponse> {
   });
 }
 
+export async function getAdminExpenseMasterData(): Promise<ExpenseMasterDataResponse> {
+  return apiRequest<ExpenseMasterDataResponse>("/api/admin/expense-master-data.php", {
+    method: "GET",
+    credentials: "include",
+  });
+}
+
 export async function createAdminExpense(payload: Partial<AdminExpense>): Promise<AdminExpense> {
   const data = await apiRequest<{ expense: AdminExpense }>("/api/admin/expenses.php", {
     method: "POST",
@@ -799,6 +807,58 @@ export async function deleteAdminExpense(id: string): Promise<void> {
   await apiRequest<{ deleted: boolean }>(`/api/admin/expenses.php?id=${encodeURIComponent(id)}`, {
     method: "DELETE",
     credentials: "include",
+  });
+}
+
+export async function createAdminExpenseMasterCategory(payload: Record<string, unknown>): Promise<unknown> {
+  const data = await apiRequest<{ category: unknown }>('/api/admin/expense-master-data.php', {
+    method: 'POST',
+    credentials: 'include',
+    body: JSON.stringify({ kind: 'category', ...payload }),
+  });
+  return data.category;
+}
+
+export async function updateAdminExpenseMasterCategory(payload: Record<string, unknown>): Promise<unknown> {
+  const data = await apiRequest<{ category: unknown }>('/api/admin/expense-master-data.php', {
+    method: 'PATCH',
+    credentials: 'include',
+    body: JSON.stringify({ kind: 'category', ...payload }),
+  });
+  return data.category;
+}
+
+export async function deleteAdminExpenseMasterCategory(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>('/api/admin/expense-master-data.php', {
+    method: 'DELETE',
+    credentials: 'include',
+    body: JSON.stringify({ kind: 'category', id }),
+  });
+}
+
+export async function createAdminExpenseMasterItem(payload: Record<string, unknown>): Promise<unknown> {
+  const data = await apiRequest<{ item: unknown }>('/api/admin/expense-master-data.php', {
+    method: 'POST',
+    credentials: 'include',
+    body: JSON.stringify({ kind: 'item', ...payload }),
+  });
+  return data.item;
+}
+
+export async function updateAdminExpenseMasterItem(payload: Record<string, unknown>): Promise<unknown> {
+  const data = await apiRequest<{ item: unknown }>('/api/admin/expense-master-data.php', {
+    method: 'PATCH',
+    credentials: 'include',
+    body: JSON.stringify({ kind: 'item', ...payload }),
+  });
+  return data.item;
+}
+
+export async function deleteAdminExpenseMasterItem(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>('/api/admin/expense-master-data.php', {
+    method: 'DELETE',
+    credentials: 'include',
+    body: JSON.stringify({ kind: 'item', id }),
   });
 }
 
